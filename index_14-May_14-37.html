@@ -230,7 +230,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:36 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:33 BST</div>
 
   <div id="laneAppraise" class="lane">
     <div class="lane-header">
@@ -288,7 +288,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 </div>
 
 <script>
-var ANALYSER_PAGE = 'todo-v9.html';
+var ANALYSER_PAGE = 'todo-v8.html';
 var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
 var dealsIndex = {};
 var gistFilesMeta = null; // cached reference to gist.files from last fetch
@@ -564,11 +564,11 @@ function cardHTML(id, isArchived){
     '</div>';
   } else {
     footer = '<div class="card-footer">' +
-      '<button class="card-icon-btn danger" onclick="deleteDeal(this)" title="Move to deleted">' +
-        iconSvg('trash') +
-      '</button>' +
       '<button class="card-icon-btn" onclick="archiveDeal(this)" title="Archive">' +
         iconSvg('archive') +
+      '</button>' +
+      '<button class="card-icon-btn danger" onclick="deleteDeal(this)" title="Move to deleted">' +
+        iconSvg('trash') +
       '</button>' +
     '</div>';
   }
