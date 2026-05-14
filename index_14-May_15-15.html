@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deal Pipeline</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="App">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FBFAF9">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=EB+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#F7F6F1;
+  --card-bg:#FFFFFF;
+  --ink:#2C2C2A;
+  --ink-2:#5F5E5A;
+  --mute:#8E8B82;
+  --line:#E8E3D6;
+  --line-2:#DDD8C9;
+  --brown:#7A604A;
+  --c-appraise:#3D6E92;   /* slate blue */
+  --c-view:    #C48831;   /* clear amber */
+  --c-offer:   #6F8F4C;   /* brighter leaf */
+  --c-followup:#6D4B6B;   /* aubergine */
+  --c-archived:#8E8B82;   /* grey */
+}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--paper);min-height:100vh;color:var(--ink);font-size:14px}
+
+header{background:#2A4A3E;color:#fff;padding:0 16px;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:#fff;margin:0;flex-shrink:0}
+
+.gist-warning{background:#FFF8EC;border-bottom:1px solid #F5C97A;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;display:none}
+.gist-warning.show{display:flex}
+.gist-warning-text{display:flex;align-items:center;gap:10px;font-size:13px;color:#633806}
+.gist-warning-dot{width:16px;height:16px;border-radius:50%;background:#BA7517;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:10px;font-weight:500}
+.gist-warning a{font-size:12px;color:#854F0B;white-space:nowrap;text-decoration:underline}
+
+.container{max-width:1400px;margin:24px auto 60px;padding:0 24px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+.new-btn{display:inline-flex;align-items:center;gap:8px;background:var(--brown);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+.new-btn:hover{background:#654e3b}
+
+/* ───── Lane ───── */
+.lane{margin-bottom:28px}
+.lane-header{display:flex;align-items:baseline;gap:12px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.lane-title{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink)}
+.lane-title[contenteditable]{outline:none;cursor:text;padding:1px 5px;margin:-1px -5px;border-radius:4px;transition:background 0.12s,box-shadow 0.12s;min-width:1em}
+.lane-title[contenteditable]:hover{background:rgba(0,0,0,0.045)}
+.lane-title[contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,0.12)}
+.lane-count{font-family:'DM Mono',monospace;font-size:13px;color:var(--mute)}
+.lane-accent{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:2px;flex-shrink:0;transform:translateY(-2px)}
+
+.lane-cards{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;scrollbar-width:thin}
+.lane-cards::-webkit-scrollbar{height:8px}
+.lane-cards::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+.lane-cards.empty-lane{min-height:80px;align-items:center;justify-content:flex-start;padding:14px 4px}
+.lane-empty{color:var(--mute);font-size:13px;font-style:italic}
+
+/* ───── Card (playing-card portrait) ───── */
+.deal-card{
+  flex:0 0 auto;
+  width:172px;
+  background:var(--card-bg);
+  border:1px solid var(--line-2);
+  border-radius:10px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  transition:box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+}
+.deal-card:hover{
+  border-color:var(--brown);
+  box-shadow:0 4px 12px rgba(0,0,0,0.04);
+}
+.deal-card.archived{opacity:0.55;filter:saturate(0.6)}
+.deal-card.archived:hover{opacity:0.85}
+.deal-card.dnd-dragging{opacity:0.35}
+
+/* ─── Note ribbon (top-of-card colour-changeable highlight bar) ─── */
+.card-note-ribbon{
+  display:block;
+  min-height:8px;
+  padding:0;
+  background:transparent;
+  color:#fff;
+  font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
+  font-size:11px;font-weight:500;line-height:1.3;
+  white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;
+  cursor:pointer;
+  outline:none;
+  transition:background 0.12s, min-height 0.12s, padding 0.12s;
+}
+.card-note-ribbon.visible{
+  padding:6px 10px;
+  box-shadow:inset 0 -1px 0 rgba(0,0,0,0.06);
+}
+.card-note-ribbon.empty:not(.editing){
+  background:transparent;color:transparent;
+  font-style:italic;font-weight:400;
+}
+.card-note-ribbon.empty:not(.editing):hover{
+  background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.5);
+  min-height:18px;padding:3px 10px;
+}
+.card-note-ribbon.editing{padding:6px 10px}
+.card-note-ribbon[contenteditable="true"]{cursor:text}
+.card-note-color-picker{
+  position:absolute;left:50%;transform:translateX(-50%);
+  display:flex;gap:6px;background:#fff;padding:6px 8px;
+  border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.18);
+  border:0.5px solid var(--line);z-index:5;
+}
+.card-note-color-swatch{
+  width:18px;height:18px;border-radius:50%;cursor:pointer;
+  border:2px solid #fff;box-sizing:border-box;
+  transition:transform .12s;
+}
+.card-note-color-swatch:hover{transform:scale(1.15)}
+.card-note-color-swatch.active{outline:1.5px solid currentColor}
+
+.card-body{padding:10px 11px 8px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card-name{
+  font-family:'EB Garamond',Georgia,serif;
+  font-weight:500;
+  font-size:15px;
+  line-height:1.2;
+  color:var(--ink);
+  text-decoration:none;
+  display:block;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  word-break:break-word;
+  min-height:36px;
+}
+.card-name:hover{color:var(--brown)}
+
+/* Footer icons (archive / delete) */
+.card-footer{
+  display:flex;
+  border-top:1px solid var(--line);
+  margin-top:4px;
+}
+.card-icon-btn{
+  flex:1;
+  background:transparent;
+  border:none;
+  padding:7px 0;
+  cursor:pointer;
+  color:var(--mute);
+  font-family:inherit;
+  font-size:11px;
+  display:flex;align-items:center;justify-content:center;
+  gap:4px;
+  transition:background 0.1s, color 0.1s;
+  border-right:1px solid var(--line);
+}
+.card-icon-btn:last-child{border-right:none}
+.card-icon-btn:hover{background:#F3F0EA;color:var(--ink-2)}
+.card-icon-btn.danger:hover{background:#FEF0F0;color:#C0392B}
+.card-icon-btn.affirm:hover{background:#F0F7EB;color:#5E7B3F}
+.card-icon-btn svg{width:12px;height:12px}
+
+/* Archived lane — faded */
+.archived-section{margin-top:40px;padding-top:20px;border-top:1px dashed var(--line-2)}
+.archived-section .lane-title{color:var(--c-archived)}
+
+.trash-link{display:block;text-align:center;margin-top:32px;font-size:13px;color:var(--mute);text-decoration:none}
+.trash-link:hover{color:var(--ink-2);text-decoration:underline}
+
+/* Mobile: make cards a bit narrower */
+@media (max-width:600px){
+  .container{padding:0 14px;margin-top:16px}
+  .deal-card{width:148px}
+  .card-name{font-size:13px;min-height:32px}
+  .lane-title{font-size:19px}
+}
+
+/* ───── Placeholder deal cards (added via Siri voice trigger) ───── */
+.deal-card.placeholder .card-body{opacity:0.85}
+.deal-card.placeholder::after{
+  content:'From Siri';
+  position:absolute;top:6px;right:6px;
+  background:rgba(200, 60, 130, 0.95);color:#fff;
+  font-size:9px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;
+  padding:2px 6px;border-radius:3px;
+  z-index:2;pointer-events:none;
+}
+.deal-card{position:relative}
+
+/* ───── Just-updated card: subtle glow + scale pulse to draw the eye ───── */
+.deal-card.just-updated{
+  animation: dealJustUpdated 1.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes dealJustUpdated {
+  0%   { box-shadow: 0 0 0 0 rgba(42, 74, 62, 0); transform: scale(1); }
+  20%  { box-shadow: 0 0 0 4px rgba(42, 74, 62, 0.35), 0 4px 16px rgba(42, 74, 62, 0.25); transform: scale(1.04); }
+  100% { box-shadow: 0 0 0 0 rgba(42, 74, 62, 0); transform: scale(1); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Deal Pipeline</h1>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:1;min-width:0">
+    <form onsubmit="syncButton(); return false;" style="display:flex;align-items:center;gap:6px;width:100%;justify-content:flex-end">
+      <input type="text" id="gistId" placeholder="Gist ID" autocomplete="username"
+        style="flex:1;min-width:0;max-width:120px;padding:4px 8px;font-size:11px;font-family:monospace;border:1px solid rgba(255,255,255,0.25);border-radius:5px;background:rgba(0,0,0,0.2);color:#fff;outline:none" name="gist_id">
+      <input type="password" id="syncToken" placeholder="Token" autocomplete="password"
+        style="flex:1;min-width:0;max-width:120px;padding:4px 8px;font-size:11px;font-family:monospace;border:1px solid rgba(255,255,255,0.25);border-radius:5px;background:rgba(0,0,0,0.2);color:#fff;outline:none" name="github_token">
+      <button type="submit" style="padding:4px 10px;font-size:11px;background:rgba(0,0,0,0.2);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:5px;cursor:pointer;font-family:inherit;flex-shrink:0">↻ Load</button>
+    </form>
+    <span id="syncStatus" style="font-size:10px;color:rgba(255,255,255,0.5)"></span>
+  </div>
+</header>
+
+<div id="gistWarning" class="gist-warning">
+  <div class="gist-warning-text">
+    <div class="gist-warning-dot">!</div>
+    <span>You have <strong id="gistWarningCount" style="color:#412402"></strong> in your Gist — approaching the ~300 file limit. Permanently delete old test deals to free up space.</span>
+  </div>
+  <a href="deleted-todo.html">Go to deleted deals →</a>
+</div>
+
+<div class="container">
+  <!-- Page-load timestamp — fixed top-right, just below the header -->
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:03 BST</div>
+
+  <div id="laneAppraise" class="lane">
+    <div class="lane-header">
+      <span class="lane-accent" style="background:var(--c-appraise)"></span>
+      <span class="lane-title" data-lane="appraise" contenteditable="plaintext-only" spellcheck="false">Appraise</span>
+      <span class="lane-count" id="countAppraise">0</span>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsAppraise"><div class="lane-empty">No deals here yet</div></div>
+  </div>
+
+  <div id="laneView" class="lane">
+    <div class="lane-header">
+      <span class="lane-accent" style="background:var(--c-view)"></span>
+      <span class="lane-title" data-lane="view" contenteditable="plaintext-only" spellcheck="false">View</span>
+      <span class="lane-count" id="countView">0</span>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsView"><div class="lane-empty">No deals here yet</div></div>
+  </div>
+
+  <div id="laneOffer" class="lane">
+    <div class="lane-header">
+      <span class="lane-accent" style="background:var(--c-offer)"></span>
+      <span class="lane-title" data-lane="offer" contenteditable="plaintext-only" spellcheck="false">Offer</span>
+      <span class="lane-count" id="countOffer">0</span>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsOffer"><div class="lane-empty">No deals here yet</div></div>
+  </div>
+
+  <div id="laneFollowup" class="lane">
+    <div class="lane-header">
+      <span class="lane-accent" style="background:var(--c-followup)"></span>
+      <span class="lane-title" data-lane="followup" contenteditable="plaintext-only" spellcheck="false">Follow Up</span>
+      <span class="lane-count" id="countFollowup">0</span>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsFollowup"><div class="lane-empty">No deals here yet</div></div>
+  </div>
+
+  <div class="archived-section">
+    <div id="laneArchived" class="lane" style="margin-bottom:0">
+      <div class="lane-header">
+        <span class="lane-accent" style="background:var(--c-archived)"></span>
+        <span class="lane-title" data-lane="archived" contenteditable="plaintext-only" spellcheck="false">Archived</span>
+        <span class="lane-count" id="countArchived">0</span>
+      </div>
+      <div class="lane-cards empty-lane" id="cardsArchived"><div class="lane-empty">No archived deals</div></div>
+    </div>
+  </div>
+
+  <div class="topbar" style="margin-top:24px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="new-btn" onclick="showNewDeal()">+ New deal</button>
+    </div>
+    <a href="deleted-todo.html" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;text-decoration:none">🗑 Deleted deals</a>
+  </div>
+</div>
+
+<script>
+var ANALYSER_PAGE = 'todo-v11.html';
+var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
+var dealsIndex = {};
+var gistFilesMeta = null; // cached reference to gist.files from last fetch
+
+// ───── Token / Gist management (unchanged) ─────
+function getToken(){
+  var inp = document.getElementById('syncToken');
+  var t = (inp ? inp.value.trim() : '') || localStorage.getItem('todoToken') || '';
+  if(t) localStorage.setItem('todoToken', t);
+  return t;
+}
+function getSyncGistId(){
+  var inp = document.getElementById('gistId');
+  var g = (inp ? inp.value.trim() : '') || localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
+  if(g) localStorage.setItem('todoGistId', g);
+  return g;
+}
+function syncButton(){
+  var gid = getSyncGistId();
+  if(!gid){ setStatus('Paste Gist ID', false); return; }
+  GIST_ID = gid;
+  localStorage.setItem('todoGistId', GIST_ID);
+  loadDeals();
+}
+function setStatus(msg, ok){
+  var el = document.getElementById('syncStatus');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = ok === false ? '#f88' : ok === true ? '#8f8' : 'rgba(255,255,255,0.5)';
+}
+
+async function getGist(){
+  var token = getToken();
+  if(!token){ setStatus('No token', false); return null; }
+  if(!GIST_ID){
+    setStatus('Creating new Gist…');
+    var createRes = await fetch('https://api.github.com/gists', {
+      method: 'POST',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: 'Deal Analyser Data', public: false, files: { 'deals-index.json': { content: '{}' } } })
+    });
+    if(!createRes.ok){ setStatus('Failed to create Gist: ' + createRes.status, false); return null; }
+    var created = await createRes.json();
+    GIST_ID = created.id;
+    localStorage.setItem('todoGistId', GIST_ID);
+    setStatus('New Gist created ✓', true);
+    return created;
+  }
+  var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+    headers: { Authorization: 'token ' + token }
+  });
+  if(!res.ok){ setStatus('GitHub error: ' + res.status, false); return null; }
+  try { return await res.json(); }
+  catch(e){ setStatus('Error reading Gist: ' + e.message, false); return null; }
+}
+
+async function saveIndex(){
+  var token = getToken();
+  if(!token) return;
+  var body = { files: { 'deals-index.json': { content: JSON.stringify(dealsIndex, null, 2) } } };
+  await fetch('https://api.github.com/gists/' + GIST_ID, {
+    method: 'PATCH',
+    headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+async function loadDeals(){
+  var token = getToken();
+  if(!token){ setStatus('No token', false); return; }
+  setStatus('Loading…');
+  try {
+    var data = await getGist();
+    if(!data) return;
+    gistFilesMeta = data.files || {};
+
+    // Lane labels — load first so any subsequent renderDeals() picks them up
+    if(gistFilesMeta['lane-labels.json']){
+      try {
+        var lf = gistFilesMeta['lane-labels.json'];
+        var lraw = lf.content;
+        if(!lraw || lf.truncated){
+          lraw = await (await fetch(lf.raw_url)).text();
+        }
+        if(lraw && lraw.trim()){
+          var parsedLabels = JSON.parse(lraw);
+          LANE_KEYS_ALL.forEach(function(k){
+            if(typeof parsedLabels[k] === 'string' && parsedLabels[k].trim()){
+              LANE_LABELS[k] = parsedLabels[k];
+            }
+          });
+          try { localStorage.setItem('mirror-laneLabels', JSON.stringify(LANE_LABELS)); } catch(e){}
+          applyLaneLabels();
+        }
+      } catch(e){ /* labels file malformed — keep defaults */ }
+    }
+
+    dealsIndex = {};
+    if(gistFilesMeta['deals-index.json']){
+      var fileObj = gistFilesMeta['deals-index.json'];
+      var raw = fileObj.content;
+      if(!raw || !raw.trim() || fileObj.truncated){
+        var rawRes = await fetch(fileObj.raw_url);
+        raw = await rawRes.text();
+      }
+      if(!raw || !raw.trim() || raw === '{}'){ renderDeals(); setStatus('Ready ✓', true); return; }
+      dealsIndex = JSON.parse(raw);
+    }
+    renderDeals();
+    setStatus('Loaded — ' + Object.keys(dealsIndex).length + ' deals', true);
+    var inp = document.getElementById('syncToken');
+    if(inp) inp.value = '';
+  } catch(e){
+    setStatus('Error: ' + e.message, false);
+  }
+}
+
+// ───── Photo loading ─────
+// ───── Rendering ─────
+var LANE_KEYS_ALL = ['appraise','view','offer','followup','archived'];
+var LANE_LABELS_DEFAULT = {appraise:'Appraise',view:'View',offer:'Offer',followup:'Follow Up',archived:'Archived'};
+var LANE_LABELS = Object.assign({}, LANE_LABELS_DEFAULT);
+
+// Hydrate from localStorage mirror immediately so the page renders correctly
+// before the gist fetch lands.
+(function _hydrateLaneLabels(){
+  try {
+    var raw = localStorage.getItem('mirror-laneLabels');
+    if(!raw) return;
+    var parsed = JSON.parse(raw);
+    LANE_KEYS_ALL.forEach(function(k){
+      if(parsed && typeof parsed[k] === 'string' && parsed[k].trim()){
+        LANE_LABELS[k] = parsed[k];
+      }
+    });
+  } catch(e){}
+})();
+
+function applyLaneLabels(){
+  // Update the visible lane title spans
+  document.querySelectorAll('.lane-title[data-lane]').forEach(function(el){
+    var key = el.getAttribute('data-lane');
+    var label = LANE_LABELS[key] || LANE_LABELS_DEFAULT[key];
+    if(document.activeElement !== el && el.textContent !== label){
+      el.textContent = label;
+    }
+  });
+}
+
+async function saveLaneLabels(){
+  // Mirror locally first so a refresh never loses an edit
+  try { localStorage.setItem('mirror-laneLabels', JSON.stringify(LANE_LABELS)); } catch(e){}
+  var token = getToken();
+  if(!token || !GIST_ID) return;
+  try {
+    setStatus('Saving labels…');
+    var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: { 'lane-labels.json': { content: JSON.stringify(LANE_LABELS, null, 2) } } })
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    setStatus('Saved ✓', true);
+  } catch(e){
+    setStatus('Save failed: ' + e.message, false);
+  }
+}
+
+function wireLaneLabelEditing(){
+  document.querySelectorAll('.lane-title[data-lane]').forEach(function(el){
+    var key = el.getAttribute('data-lane');
+    el.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
+      else if(e.key === 'Escape'){
+        e.preventDefault();
+        el.textContent = LANE_LABELS[key] || LANE_LABELS_DEFAULT[key];
+        el.blur();
+      }
+    });
+    el.addEventListener('blur', function(){
+      var val = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if(!val) val = LANE_LABELS_DEFAULT[key];
+      el.textContent = val;
+      if(val !== LANE_LABELS[key]){
+        LANE_LABELS[key] = val;
+        applyLaneLabels();
+        if(typeof renderDeals === 'function') renderDeals();
+        saveLaneLabels();
+      }
+    });
+  });
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', function(){ wireLaneLabelEditing(); applyLaneLabels(); });
+} else {
+  wireLaneLabelEditing();
+  applyLaneLabels();
+}
+
+function renderDeals(){
+  var buckets = { appraise:[], view:[], offer:[], followup:[], archived:[] };
+
+  Object.keys(dealsIndex).forEach(function(id){
+    var d = dealsIndex[id];
+    if(d.deleted) return;
+    if(d.archived){ buckets.archived.push(id); return; }
+    var s = d.status || 'appraise';
+    if(!buckets[s]) s = 'appraise';
+    buckets[s].push(id);
+  });
+
+  // Sort: manual _order (set by drag-and-drop) takes precedence, else most-recent first
+  var sortByOrder = function(a,b){
+    var da = dealsIndex[a], db = dealsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  };
+  Object.keys(buckets).forEach(function(k){ buckets[k].sort(sortByOrder); });
+
+  // Gist warning
+  var totalDeals = Object.keys(dealsIndex).length;
+  var warn = document.getElementById('gistWarning');
+  if(warn){
+    if(totalDeals >= 60){
+      document.getElementById('gistWarningCount').textContent = totalDeals + ' deals';
+      warn.classList.add('show');
+    } else {
+      warn.classList.remove('show');
+    }
+  }
+
+  // Render each lane
+  renderLane('cardsAppraise', 'countAppraise', buckets.appraise, false);
+  renderLane('cardsView',     'countView',     buckets.view,     false);
+  renderLane('cardsOffer',    'countOffer',    buckets.offer,    false);
+  renderLane('cardsFollowup', 'countFollowup', buckets.followup, false);
+  renderLane('cardsArchived', 'countArchived', buckets.archived, true);
+  if(typeof _wireDrag === 'function') _wireDrag();
+}
+
+function renderLane(cardsId, countId, ids, isArchived){
+  var el = document.getElementById(cardsId);
+  var countEl = document.getElementById(countId);
+  if(countEl) countEl.textContent = ids.length;
+  if(!ids.length){
+    el.classList.add('empty-lane');
+    el.innerHTML = '<div class="lane-empty">' + (isArchived ? 'No archived deals' : 'No deals here yet') + '</div>';
+    return;
+  }
+  el.classList.remove('empty-lane');
+  // Clear any inline styles left over from drag collapse/expansion
+  el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = '';
+  el.innerHTML = ids.map(function(id){ return cardHTML(id, isArchived); }).join('');
+}
+
+function cardHTML(id, isArchived){
+  var d = dealsIndex[id];
+  var link = ANALYSER_PAGE + '?deal=' + encodeURIComponent(id);
+  var name = (d.name || id).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; });
+
+  var footer = '';
+  if(isArchived){
+    footer = '<div class="card-footer">' +
+      '<button class="card-icon-btn" onclick="unarchiveDeal(this)" title="Restore to pipeline">' +
+        iconSvg('restore') + ' Restore' +
+      '</button>' +
+      '<button class="card-icon-btn danger" onclick="deleteDeal(this)" title="Move to deleted">' +
+        iconSvg('trash') + '' +
+      '</button>' +
+    '</div>';
+  } else {
+    footer = '<div class="card-footer">' +
+      '<button class="card-icon-btn danger" onclick="deleteDeal(this)" title="Move to deleted">' +
+        iconSvg('trash') +
+      '</button>' +
+      '<button class="card-icon-btn affirm" onclick="archiveDeal(this)" title="Archive">' +
+        iconSvg('archive') +
+      '</button>' +
+    '</div>';
+  }
+
+  var noteText = d.note || '';
+  var noteColor = d.noteColor || '#C0392B';
+  var ribbonClass = 'card-note-ribbon' + (noteText ? ' visible' : ' empty');
+  var ribbonStyle = noteText ? 'background:'+noteColor : '';
+  var ribbonHtml = '<div class="'+ribbonClass+'" data-deal-id="'+id+'" style="'+ribbonStyle+'" title="Click to edit note">' + (noteText ? escapeHtml(noteText) : 'Add note') + '</div>';
+
+  return '<div class="deal-card' + (isArchived ? ' archived' : '') + (d.placeholder ? ' placeholder' : '') + (d.placeholder && d.source === 'siri' ? ' from-siri' : '') + '" data-id="' + id + '">' +
+    ribbonHtml +
+    '<div class="card-body">' +
+      '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>' +
+    '</div>' +
+    footer +
+  '</div>';
+}
+
+function iconSvg(kind){
+  var defs = {
+    archive:   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,11 8,15 16,6"/></svg>',
+    trash:     '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5 L15 15"/><path d="M15 5 L5 15"/></svg>',
+    restore:   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10 a6 6 0 1 1 2 4.2"/><polyline points="4,5 4,10 9,10"/></svg>'
+  };
+  return defs[kind] || '';
+}
+
+function getId(btn){ return btn.closest('.deal-card').dataset.id; }
+
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ───── Note ribbon (per-card editable note) ─────
+var NOTE_COLORS = ['#C0392B','#27AE60','#2980B9','#E67E22','#7E57C2'];
+var _activeRibbon = null;
+var _activePicker = null;
+
+function _closeRibbon(commit){
+  if(!_activeRibbon) return;
+  var r = _activeRibbon;
+  var id = r.dataset.dealId;
+  var rawText = (r.innerText || '').trim();
+  if(commit !== false){
+    if(!dealsIndex[id]) dealsIndex[id] = {};
+    var prevText = dealsIndex[id].note || '';
+    var prevColor = dealsIndex[id].noteColor || '';
+    var newColor = r.dataset.color || '#C0392B';
+    if(rawText !== prevText || newColor !== prevColor){
+      dealsIndex[id].note = rawText;
+      dealsIndex[id].noteColor = newColor;
+      dealsIndex[id].updated = new Date().toISOString();
+      saveIndex();
+    }
+  }
+  r.removeAttribute('contenteditable');
+  r.classList.remove('editing');
+  if(rawText){
+    r.classList.add('visible');
+    r.classList.remove('empty');
+    r.style.background = r.dataset.color || '#C0392B';
+    r.textContent = rawText;
+  } else {
+    r.classList.remove('visible');
+    r.classList.add('empty');
+    r.style.background = '';
+    r.textContent = 'Add note';
+  }
+  if(_activePicker){ _activePicker.remove(); _activePicker = null; }
+  _activeRibbon = null;
+}
+
+function _openRibbon(r){
+  if(_activeRibbon === r) return;
+  if(_activeRibbon) _closeRibbon(true);
+  var id = r.dataset.dealId;
+  var d = dealsIndex[id] || {};
+  var color = d.noteColor || '#C0392B';
+  r.dataset.color = color;
+  r.classList.add('editing');
+  r.classList.remove('empty');
+  r.style.background = color;
+  r.textContent = d.note || '';
+  r.setAttribute('contenteditable','plaintext-only');
+  _activeRibbon = r;
+  // Focus & place cursor at end
+  setTimeout(function(){
+    r.focus();
+    var range = document.createRange();
+    range.selectNodeContents(r);
+    range.collapse(false);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }, 0);
+  // Build color picker
+  var picker = document.createElement('div');
+  picker.className = 'card-note-color-picker';
+  NOTE_COLORS.forEach(function(c){
+    var sw = document.createElement('span');
+    sw.className = 'card-note-color-swatch' + (c === color ? ' active' : '');
+    sw.style.background = c;
+    sw.style.color = c;
+    sw.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    sw.addEventListener('click', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      r.dataset.color = c;
+      r.style.background = c;
+      picker.querySelectorAll('.card-note-color-swatch').forEach(function(s){ s.classList.remove('active'); });
+      sw.classList.add('active');
+      r.focus();
+    });
+    picker.appendChild(sw);
+  });
+  // Position picker just below the ribbon
+  var photo = r.parentElement;
+  photo.appendChild(picker);
+  var rRect = r.getBoundingClientRect();
+  var pRect = photo.getBoundingClientRect();
+  picker.style.top = (rRect.bottom - pRect.top + 6) + 'px';
+  _activePicker = picker;
+}
+
+function _enforceMaxLines(r){
+  var lines = (r.innerText || '').split(/\r?\n/);
+  if(lines.length > 3){
+    var trimmed = lines.slice(0,3).join('\n');
+    r.textContent = trimmed;
+    // Restore cursor to end
+    var range = document.createRange();
+    range.selectNodeContents(r);
+    range.collapse(false);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+document.addEventListener('click', function(e){
+  var ribbon = e.target.closest('.card-note-ribbon');
+  if(ribbon){
+    e.preventDefault();
+    e.stopPropagation();
+    _openRibbon(ribbon);
+    return;
+  }
+  // Click outside any picker / ribbon → commit
+  if(_activeRibbon && !e.target.closest('.card-note-color-picker') && !e.target.closest('.card-note-ribbon')){
+    _closeRibbon(true);
+  }
+}, true);
+
+document.addEventListener('keydown', function(e){
+  if(!_activeRibbon) return;
+  if(e.key === 'Escape'){
+    e.preventDefault();
+    _activeRibbon.blur();
+    _closeRibbon(true);
+  } else if(e.key === 'Enter'){
+    // Allow up to 3 lines: block Enter if already at 3 lines
+    var lines = (_activeRibbon.innerText || '').split(/\r?\n/);
+    if(lines.length >= 3){ e.preventDefault(); }
+  }
+});
+
+document.addEventListener('input', function(e){
+  if(e.target === _activeRibbon){ _enforceMaxLines(_activeRibbon); }
+});
+
+document.addEventListener('paste', function(e){
+  if(e.target === _activeRibbon){
+    e.preventDefault();
+    var text = (e.clipboardData || window.clipboardData).getData('text');
+    var lines = text.split(/\r?\n/).slice(0,3).join('\n');
+    document.execCommand('insertText', false, lines);
+    setTimeout(function(){ _enforceMaxLines(_activeRibbon); }, 0);
+  }
+});
+
+// ───── FLIP animation helpers ─────
+// Capture {left, top, width, height} for every card currently in the DOM,
+// keyed by deal id. Used as the "First" snapshot for FLIP.
+function captureRects(){
+  var rects = {};
+  document.querySelectorAll('.deal-card').forEach(function(el){
+    var id = el.dataset.id;
+    if(!id) return;
+    rects[id] = el.getBoundingClientRect();
+  });
+  return rects;
+}
+// Build a ghost clone of a card so we can animate it out AFTER it's been
+// removed from the real DOM. Must be called BEFORE the mutation.
+function prepareRemovalGhost(id){
+  var el = document.querySelector('[data-id="' + id + '"]');
+  if(!el) return null;
+  return { clone: el.cloneNode(true), rect: el.getBoundingClientRect() };
+}
+// Run FLIP: for every card that existed before AND still exists, translate
+// it from its old position back to the new one. For removed ghosts, fade
+// them out in place. For newIds, fade/scale them in.
+function animateFlip(oldRects, opts){
+  opts = opts || {};
+  var removedGhosts = opts.removedGhosts || [];
+  var newIds = opts.newIds || [];
+  var DURATION_MOVE = 380;   // ms — card slide
+  var DURATION_FADE = 280;   // ms — enter/exit
+  var EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+
+  // Existing + new cards
+  document.querySelectorAll('.deal-card').forEach(function(el){
+    var id = el.dataset.id;
+    if(!id) return;
+
+    if(newIds.indexOf(id) >= 0){
+      // New card: scale up from 0.85 with a fade-in
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(0.85)';
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          el.style.transition = 'opacity ' + DURATION_FADE + 'ms ease-out, transform ' + DURATION_FADE + 'ms ' + EASE;
+          el.style.opacity = '';
+          el.style.transform = '';
+          setTimeout(function(){ el.style.transition = ''; }, DURATION_FADE + 50);
+        });
+      });
+      return;
+    }
+
+    if(!oldRects[id]) return; // card is neither old nor flagged new; leave it
+
+    var oldRect = oldRects[id];
+    var newRect = el.getBoundingClientRect();
+    var dx = oldRect.left - newRect.left;
+    var dy = oldRect.top - newRect.top;
+    if(Math.abs(dx) < 1 && Math.abs(dy) < 1) return; // unchanged
+
+    // INVERT — place card back at old visual position instantly
+    el.style.transition = 'none';
+    el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        // PLAY — animate back to new position
+        el.style.transition = 'transform ' + DURATION_MOVE + 'ms ' + EASE;
+        el.style.transform = '';
+        setTimeout(function(){ el.style.transition = ''; }, DURATION_MOVE + 50);
+      });
+    });
+  });
+
+  // Removed card ghosts: pin clone at old position, then fade + shrink
+  removedGhosts.forEach(function(ghost){
+    var g = ghost.clone;
+    g.style.position = 'fixed';
+    g.style.left = ghost.rect.left + 'px';
+    g.style.top = ghost.rect.top + 'px';
+    g.style.width = ghost.rect.width + 'px';
+    g.style.height = ghost.rect.height + 'px';
+    g.style.margin = '0';
+    g.style.pointerEvents = 'none';
+    g.style.zIndex = '1000';
+    g.style.transition = 'none';
+    g.style.transformOrigin = 'center center';
+    document.body.appendChild(g);
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        g.style.transition = 'opacity ' + DURATION_FADE + 'ms ease-out, transform ' + DURATION_FADE + 'ms ' + EASE;
+        g.style.opacity = '0';
+        g.style.transform = 'scale(0.85)';
+        setTimeout(function(){ g.remove(); }, DURATION_FADE + 80);
+      });
+    });
+  });
+}
+
+// ───── Actions ─────
+async function archiveDeal(btn){
+  var id = getId(btn);
+  await new Promise(function(r){ setTimeout(r, 800); });
+  var oldRects = captureRects();
+  dealsIndex[id].archived = true;
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderDeals();
+  animateFlip(oldRects);
+}
+
+async function unarchiveDeal(btn){
+  var id = getId(btn);
+  await new Promise(function(r){ setTimeout(r, 800); });
+  var oldRects = captureRects();
+  dealsIndex[id].archived = false;
+  if(!dealsIndex[id].status) dealsIndex[id].status = 'appraise';
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderDeals();
+  animateFlip(oldRects);
+}
+
+async function deleteDeal(btn){
+  var id = getId(btn);
+  var name = dealsIndex[id].name;
+  if(!confirm('Move "' + name + '" to Deleted Deals?')) return;
+  await new Promise(function(r){ setTimeout(r, 800); });
+  // Capture BEFORE mutation so remaining cards can FLIP to fill the gap,
+  // and clone the outgoing card so it can fade out as a ghost.
+  var oldRects = captureRects();
+  var ghost = prepareRemovalGhost(id);
+  dealsIndex[id].deleted = true;
+  dealsIndex[id].archived = false;
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderDeals();
+  animateFlip(oldRects, { removedGhosts: ghost ? [ghost] : [] });
+}
+
+// Re-index a lane so `id` sits at _order:0 (leftmost) and existing
+// siblings shift right. Used by new deal, RM paste, and duplicate.
+function _placeAtFront(id, laneKey){
+  var siblings = Object.keys(dealsIndex).filter(function(otherId){
+    if(otherId === id) return false;
+    var od = dealsIndex[otherId];
+    if(!od || od.deleted || od.archived) return false;
+    return (od.status || 'appraise') === laneKey;
+  });
+  siblings.sort(function(a, b){
+    var da = dealsIndex[a], db = dealsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  });
+  dealsIndex[id]._order = 0;
+  siblings.forEach(function(sid, i){ dealsIndex[sid]._order = i + 1; });
+}
+
+function showNewDeal(){
+  var ts = Date.now();
+  var num = Object.keys(dealsIndex).filter(function(k){ return !dealsIndex[k].archived && !dealsIndex[k].deleted; }).length + 1;
+  var name = 'Deal-' + num;
+  var id = 'deal-' + ts;
+  dealsIndex[id] = { name: name, updated: new Date().toISOString(), status: 'appraise' };
+  _placeAtFront(id, 'appraise');
+  var base = ANALYSER_PAGE;
+  var dest = base + '?deal=' + id + '&name=' + encodeURIComponent(name);
+  var token = getToken();
+  if(token && GIST_ID){
+    var body = { files: {} };
+    body.files['deal-' + id + '.json'] = { content: JSON.stringify({ _new: true }) };
+    body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
+    fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).finally(function(){ window.location.href = dest; });
+  } else {
+    window.location.href = dest;
+  }
+}
+
+// ── ?addDeal= handler ────────────────────────────────────────────────
+// Triggered when ?addDeal=<freeform name>&source=siri (or similar) is in the
+// URL. Used by the iOS Shortcut "Add to pipeline" → Siri voice trigger.
+// Creates a placeholder card with the given name in the appraise lane.
+// Must wait for dealsIndex to load before writing or it would overwrite the
+// live index with an empty one.
+async function _addDealHandlerIfNeeded(){
+  var params = new URLSearchParams(window.location.search);
+  var rawName = params.get('addDeal');
+  if(!rawName) return;
+  var source = params.get('source') || '';
+  // Strip params immediately so reloads don't re-trigger
+  try {
+    var u = new URL(window.location);
+    u.searchParams.delete('addDeal');
+    u.searchParams.delete('source');
+    window.history.replaceState({}, '', u);
+  } catch(e){}
+  var name = String(rawName).trim();
+  if(!name){
+    _rmToast('Empty deal name', 'error');
+    return;
+  }
+  // Defensive cap on name length
+  if(name.length > 200) name = name.slice(0, 200);
+  // Wait for dealsIndex to populate from Gist before writing
+  var token = getToken();
+  if(token && GIST_ID){
+    var waitedMs = 0;
+    while(Object.keys(dealsIndex).length === 0 && waitedMs < 10000){
+      await new Promise(function(r){ setTimeout(r, 200); });
+      waitedMs += 200;
+    }
+    if(Object.keys(dealsIndex).length === 0){
+      _rmToast('Could not load existing deals — aborting to protect your data', 'error');
+      return;
+    }
+  }
+  try {
+    var id = 'deal-' + Date.now();
+    var notesText = (source === 'siri' ? 'From Siri: ' : 'Added: ') + name;
+    var state = {
+      _new: false,
+      _placeholder: true,
+      _source: source || 'addDeal',
+      dealName: name,
+      _dealNotes: notesText
+    };
+    dealsIndex[id] = {
+      name: name,
+      updated: new Date().toISOString(),
+      status: 'appraise',
+      placeholder: true,
+      source: source || 'addDeal'
+    };
+    _placeAtFront(id, 'appraise');
+    if(token && GIST_ID){
+      var body = { files: {} };
+      body.files['deal-' + id + '.json'] = { content: JSON.stringify(state, null, 2) };
+      body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
+      var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+        method: 'PATCH',
+        headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if(!res.ok) throw new Error('Gist save failed: ' + res.status);
+    }
+    renderDeals();
+    _rmToast(name + ' added ✓', 'ok');
+  } catch(err){
+    _rmToast('Save failed: ' + (err && err.message ? err.message : err), 'error');
+  }
+}
+
+// Run on DOM ready
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', _addDealHandlerIfNeeded);
+} else {
+  _addDealHandlerIfNeeded();
+}
+
+function _rmToast(msg, type) {
+  var t = document.getElementById('_rmPasteToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_rmPasteToast';
+    t.style.cssText = [
+      'position:fixed','bottom:28px','left:50%','transform:translateX(-50%) translateY(8px)',
+      'padding:9px 18px','border-radius:8px','font-size:13px','font-weight:500',
+      'color:#fff','z-index:9999','pointer-events:none',
+      'opacity:0','transition:opacity .18s,transform .18s',
+      'white-space:nowrap','box-shadow:0 4px 16px rgba(0,0,0,0.25)'
+    ].join(';');
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = type === 'error' ? '#7a1e1e' : type === 'ok' ? '#1e5c30' : '#2a2a2a';
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(t._to);
+  t._to = setTimeout(function() {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(8px)';
+  }, type === 'error' ? 4000 : 2500);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Drag and drop — reorder within a lane, move between lanes
+//
+// Approach: cards get draggable=true wired in JS (not in HTML). The drop
+// indicator is a single floating <div> bar that follows the cursor — it
+// never modifies card styles. Lane-level dragover handlers compute the
+// insertion point from card geometry on every move, so empty-lane drops
+// and end-of-lane drops both work without special cases.
+// ═══════════════════════════════════════════════════════════════════════
+
+var _dnd = { id:null, sourceLane:null, targetLane:null, targetIndex:null, bar:null, ghost:null };
+var LANE_KEYS = ['appraise','view','offer','followup','archived'];
+
+function _laneForId(id){
+  var d = dealsIndex[id]; if(!d) return null;
+  if(d.archived) return 'archived';
+  return d.status || 'appraise';
+}
+
+function _orderedLaneIds(laneKey){
+  return Object.keys(dealsIndex).filter(function(id){
+    var d = dealsIndex[id];
+    if(!d || d.deleted) return false;
+    return laneKey === 'archived' ? !!d.archived : (!d.archived && (d.status||'appraise') === laneKey);
+  }).sort(function(a,b){
+    var da = dealsIndex[a], db = dealsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  });
+}
+
+function _ensureDnDBar(){
+  if(_dnd.bar) return _dnd.bar;
+  var b = document.createElement('div');
+  b.id = '_dndBar';
+  b.style.cssText =
+    'position:fixed;width:3px;background:var(--brown);border-radius:2px;' +
+    'pointer-events:none;z-index:1000;opacity:0;' +
+    'transition:opacity 0.12s ease-out, left 0.16s cubic-bezier(0.2,0.8,0.2,1),' +
+    ' top 0.16s cubic-bezier(0.2,0.8,0.2,1), height 0.16s cubic-bezier(0.2,0.8,0.2,1);';
+  document.body.appendChild(b);
+  _dnd.bar = b;
+  return b;
+}
+function _showBar(x,y,h){
+  var b = _ensureDnDBar();
+  b.style.left = x + 'px';
+  b.style.top  = y + 'px';
+  b.style.height = h + 'px';
+  b.style.opacity = '1';
+}
+function _hideBar(){
+  if(_dnd.bar) _dnd.bar.style.opacity = '0';
+  _dnd.targetLane = null;
+  _dnd.targetIndex = null;
+}
+
+// Compute drop position from cursor position over a lane element
+function _updateIndicator(laneEl, laneKey, x){
+  var cards = Array.prototype.slice.call(laneEl.querySelectorAll('.deal-card:not(.dnd-dragging)'));
+  var laneRect = laneEl.getBoundingClientRect();
+  var barX, barY, barH, idx;
+
+  if(cards.length === 0){
+    // Empty lane — show bar at the lane's left edge
+    barX = laneRect.left + 14;
+    barY = laneRect.top + 12;
+    barH = Math.max(120, Math.min(laneRect.height - 24, 240));
+    idx  = 0;
+  } else {
+    // Find first card whose centre is to the right of the cursor
+    var targetCard = null, before = false;
+    for(var i = 0; i < cards.length; i++){
+      var r = cards[i].getBoundingClientRect();
+      if(x < r.left + r.width / 2){
+        targetCard = cards[i]; before = true; idx = i; break;
+      }
+    }
+    if(!targetCard){
+      // Past all cards — insert after the last
+      targetCard = cards[cards.length - 1]; before = false; idx = cards.length;
+    }
+    var tr = targetCard.getBoundingClientRect();
+    barX = before ? tr.left  - 8 : tr.right + 5;
+    barY = tr.top;
+    barH = tr.height;
+  }
+
+  _dnd.targetLane  = laneKey;
+  _dnd.targetIndex = idx;
+  _updateLiveLayout();
+}
+
+async function _dndPerformDrop(){
+  var dragId = _dnd.id;
+  var toLane = _dnd.targetLane;
+  var toIdx  = _dnd.targetIndex;
+  _hideBar();
+  _dnd.id = null;
+  if(!dragId || !toLane || toIdx == null) return;
+
+  var d = dealsIndex[dragId];
+  if(!d) return;
+  var fromLane = _laneForId(dragId);
+
+  // Build the new list for the target lane (with the dragged card removed),
+  // then insert at toIdx.
+  var ids = _orderedLaneIds(toLane).filter(function(id){ return id !== dragId; });
+  ids.splice(toIdx, 0, dragId);
+
+  // FLIP snapshot before mutation. For cross-lane drops, override the dragged
+  // card's old rect with the ghost's rect so the new card's FLIP animation
+  // starts from where the user *saw* it (target slot) rather than from the
+  // hidden source position. Distance ≈ 0 → it just settles in.
+  var oldRects = captureRects();
+  if(_dnd.ghost){
+    oldRects[dragId] = _dnd.ghost.getBoundingClientRect();
+  }
+  _destroyGhost();
+
+  // Re-index target lane
+  ids.forEach(function(id, i){ if(dealsIndex[id]) dealsIndex[id]._order = i; });
+
+  if(fromLane !== toLane){
+    if(toLane === 'archived'){ d.archived = true; }
+    else { d.archived = false; d.status = toLane; }
+    d.updated = new Date().toISOString();
+    // Re-index source lane to remove the gap
+    var src = _orderedLaneIds(fromLane);
+    src.forEach(function(id, i){ if(dealsIndex[id]) dealsIndex[id]._order = i; });
+  }
+
+  saveIndex();
+  renderDeals();
+  animateFlip(oldRects);
+}
+
+// Live layout — as the user drags, surrounding cards translate to make room
+// for the dragged card at its current target position. The DOM stays in its
+// original order; only inline transforms are applied. On drop, transforms
+// remain in place (showing the user where things "are") and the FLIP system
+// animates from there to the post-mutation natural layout. On cancel, all
+// transforms are cleared and the cards smoothly slide back via the existing
+// CSS transition on `.deal-card { transition: transform 0.15s ... }`.
+
+var _lastLayoutKey = null;
+
+function _getLanePitch(laneKey){
+  var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+  if(!laneEl) return 186;
+  var cards = laneEl.querySelectorAll('.deal-card');
+  if(cards.length >= 2) return cards[1].offsetLeft - cards[0].offsetLeft;
+  if(cards.length === 1) return cards[0].offsetWidth + 14;
+  return 186;
+}
+
+function _applyShift(card, shift, pitch){
+  if(!shift){
+    if(card.style.transform) card.style.transform = '';
+    return;
+  }
+  var t = 'translateX(' + (shift * pitch) + 'px)';
+  if(card.style.transform !== t) card.style.transform = t;
+}
+
+function _updateLiveLayout(){
+  // Skip if state hasn't changed since last call (dragover fires constantly)
+  var key = (_dnd.id || '') + '|' + (_dnd.targetLane || '') + '|' + (_dnd.targetIndex == null ? '' : _dnd.targetIndex);
+  if(key === _lastLayoutKey) return;
+  _lastLayoutKey = key;
+
+  if(!_dnd.id || !_dnd.targetLane || _dnd.targetIndex == null) return;
+
+  var dragId    = _dnd.id;
+  var sourceLane = _dnd.sourceLane;
+  var targetLane = _dnd.targetLane;
+  var targetIdx  = _dnd.targetIndex;
+  var sameLane   = sourceLane === targetLane;
+
+  // Ghost lifecycle: a dashed-outline placeholder is always shown at the
+  // target slot, in <body> with position:fixed so it can travel between
+  // lanes without being clipped by lane overflow. The original card is
+  // hidden (visibility:hidden) so the picked-up browser drag image is the
+  // only "real" representation following the cursor — the placeholder
+  // shows you where it'll land.
+  if(!_dnd.ghost) _createGhost();
+
+  // For each card in source/target lanes, compute the slot shift that places
+  // it where it would naturally end up if the drop happened now. Cards in
+  // other lanes are cleared.
+  var shifts = {};
+
+  if(sameLane){
+    var ids = _orderedLaneIds(sourceLane);
+    var D = ids.indexOf(dragId);
+    if(D < 0) return;
+    ids.forEach(function(id, i){
+      if(i === D){
+        // Dragged card stays put (visibility:hidden) while the ghost
+        // outline shows the target slot. Surrounding cards still shift
+        // exactly as before to open the gap at the right spot.
+        shifts[id] = 0;
+      } else if(i < D){
+        shifts[id] = (i >= targetIdx) ? 1 : 0; // cards left of origin push right if target is at-or-before them
+      } else {
+        shifts[id] = (i - 1 < targetIdx) ? -1 : 0; // cards right of origin pull left to close the origin gap
+      }
+    });
+  } else {
+    // Cross-lane: source closes the origin gap, target opens a gap at targetIdx.
+    // The dragged card itself is replaced by a position:fixed ghost clone in
+    // <body> (created/managed below), so its source DOM slot becomes visually
+    // free for the source-close animation without any paint-order conflict.
+    var srcIds = _orderedLaneIds(sourceLane);
+    var srcD = srcIds.indexOf(dragId);
+    if(srcD >= 0){
+      srcIds.forEach(function(id, i){
+        if(id === dragId) return;
+        shifts[id] = (i > srcD) ? -1 : 0;
+      });
+    }
+    var tgtIds = _orderedLaneIds(targetLane);
+    tgtIds.forEach(function(id, i){
+      shifts[id] = (i >= targetIdx) ? 1 : 0;
+    });
+  }
+
+  // Apply per-lane (each lane has its own pitch)
+  function applyLane(laneKey, pitch){
+    var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+    if(!laneEl) return;
+    laneEl.querySelectorAll('.deal-card').forEach(function(card){
+      _applyShift(card, shifts[card.dataset.id] || 0, pitch);
+    });
+  }
+  applyLane(sourceLane, _getLanePitch(sourceLane));
+  if(!sameLane) applyLane(targetLane, _getLanePitch(targetLane));
+
+  // Clear any stale transforms on lanes we're not currently affecting
+  LANE_KEYS.forEach(function(laneKey){
+    if(laneKey === sourceLane || laneKey === targetLane) return;
+    var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+    if(!laneEl) return;
+    laneEl.querySelectorAll('.deal-card').forEach(function(card){
+      if(card.style.transform) card.style.transform = '';
+    });
+  });
+
+  // Resize lanes FIRST (expand target, collapse source) — getBoundingClientRect
+  // in _moveGhostToTargetSlot forces a synchronous reflow, so the ghost will
+  // read the updated lane geometry rather than stale pre-collapse positions.
+  var ghostH = _dnd.ghost ? (_dnd.ghost.offsetHeight + 28) : 0;
+  LANE_KEYS.forEach(function(k){
+    var el = document.getElementById('cards' + k.charAt(0).toUpperCase() + k.slice(1));
+    if(!el) return;
+    if(el.classList.contains('empty-lane')){
+      el.style.minHeight = (k === targetLane && ghostH > 0) ? ghostH + 'px' : '';
+    } else if(k === _dnd.sourceLane){
+      var crossLane = (targetLane !== _dnd.sourceLane);
+      var visible = el.querySelectorAll('.deal-card:not(.dnd-dragging)').length;
+      if(crossLane && visible === 0){ el.style.minHeight = '80px'; el.style.maxHeight = '80px'; el.style.overflow = 'hidden'; }
+      else { el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = ''; }
+    }
+  });
+
+  // Now move the ghost — coordinates reflect the resized layout.
+  if(_dnd.ghost) _moveGhostToTargetSlot(targetLane, targetIdx);
+}
+
+// Cross-lane ghost: a position:fixed placeholder mounted on <body> so it can
+// travel freely across lanes without being clipped by any `overflow-x: auto`
+// lane container. Renders as a simple dashed outline (not a card clone) so
+// it doesn't visually compete with the browser's own drag image (which now
+// lifts the actual card and follows the cursor since we marked inner <a>
+// tags as draggable=false). While it's active the original card is
+// visibility:hidden — still occupying its source flex slot, so the source
+// lane's "close-gap" translateX shifts cleanly land on top of it.
+function _createGhost(){
+  if(_dnd.ghost || !_dnd.id) return;
+  var card = document.querySelector('.deal-card[data-id="' + _dnd.id + '"]');
+  if(!card) return;
+  var rect = card.getBoundingClientRect();
+  var ghost = document.createElement('div');
+  ghost.id = '_dndGhost';
+  ghost.style.cssText = [
+    'position:fixed',
+    'left:' + rect.left + 'px',
+    'top:'  + rect.top  + 'px',
+    'width:'  + rect.width  + 'px',
+    'height:' + rect.height + 'px',
+    'margin:0',
+    'box-sizing:border-box',
+    'border:2px dashed rgba(0,0,0,0.18)',
+    'border-radius:10px',
+    'background:transparent',
+    'z-index:100',
+    'pointer-events:none',
+    'transition:left 0.15s ease-out, top 0.15s ease-out'
+  ].join(';');
+  document.body.appendChild(ghost);
+  _dnd.ghost = ghost;
+  card.style.visibility = 'hidden';
+}
+
+function _moveGhostToTargetSlot(laneKey, targetIdx){
+  if(!_dnd.ghost) return;
+  var pos = _getTargetSlotViewportPos(laneKey, targetIdx);
+  if(!pos) return;
+  _dnd.ghost.style.left = pos.x + 'px';
+  _dnd.ghost.style.top  = pos.y + 'px';
+}
+
+function _destroyGhost(){
+  if(_dnd.ghost){
+    _dnd.ghost.remove();
+    _dnd.ghost = null;
+  }
+  if(_dnd.id){
+    var card = document.querySelector('.deal-card[data-id="' + _dnd.id + '"]');
+    if(card) card.style.visibility = '';
+  }
+}
+
+// Compute viewport position of where the dragged card should appear if dropped
+// at `targetIdx` in `laneKey`. Uses pure geometry (lane content edge + N *
+// pitch) rather than cards[targetIdx].offsetLeft, because in same-lane drags
+// the hidden dragged card occupies a slot in flex flow — meaning the cards
+// array's index N doesn't correspond to visual slot N. Lane left + padding-
+// left + targetIdx * pitch always gives the correct slot regardless.
+function _getTargetSlotViewportPos(laneKey, targetIdx){
+  var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+  if(!laneEl) return null;
+  var laneRect = laneEl.getBoundingClientRect();
+  var laneStyle = window.getComputedStyle(laneEl);
+  var paddingLeft = parseFloat(laneStyle.paddingLeft) || 0;
+  var paddingTop  = parseFloat(laneStyle.paddingTop)  || 0;
+  var gapPx = parseFloat(laneStyle.gap) || 14;
+
+  var cards = laneEl.querySelectorAll('.deal-card:not(.dnd-dragging)');
+  var cardWidth = cards.length > 0 ? cards[0].offsetWidth : 172;
+  var pitch = cardWidth + gapPx;
+
+  return {
+    x: laneRect.left + paddingLeft + targetIdx * pitch - laneEl.scrollLeft,
+    y: laneRect.top  + paddingTop
+  };
+}
+
+function _clearLiveLayout(){
+  _destroyGhost();
+  document.querySelectorAll('.deal-card').forEach(function(card){
+    if(card.style.transform) card.style.transform = '';
+  });
+  // Reset all per-drag lane style overrides (expanded empty target, collapsed source)
+  LANE_KEYS.forEach(function(k){
+    var el = document.getElementById('cards' + k.charAt(0).toUpperCase() + k.slice(1));
+    if(el){ el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = ''; }
+  });
+  _lastLayoutKey = null;
+}
+
+function _wireDrag(){
+  // Wire each card for dragstart/dragend only — dragover/drop bubble to lane
+  document.querySelectorAll('.deal-card').forEach(function(card){
+    if(card._dndWired) return;
+    card._dndWired = true;
+    card.setAttribute('draggable', 'true');
+    var id = card.dataset.id;
+
+    card.addEventListener('dragstart', function(e){
+      _dnd.id = id;
+      _dnd.sourceLane = _laneForId(id);
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', id); } catch(_){}
+      // Defer the dim so the browser can snapshot the card for the drag image
+      setTimeout(function(){ card.classList.add('dnd-dragging'); }, 0);
+    });
+
+    card.addEventListener('dragend', function(){
+      card.classList.remove('dnd-dragging');
+      // Only clear live layout if drag was canceled (no drop). On successful
+      // drop, _dnd.id is already null and FLIP transforms must be preserved.
+      if(_dnd.id) _clearLiveLayout();
+      _hideBar();
+      _dnd.id = null;
+    });
+  });
+
+  // Wire each lane container for dragover/drop
+  LANE_KEYS.forEach(function(laneKey){
+    var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+    if(!laneEl || laneEl._dndWired) return;
+    laneEl._dndWired = true;
+
+    laneEl.addEventListener('dragover', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      _updateIndicator(laneEl, laneKey, e.clientX);
+    });
+
+    laneEl.addEventListener('drop', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      _dndPerformDrop();
+    });
+  });
+
+  // Document-level fallback: when the cursor leaves a lane (e.g. the user
+  // drags past its left edge to the leftmost slot), lane-level dragover stops
+  // firing — but we want the last-known target state to remain droppable.
+  // Calling preventDefault() in the document dragover keeps drops accepted
+  // anywhere on the page; the document drop then fires _dndPerformDrop using
+  // whatever target state was last set by the most recent lane.dragover.
+  if(!document._dndDocWired){
+    document._dndDocWired = true;
+    document.addEventListener('dragover', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      // Early-snap: if the cursor is above a lane-cards container but within
+      // SNAP_PX of its top edge, treat it as hovering that lane. This means
+      // the ghost snaps into a lane while the cursor is still in the lane header
+      // (the title row), rather than waiting until the cursor clears the header.
+      var SNAP_PX = 80;
+      for(var _si = 0; _si < LANE_KEYS.length; _si++){
+        var _sk = LANE_KEYS[_si];
+        var _sel = document.getElementById('cards' + _sk.charAt(0).toUpperCase() + _sk.slice(1));
+        if(!_sel) continue;
+        var _sr = _sel.getBoundingClientRect();
+        if(e.clientY >= _sr.top - SNAP_PX && e.clientY < _sr.top){
+          _updateIndicator(_sel, _sk, e.clientX);
+          break;
+        }
+      }
+    });
+    document.addEventListener('drop', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      _dndPerformDrop();
+    });
+    document.addEventListener('dragend', function(){ _hideBar(); });
+  }
+}
+
+(function(){
+  var t = localStorage.getItem('todoToken');
+  if(t) loadDeals();
+
+})();
+</script>
+
+</body>
+</html>
