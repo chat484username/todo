@@ -164,7 +164,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .card-icon-btn:last-child{border-right:none}
 .card-icon-btn:hover{background:#F3F0EA;color:var(--ink-2)}
 .card-icon-btn.danger:hover{background:#FEF0F0;color:#C0392B}
-.card-icon-btn.affirm:hover{background:#F0F7EB;color:#5E7B3F}
 .card-icon-btn svg{width:12px;height:12px}
 
 /* Archived lane — faded */
@@ -231,7 +230,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:03 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:00 BST</div>
 
   <div id="laneAppraise" class="lane">
     <div class="lane-header">
@@ -289,7 +288,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 </div>
 
 <script>
-var ANALYSER_PAGE = 'todo-v11.html';
+var ANALYSER_PAGE = 'todo-v10.html';
 var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
 var dealsIndex = {};
 var gistFilesMeta = null; // cached reference to gist.files from last fetch
@@ -568,7 +567,7 @@ function cardHTML(id, isArchived){
       '<button class="card-icon-btn danger" onclick="deleteDeal(this)" title="Move to deleted">' +
         iconSvg('trash') +
       '</button>' +
-      '<button class="card-icon-btn affirm" onclick="archiveDeal(this)" title="Archive">' +
+      '<button class="card-icon-btn" onclick="archiveDeal(this)" title="Archive">' +
         iconSvg('archive') +
       '</button>' +
     '</div>';
