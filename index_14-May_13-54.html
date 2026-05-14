@@ -49,9 +49,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .lane{margin-bottom:28px}
 .lane-header{display:flex;align-items:baseline;gap:12px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .lane-title{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink)}
-.lane-title[contenteditable]{outline:none;cursor:text;padding:1px 5px;margin:-1px -5px;border-radius:4px;transition:background 0.12s,box-shadow 0.12s;min-width:1em}
-.lane-title[contenteditable]:hover{background:rgba(0,0,0,0.045)}
-.lane-title[contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,0.12)}
 .lane-count{font-family:'DM Mono',monospace;font-size:13px;color:var(--mute)}
 .lane-accent{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:2px;flex-shrink:0;transform:translateY(-2px)}
 
@@ -171,12 +168,8 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   color:#A6A294;
   letter-spacing:0.02em;
   display:flex;align-items:center;justify-content:center;
-  padding:0 4px;
+  padding:0;
   transition:all 0.1s;
-  min-width:0;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
 }
 .status-chip:hover{border-color:var(--brown);color:var(--ink-2)}
 .status-chip.active{
@@ -289,12 +282,12 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">13:49 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">13:38 BST</div>
 
   <div id="laneAppraise" class="lane">
     <div class="lane-header">
       <span class="lane-accent" style="background:var(--c-appraise)"></span>
-      <span class="lane-title" data-lane="appraise" contenteditable="plaintext-only" spellcheck="false">Appraise</span>
+      <span class="lane-title">Appraise</span>
       <span class="lane-count" id="countAppraise">0</span>
     </div>
     <div class="lane-cards empty-lane" id="cardsAppraise"><div class="lane-empty">No deals here yet</div></div>
@@ -303,7 +296,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   <div id="laneView" class="lane">
     <div class="lane-header">
       <span class="lane-accent" style="background:var(--c-view)"></span>
-      <span class="lane-title" data-lane="view" contenteditable="plaintext-only" spellcheck="false">View</span>
+      <span class="lane-title">View</span>
       <span class="lane-count" id="countView">0</span>
     </div>
     <div class="lane-cards empty-lane" id="cardsView"><div class="lane-empty">No deals here yet</div></div>
@@ -312,7 +305,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   <div id="laneOffer" class="lane">
     <div class="lane-header">
       <span class="lane-accent" style="background:var(--c-offer)"></span>
-      <span class="lane-title" data-lane="offer" contenteditable="plaintext-only" spellcheck="false">Offer</span>
+      <span class="lane-title">Offer</span>
       <span class="lane-count" id="countOffer">0</span>
     </div>
     <div class="lane-cards empty-lane" id="cardsOffer"><div class="lane-empty">No deals here yet</div></div>
@@ -321,7 +314,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   <div id="laneFollowup" class="lane">
     <div class="lane-header">
       <span class="lane-accent" style="background:var(--c-followup)"></span>
-      <span class="lane-title" data-lane="followup" contenteditable="plaintext-only" spellcheck="false">Follow Up</span>
+      <span class="lane-title">Follow Up</span>
       <span class="lane-count" id="countFollowup">0</span>
     </div>
     <div class="lane-cards empty-lane" id="cardsFollowup"><div class="lane-empty">No deals here yet</div></div>
@@ -331,7 +324,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
     <div id="laneArchived" class="lane" style="margin-bottom:0">
       <div class="lane-header">
         <span class="lane-accent" style="background:var(--c-archived)"></span>
-        <span class="lane-title" data-lane="archived" contenteditable="plaintext-only" spellcheck="false">Archived</span>
+        <span class="lane-title">Archived</span>
         <span class="lane-count" id="countArchived">0</span>
       </div>
       <div class="lane-cards empty-lane" id="cardsArchived"><div class="lane-empty">No archived deals</div></div>
@@ -363,7 +356,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 </svg>
 
 <script>
-var ANALYSER_PAGE = 'todo-v6.html';
+var ANALYSER_PAGE = 'todo-v5.html';
 var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
 var dealsIndex = {};
 var photoCache = {}; // id -> data URL
@@ -440,28 +433,6 @@ async function loadDeals(){
     var data = await getGist();
     if(!data) return;
     gistFilesMeta = data.files || {};
-
-    // Lane labels — load first so any subsequent renderDeals() picks them up
-    if(gistFilesMeta['lane-labels.json']){
-      try {
-        var lf = gistFilesMeta['lane-labels.json'];
-        var lraw = lf.content;
-        if(!lraw || lf.truncated){
-          lraw = await (await fetch(lf.raw_url)).text();
-        }
-        if(lraw && lraw.trim()){
-          var parsedLabels = JSON.parse(lraw);
-          LANE_KEYS_ALL.forEach(function(k){
-            if(typeof parsedLabels[k] === 'string' && parsedLabels[k].trim()){
-              LANE_LABELS[k] = parsedLabels[k];
-            }
-          });
-          try { localStorage.setItem('mirror-laneLabels', JSON.stringify(LANE_LABELS)); } catch(e){}
-          applyLaneLabels();
-        }
-      } catch(e){ /* labels file malformed — keep defaults */ }
-    }
-
     dealsIndex = {};
     if(gistFilesMeta['deals-index.json']){
       var fileObj = gistFilesMeta['deals-index.json'];
@@ -532,93 +503,9 @@ function applyPhotoToCard(id, dataUrl){
 
 // ───── Rendering ─────
 var STATUSES = ['appraise','view','offer','followup'];
-var LANE_KEYS_ALL = ['appraise','view','offer','followup','archived'];
-var LANE_LABELS_DEFAULT = {appraise:'Appraise',view:'View',offer:'Offer',followup:'Follow Up',archived:'Archived'};
-var LANE_LABELS = Object.assign({}, LANE_LABELS_DEFAULT);
-// STATUS_LABELS is kept as an alias for the four pipeline statuses so existing
-// code (chip render, etc.) keeps working. We keep it in sync with LANE_LABELS.
-var STATUS_LABELS = {appraise:LANE_LABELS.appraise, view:LANE_LABELS.view, offer:LANE_LABELS.offer, followup:LANE_LABELS.followup};
+var STATUS_LABELS = {appraise:'Appraise',view:'View',offer:'Offer',followup:'Follow Up'};
+var STATUS_SHORT = {appraise:'Appr',view:'View',offer:'Offer',followup:'F/Up'};
 var STATUS_CLASS = {appraise:'c-appraise',view:'c-view',offer:'c-offer',followup:'c-followup'};
-
-// Hydrate from localStorage mirror immediately so the page renders correctly
-// before the gist fetch lands.
-(function _hydrateLaneLabels(){
-  try {
-    var raw = localStorage.getItem('mirror-laneLabels');
-    if(!raw) return;
-    var parsed = JSON.parse(raw);
-    LANE_KEYS_ALL.forEach(function(k){
-      if(parsed && typeof parsed[k] === 'string' && parsed[k].trim()){
-        LANE_LABELS[k] = parsed[k];
-      }
-    });
-    STATUSES.forEach(function(k){ STATUS_LABELS[k] = LANE_LABELS[k]; });
-  } catch(e){}
-})();
-
-function applyLaneLabels(){
-  // Update the visible lane title spans
-  document.querySelectorAll('.lane-title[data-lane]').forEach(function(el){
-    var key = el.getAttribute('data-lane');
-    var label = LANE_LABELS[key] || LANE_LABELS_DEFAULT[key];
-    if(document.activeElement !== el && el.textContent !== label){
-      el.textContent = label;
-    }
-  });
-  // Keep STATUS_LABELS (used by the card chip) in sync
-  STATUSES.forEach(function(k){ STATUS_LABELS[k] = LANE_LABELS[k] || LANE_LABELS_DEFAULT[k]; });
-}
-
-async function saveLaneLabels(){
-  // Mirror locally first so a refresh never loses an edit
-  try { localStorage.setItem('mirror-laneLabels', JSON.stringify(LANE_LABELS)); } catch(e){}
-  var token = getToken();
-  if(!token || !GIST_ID) return;
-  try {
-    setStatus('Saving labels…');
-    var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
-      method: 'PATCH',
-      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: { 'lane-labels.json': { content: JSON.stringify(LANE_LABELS, null, 2) } } })
-    });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    setStatus('Saved ✓', true);
-  } catch(e){
-    setStatus('Save failed: ' + e.message, false);
-  }
-}
-
-function wireLaneLabelEditing(){
-  document.querySelectorAll('.lane-title[data-lane]').forEach(function(el){
-    var key = el.getAttribute('data-lane');
-    el.addEventListener('keydown', function(e){
-      if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
-      else if(e.key === 'Escape'){
-        e.preventDefault();
-        el.textContent = LANE_LABELS[key] || LANE_LABELS_DEFAULT[key];
-        el.blur();
-      }
-    });
-    el.addEventListener('blur', function(){
-      var val = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      if(!val) val = LANE_LABELS_DEFAULT[key];
-      el.textContent = val;
-      if(val !== LANE_LABELS[key]){
-        LANE_LABELS[key] = val;
-        applyLaneLabels();
-        if(typeof renderDeals === 'function') renderDeals();
-        saveLaneLabels();
-      }
-    });
-  });
-}
-
-if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', function(){ wireLaneLabelEditing(); applyLaneLabels(); });
-} else {
-  wireLaneLabelEditing();
-  applyLaneLabels();
-}
 
 function renderDeals(){
   var buckets = { appraise:[], view:[], offer:[], followup:[], archived:[] };
@@ -697,7 +584,7 @@ function cardHTML(id, isArchived){
       STATUSES.map(function(s){
         var isActive = s === currentStatus;
         var cls = 'status-chip' + (isActive ? ' active ' + STATUS_CLASS[s] : '');
-        return '<button class="' + cls + '" title="' + STATUS_LABELS[s] + '" onclick="setDealStatus(this,\'' + s + '\')">' + STATUS_LABELS[s] + '</button>';
+        return '<button class="' + cls + '" title="' + STATUS_LABELS[s] + '" onclick="setDealStatus(this,\'' + s + '\')">' + STATUS_SHORT[s] + '</button>';
       }).join('') +
     '</div>';
   }
