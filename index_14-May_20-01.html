@@ -68,24 +68,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 }
 .lane-add:hover{filter:brightness(1.1)}
 .lane-add:active{transform:scale(0.92)}
-
-/* Row/lane delete button — small × that appears on header hover */
-.lane-delete-btn{
-  border:none;background:transparent;
-  color:var(--mute);
-  width:22px;height:22px;
-  border-radius:4px;
-  cursor:pointer;
-  display:inline-flex;align-items:center;justify-content:center;
-  padding:0;
-  margin-left:auto;
-  opacity:0;
-  transition:opacity 0.12s, background 0.12s, color 0.12s;
-}
-.lane-delete-btn svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.lane-header:hover .lane-delete-btn,
-.v-lane-header:hover .lane-delete-btn{opacity:1}
-.lane-delete-btn:hover{background:#FEF0F0;color:#C0392B;opacity:1}
 .lane-accent{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
 .lane-cards{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;scrollbar-width:thin}
@@ -357,7 +339,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">20:00 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">19:46 BST</div>
 
   <!-- ─── ROWS (horizontal, full-width, stacking down) ─── -->
   <!-- Row 1 = Inbox. Cards born here, no home lane. Has plus button. -->
@@ -373,7 +355,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   <div id="laneRow2" class="lane" data-row="row2">
     <div class="lane-header">
       <span class="lane-title" data-lane="row2" contenteditable="plaintext-only" spellcheck="false">Row 2</span>
-      <button class="lane-delete-btn" onclick="deleteRow('row2')" title="Delete this row" aria-label="Delete this row"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>
     </div>
     <div class="lane-cards empty-lane" id="cardsRow2"><div class="lane-empty">Drag a card here</div></div>
   </div>
@@ -381,7 +362,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   <div id="laneRow3" class="lane" data-row="row3">
     <div class="lane-header">
       <span class="lane-title" data-lane="row3" contenteditable="plaintext-only" spellcheck="false">Row 3</span>
-      <button class="lane-delete-btn" onclick="deleteRow('row3')" title="Delete this row" aria-label="Delete this row"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>
     </div>
     <div class="lane-cards empty-lane" id="cardsRow3"><div class="lane-empty">Drag a card here</div></div>
   </div>
@@ -389,7 +369,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   <div id="laneRow4" class="lane" data-row="row4">
     <div class="lane-header">
       <span class="lane-title" data-lane="row4" contenteditable="plaintext-only" spellcheck="false">Row 4</span>
-      <button class="lane-delete-btn" onclick="deleteRow('row4')" title="Delete this row" aria-label="Delete this row"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>
     </div>
     <div class="lane-cards empty-lane" id="cardsRow4"><div class="lane-empty">Drag a card here</div></div>
   </div>
@@ -397,7 +376,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   <div id="laneRow5" class="lane" data-row="row5">
     <div class="lane-header">
       <span class="lane-title" data-lane="row5" contenteditable="plaintext-only" spellcheck="false">Row 5</span>
-      <button class="lane-delete-btn" onclick="deleteRow('row5')" title="Delete this row" aria-label="Delete this row"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>
     </div>
     <div class="lane-cards empty-lane" id="cardsRow5"><div class="lane-empty">Drag a card here</div></div>
   </div>
@@ -640,13 +618,6 @@ function applyLaneLabels(){
       el.textContent = label;
     }
   });
-  // Hide rows the user has deleted
-  var deletedRows = (ROW_LABELS && ROW_LABELS._deleted) || {};
-  ['row2','row3','row4','row5'].forEach(function(rk){
-    var laneEl = document.getElementById('lane' + rk.charAt(0).toUpperCase() + rk.slice(1));
-    if(!laneEl) return;
-    laneEl.style.display = deletedRows[rk] ? 'none' : '';
-  });
 }
 
 async function saveLaneLabels(){
@@ -799,7 +770,6 @@ function renderLanes(laneBuckets){
       '<div class="v-lane-header">' +
         '<button class="lane-add" style="--lane-color:' + color + '" onclick="addDealToLane(\'' + L.key + '\')" title="Add to ' + labelEsc + '" aria-label="Add to ' + labelEsc + '">+</button>' +
         '<span class="lane-title v-lane-title" data-vlane-key="' + L.key + '" contenteditable="plaintext-only" spellcheck="false">' + labelEsc + '</span>' +
-        '<button class="lane-delete-btn" onclick="deleteLane(\'' + L.key + '\')" title="Delete this lane" aria-label="Delete this lane"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>' +
       '</div>' +
       cardsHtml +
     '</div>';
@@ -1380,65 +1350,6 @@ function addNewLane(){
     }
   });
 }
-
-// Delete a row (rows 2-5). Cards living in this row go home to their lane
-// (i.e. clear their status). Inbox can't be deleted, archived can't be deleted.
-function deleteRow(rowKey){
-  if(rowKey === 'row1' || rowKey === 'archived') return;
-  // Send all cards currently in this row back to their lanes
-  var affected = 0;
-  Object.keys(dealsIndex).forEach(function(id){
-    var d = dealsIndex[id];
-    if(d && d.status === rowKey && !d.archived && !d.deleted){
-      d.status = null;
-      d.updated = new Date().toISOString();
-      affected++;
-    }
-  });
-  // Hide the row from the DOM (we keep the underlying ID slot reserved so we
-  // don't have to renumber, but mark it deleted in the labels payload).
-  var laneEl = document.getElementById('lane' + rowKey.charAt(0).toUpperCase() + rowKey.slice(1));
-  if(laneEl) laneEl.style.display = 'none';
-  // Persist: store a "deleted rows" list in the same lane-labels file
-  if(!ROW_LABELS._deleted) ROW_LABELS._deleted = {};
-  ROW_LABELS._deleted[rowKey] = true;
-  saveLaneLabels();
-  if(affected) saveIndex();
-  renderDeals();
-}
-
-// Delete a lane (any lane). Cards homed here lose their home lane (go to
-// Inbox), per the user-confirmed rule. Confirm before destructive action.
-function deleteLane(laneKey){
-  var laneObj = LANES.find(function(L){ return L.key === laneKey; });
-  if(!laneObj) return;
-  // Count affected cards
-  var affected = 0;
-  Object.keys(dealsIndex).forEach(function(id){
-    var d = dealsIndex[id];
-    if(d && d.lane === laneKey && !d.archived && !d.deleted) affected++;
-  });
-  var msg = 'Delete lane "' + laneObj.label + '"?';
-  if(affected > 0){
-    msg += '\n\n' + affected + (affected === 1 ? ' card' : ' cards') + ' will be moved to the Inbox.';
-  }
-  if(!confirm(msg)) return;
-  // Move affected cards to Inbox (clear lane, set status to row1)
-  Object.keys(dealsIndex).forEach(function(id){
-    var d = dealsIndex[id];
-    if(d && d.lane === laneKey && !d.archived && !d.deleted){
-      d.lane = null;
-      d.status = 'row1';
-      d.updated = new Date().toISOString();
-    }
-  });
-  // Remove the lane from LANES
-  LANES = LANES.filter(function(L){ return L.key !== laneKey; });
-  saveLaneLabels();
-  if(affected) saveIndex();
-  renderDeals();
-}
-
 
 // "Send back to home lane" button on a row-card. Clears its row placement.
 function sendCardHome(btn){
