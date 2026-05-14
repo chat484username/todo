@@ -88,6 +88,8 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .list-accent{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
 .list-cards{display:flex;gap:14px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}
+/* Inbox row: cards are wide and wrap to the next line (vertical stack) */
+[data-schedule="row1"] .list-cards{flex-wrap:wrap;overflow-x:hidden}
 .list-cards::-webkit-scrollbar{height:8px}
 .list-cards::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
 .list-cards.empty-list{min-height:80px;align-items:center;justify-content:flex-start;padding:14px 4px}
@@ -115,7 +117,9 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 /* ─── Inbox card overrides: wider, with chip strip ─── */
 .item-card.inbox-card{
-  flex:0 0 auto;
+  flex:1 1 auto;
+  min-width:240px;
+  max-width:none;
   width:auto;
 }
 .item-card.inbox-card .card-body{padding-right:60px} /* room for corner buttons */
@@ -145,16 +149,17 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 /* Chip strip across the bottom of Inbox cards — mirrors .card-footer/.card-icon-btn style */
 .card-chips{
   display:flex;
+  flex-wrap:wrap;
   border-top:1px solid var(--line);
   margin-top:4px;
 }
 .list-chip{
-  flex:0 0 auto;
-  width:38px;
+  flex:1 1 0;
+  min-width:0;
   background:transparent;
   border:none;
   border-right:1px solid var(--line);
-  padding:4px 0;
+  padding:4px 4px;
   cursor:pointer;
   font-family:'DM Sans',sans-serif;
   font-weight:600;
@@ -381,7 +386,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">22:26 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">22:17 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1003,17 +1008,17 @@ function cardHTML(id, ctx){
   '</div>';
 }
 
-// Abbreviate a list label into 2-3 characters for the Inbox chip strip.
-// Rule: 2+ words → initials of first 3 words. 1 word → first 3 letters.
-// Punctuation stripped. Output is always uppercase, max 3 chars.
+// Abbreviate a list label into 2-4 characters for the Inbox chip strip.
+// Rule: 2+ words → initials of first 4 words. 1 word → first 2 letters.
+// Punctuation stripped. Output is always uppercase, max 4 chars.
 function listAbbreviation(label){
   var s = String(label || '').replace(/[^\w\s]/g, '').trim();
   if(!s) return '?';
   var words = s.split(/\s+/);
   if(words.length >= 2){
-    return words.slice(0, 3).map(function(w){ return w.charAt(0).toUpperCase(); }).join('');
+    return words.slice(0, 4).map(function(w){ return w.charAt(0).toUpperCase(); }).join('');
   }
-  return (words[0].slice(0, 3)).replace(/^./, function(c){ return c.toUpperCase(); });
+  return (words[0].slice(0, 2)).replace(/^./, function(c){ return c.toUpperCase(); });
 }
 
 // Send an Inbox card to a specific list (click on a chip).
