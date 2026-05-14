@@ -1,0 +1,3272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deal Pipeline</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="App">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FBFAF9">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=EB+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#F7F6F1;
+  --card-bg:#FFFFFF;
+  --ink:#2C2C2A;
+  --ink-2:#5F5E5A;
+  --mute:#8E8B82;
+  --line:#E8E3D6;
+  --line-2:#DDD8C9;
+  --brown:#7A604A;
+  --c-appraise:#3D6E92;   /* slate blue */
+  --c-view:    #C48831;   /* clear amber */
+  --c-offer:   #6F8F4C;   /* brighter leaf */
+  --c-followup:#6D4B6B;   /* aubergine */
+  --c-archived:#8E8B82;   /* grey */
+}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--paper);min-height:100vh;color:var(--ink);font-size:14px}
+
+header{background:#2A4A3E;color:#fff;padding:0 16px;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:#fff;margin:0;flex-shrink:0}
+
+.gist-warning{background:#FFF8EC;border-bottom:1px solid #F5C97A;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;display:none}
+.gist-warning.show{display:flex}
+.gist-warning-text{display:flex;align-items:center;gap:10px;font-size:13px;color:#633806}
+.gist-warning-dot{width:16px;height:16px;border-radius:50%;background:#BA7517;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:10px;font-weight:500}
+.gist-warning a{font-size:12px;color:#854F0B;white-space:nowrap;text-decoration:underline}
+
+.container{max-width:1400px;margin:24px auto 60px;padding:0 24px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+.new-btn{display:inline-flex;align-items:center;gap:8px;background:var(--brown);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+.new-btn:hover{background:#654e3b}
+
+/* ───── Lane ───── */
+.lane{margin-bottom:28px}
+.lane-header{display:flex;align-items:baseline;gap:12px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.lane-title{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink)}
+.lane-count{font-family:'DM Mono',monospace;font-size:13px;color:var(--mute)}
+.lane-accent{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:2px;flex-shrink:0;transform:translateY(-2px)}
+
+.lane-cards{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;scrollbar-width:thin}
+.lane-cards::-webkit-scrollbar{height:8px}
+.lane-cards::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+.lane-cards.empty-lane{min-height:80px;align-items:center;justify-content:flex-start;padding:14px 4px}
+.lane-empty{color:var(--mute);font-size:13px;font-style:italic}
+
+/* ───── Card (playing-card portrait) ───── */
+.deal-card{
+  flex:0 0 auto;
+  width:172px;
+  background:var(--card-bg);
+  border:1px solid var(--line-2);
+  border-radius:10px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  transition:box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+}
+.deal-card:hover{
+  border-color:var(--brown);
+  box-shadow:0 4px 12px rgba(0,0,0,0.04);
+}
+.deal-card.archived{opacity:0.55;filter:saturate(0.6)}
+.deal-card.archived:hover{opacity:0.85}
+.deal-card.dnd-dragging{opacity:0.35}
+
+.card-photo{
+  width:100%;
+  aspect-ratio:4/3;
+  background:#F3F0EA;
+  background-size:cover;
+  background-position:center;
+  border-bottom:1px solid var(--line);
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  text-decoration:none;
+}
+.card-photo .placeholder{
+  color:#C0B9A8;
+  width:46px;height:46px;
+}
+.card-photo.has-photo .placeholder{display:none}
+
+/* ─── Note ribbon ─── */
+.card-note-ribbon{
+  position:absolute;left:14px;right:0;top:10px;
+  background:#C0392B;color:#fff;
+  padding:6px 10px;border-radius:3px 0 0 3px;
+  font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
+  font-size:11px;font-weight:500;line-height:1.3;
+  white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;
+  z-index:3;cursor:text;outline:none;
+  box-shadow:0 1px 2px rgba(0,0,0,0.15);
+  display:none;
+}
+.card-note-ribbon.visible,.card-note-ribbon.editing{display:block}
+.card-note-ribbon.empty:not(.editing){
+  background:transparent;color:transparent;
+  font-style:italic;font-weight:400;
+  box-shadow:none;
+  display:block;
+}
+.card-note-ribbon.empty:not(.editing):hover{
+  background:rgba(0,0,0,0.18);color:rgba(255,255,255,0.9);
+}
+.card-note-ribbon[contenteditable="true"]{cursor:text}
+.card-note-color-picker{
+  position:absolute;left:50%;transform:translateX(-50%);
+  display:flex;gap:6px;background:#fff;padding:6px 8px;
+  border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.18);
+  border:0.5px solid var(--line);z-index:5;
+}
+.card-note-color-swatch{
+  width:18px;height:18px;border-radius:50%;cursor:pointer;
+  border:2px solid #fff;box-sizing:border-box;
+  transition:transform .12s;
+}
+.card-note-color-swatch:hover{transform:scale(1.15)}
+.card-note-color-swatch.active{outline:1.5px solid currentColor}
+
+.card-body{padding:10px 11px 8px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card-name{
+  font-family:'EB Garamond',Georgia,serif;
+  font-weight:500;
+  font-size:15px;
+  line-height:1.2;
+  color:var(--ink);
+  text-decoration:none;
+  display:block;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  word-break:break-word;
+  min-height:36px;
+}
+.card-name:hover{color:var(--brown)}
+.card-meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--mute);letter-spacing:-0.2px}
+
+/* Status dots — pipeline visible on every card */
+.card-status-row{
+  display:flex;gap:3px;margin-top:4px;
+}
+.status-chip{
+  flex:1;
+  height:22px;
+  border:1px solid var(--line-2);
+  background:#F3F0EA;
+  border-radius:4px;
+  cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+  font-size:10px;
+  font-weight:500;
+  color:#A6A294;
+  letter-spacing:0.02em;
+  display:flex;align-items:center;justify-content:center;
+  padding:0;
+  transition:all 0.1s;
+}
+.status-chip:hover{border-color:var(--brown);color:var(--ink-2)}
+.status-chip.active{
+  background:#fff;
+  border-color:var(--ink-2);
+  color:var(--ink);
+  font-weight:600;
+}
+.status-chip.active.c-appraise{border-color:var(--c-appraise);color:var(--c-appraise);background:color-mix(in srgb, var(--c-appraise) 7%, #F7F6F1)}
+.status-chip.active.c-view{border-color:var(--c-view);color:var(--c-view);background:color-mix(in srgb, var(--c-view) 7%, #F7F6F1)}
+.status-chip.active.c-offer{border-color:var(--c-offer);color:var(--c-offer);background:color-mix(in srgb, var(--c-offer) 7%, #F7F6F1)}
+.status-chip.active.c-followup{border-color:var(--c-followup);color:var(--c-followup);background:color-mix(in srgb, var(--c-followup) 7%, #F7F6F1)}
+
+/* Footer icons (duplicate / archive / delete) */
+.card-footer{
+  display:flex;
+  border-top:1px solid var(--line);
+  margin-top:4px;
+}
+.card-icon-btn{
+  flex:1;
+  background:transparent;
+  border:none;
+  padding:7px 0;
+  cursor:pointer;
+  color:var(--mute);
+  font-family:inherit;
+  font-size:11px;
+  display:flex;align-items:center;justify-content:center;
+  gap:4px;
+  transition:background 0.1s, color 0.1s;
+  border-right:1px solid var(--line);
+}
+.card-icon-btn:last-child{border-right:none}
+.card-icon-btn:hover{background:#F3F0EA;color:var(--ink-2)}
+.card-icon-btn.danger:hover{background:#FEF0F0;color:#C0392B}
+.card-icon-btn svg{width:13px;height:13px}
+
+/* Archived lane — faded */
+.archived-section{margin-top:40px;padding-top:20px;border-top:1px dashed var(--line-2)}
+.archived-section .lane-title{color:var(--c-archived)}
+
+.trash-link{display:block;text-align:center;margin-top:32px;font-size:13px;color:var(--mute);text-decoration:none}
+.trash-link:hover{color:var(--ink-2);text-decoration:underline}
+
+/* Mobile: make cards a bit narrower */
+@media (max-width:600px){
+  .container{padding:0 14px;margin-top:16px}
+  .deal-card{width:148px}
+  .card-name{font-size:13px;min-height:32px}
+  .status-chip{font-size:9px;height:20px}
+  .lane-title{font-size:19px}
+}
+
+/* ───── Placeholder deal cards (added via mobile, awaiting full scrape) ───── */
+/* Placeholder cards: dim the photo and body, NOT the parent — that way the
+   ::after pill stays full opacity and full colour. */
+.deal-card.placeholder .card-photo,
+.deal-card.placeholder .card-body{opacity:0.6;filter:saturate(0.4)}
+.deal-card.placeholder .card-photo{background:repeating-linear-gradient(45deg,#F3F0EA,#F3F0EA 8px,#EBE7DD 8px,#EBE7DD 16px)}
+/* Siri-source cards aren't greyed at all — pink pill alone identifies them */
+.deal-card.placeholder.from-siri .card-photo,
+.deal-card.placeholder.from-siri .card-body{opacity:1;filter:none}
+.deal-card.placeholder.from-siri .card-photo{background:#EBE7DD}
+.deal-card.placeholder::after{
+  content:'From mobile';
+  position:absolute;top:8px;left:8px;
+  background:rgba(0,0,0,0.6);color:#fff;
+  font-size:10px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;
+  padding:3px 7px;border-radius:3px;
+  z-index:2;pointer-events:none;
+}
+.deal-card.placeholder.from-rm::after{ content:'From RM on Mobile'; background:rgba(40, 110, 70, 0.95); }
+.deal-card.placeholder.from-siri::after{ content:'From Siri'; background:rgba(200, 60, 130, 0.95); }
+.deal-card{position:relative}
+
+/* ───── Just-updated card: subtle glow + scale pulse to draw the eye ───── */
+.deal-card.just-updated{
+  animation: dealJustUpdated 1.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes dealJustUpdated {
+  0%   { box-shadow: 0 0 0 0 rgba(42, 74, 62, 0); transform: scale(1); }
+  20%  { box-shadow: 0 0 0 4px rgba(42, 74, 62, 0.35), 0 4px 16px rgba(42, 74, 62, 0.25); transform: scale(1.04); }
+  100% { box-shadow: 0 0 0 0 rgba(42, 74, 62, 0); transform: scale(1); }
+}
+
+/* ───── RM match modal (when pasting an RM that matches existing pipeline) ───── */
+.rm-match-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px}
+.rm-match-overlay.open{display:flex}
+.rm-match-modal{background:#fff;border-radius:12px;max-width:440px;width:100%;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,0.3);font-family:inherit}
+.rm-match-modal h3{margin:0 0 8px 0;font-size:18px;font-weight:600;color:var(--text)}
+.rm-match-modal p{margin:0 0 18px 0;font-size:14px;color:var(--text-2);line-height:1.4}
+.rm-match-modal .rm-match-btn-row{display:flex;flex-direction:column;gap:8px}
+.rm-match-modal button{padding:12px 16px;border-radius:8px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:background 0.12s}
+.rm-match-modal button.rm-match-primary{background:#2A4A3E;color:#fff}
+.rm-match-modal button.rm-match-primary:hover{background:#1f3a30}
+.rm-match-modal button.rm-match-secondary{background:#f0ece1;color:var(--text)}
+.rm-match-modal button.rm-match-secondary:hover{background:#e6e0d0}
+.rm-match-modal button.rm-match-cancel{background:transparent;color:var(--text-3);font-size:13px;margin-top:4px}
+.rm-match-modal button.rm-match-cancel:hover{color:var(--text-2)}
+
+/* ───── Mobile capture-paste banner (shown when ?paste=1 is in URL on mobile) ───── */
+.mobile-paste-banner{
+  display:none;
+  position:fixed;left:50%;top:50%;transform:translate(-50%, -50%);
+  width:calc(100% - 32px);max-width:480px;
+  min-height:60vh;
+  background:#2A4A3E;color:#fff;
+  border:none;border-radius:24px;
+  padding:32px 28px;
+  font-family:inherit;font-size:22px;font-weight:600;line-height:1.3;
+  box-shadow:0 10px 40px rgba(42,74,62,0.45);
+  z-index:200;cursor:pointer;
+  text-align:center;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+}
+.mobile-paste-banner.show{display:flex}
+.mobile-paste-banner svg{width:64px;height:64px;flex-shrink:0;stroke:#fff;stroke-width:1.5}
+.mobile-paste-banner .mpb-sub{display:block;font-size:14px;font-weight:400;opacity:0.7;margin-top:8px;letter-spacing:0.02em}
+.mobile-paste-banner.busy{opacity:0.6;pointer-events:none}
+
+/* ───── Paste RM HTML button + modal ───── */
+.rm-paste-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  background:#2A4A3E;color:#fff;border:none;border-radius:8px;
+  padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;
+  font-family:inherit;
+}
+.rm-paste-btn:hover{background:#1f3830}
+.rm-paste-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.rm-modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(44,44,42,0.55);
+  z-index:200;align-items:center;justify-content:center;padding:20px;
+}
+.rm-modal-overlay.open{display:flex}
+.rm-modal{
+  background:#fff;border-radius:12px;width:100%;max-width:760px;
+  max-height:90vh;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+.rm-modal-head{
+  padding:16px 22px;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+}
+.rm-modal-head h2{
+  font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:20px;
+  letter-spacing:-0.01em;color:var(--ink);margin:0;
+}
+.rm-modal-close{
+  background:none;border:none;font-size:20px;cursor:pointer;
+  color:var(--mute);width:28px;height:28px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;padding:0;
+}
+.rm-modal-close:hover{background:#F3F0EA;color:var(--ink)}
+.rm-modal-body{padding:16px 22px;flex:1;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.rm-modal-body p{font-size:13px;color:var(--ink-2);margin:0}
+.rm-modal-body textarea{
+  flex:1;width:100%;min-height:280px;max-height:52vh;padding:12px;
+  font-family:'DM Mono',monospace;font-size:11px;line-height:1.4;
+  border:1px solid var(--line-2);border-radius:8px;resize:vertical;
+  outline:none;color:var(--ink-2);background:#FAF8F2;
+}
+.rm-modal-body textarea:focus{border-color:var(--brown)}
+.rm-modal-status{
+  font-size:12px;color:var(--ink-2);font-family:'DM Mono',monospace;
+  min-height:16px;
+}
+.rm-modal-status.error{color:#C0392B}
+.rm-modal-status.ok{color:#3B6D11}
+.rm-modal-foot{
+  padding:14px 22px;display:flex;gap:10px;justify-content:flex-end;
+  border-top:1px solid var(--line);background:#FAF8F2;
+}
+.rm-modal-foot button{
+  padding:8px 18px;border-radius:7px;cursor:pointer;font-family:inherit;
+  font-size:13px;font-weight:500;border:none;
+}
+.rm-modal-foot .rm-btn-cancel{
+  background:transparent;border:1px solid var(--line-2);color:var(--ink-2);
+}
+.rm-modal-foot .rm-btn-cancel:hover{background:#F3F0EA}
+.rm-modal-foot .rm-btn-open{
+  background:#fff;border:1px solid var(--brown);color:var(--brown);
+}
+.rm-modal-foot .rm-btn-open:hover{background:#F7F0E6}
+.rm-modal-foot .rm-btn-add{background:var(--brown);color:#fff}
+.rm-modal-foot .rm-btn-add:hover{background:#654e3b}
+.rm-modal-foot button:disabled{opacity:0.5;cursor:wait}
+</style>
+</head>
+<body>
+
+<button id="mobilePasteBanner" class="mobile-paste-banner" type="button" onclick="_mobilePasteHandler()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+  <span><span>Tap to paste captured listing</span><span class="mpb-sub">From Rightmove via Shortcut</span></span>
+</button>
+<textarea id="mobilePasteCatcher" style="position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0;pointer-events:none" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+
+<div id="rmMatchOverlay" class="rm-match-overlay" onclick="if(event.target===this)_rmMatchClose()">
+  <div class="rm-match-modal">
+    <h3 id="rmMatchTitle">This property is already in your pipeline.</h3>
+    <p id="rmMatchSubtitle"></p>
+    <div class="rm-match-btn-row" id="rmMatchButtons"></div>
+  </div>
+</div>
+
+<header>
+  <h1>Deal Pipeline</h1>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:1;min-width:0">
+    <form onsubmit="syncButton(); return false;" style="display:flex;align-items:center;gap:6px;width:100%;justify-content:flex-end">
+      <input type="text" id="gistId" placeholder="Gist ID" autocomplete="username"
+        style="flex:1;min-width:0;max-width:120px;padding:4px 8px;font-size:11px;font-family:monospace;border:1px solid rgba(255,255,255,0.25);border-radius:5px;background:rgba(0,0,0,0.2);color:#fff;outline:none" name="gist_id">
+      <input type="password" id="syncToken" placeholder="Token" autocomplete="password"
+        style="flex:1;min-width:0;max-width:120px;padding:4px 8px;font-size:11px;font-family:monospace;border:1px solid rgba(255,255,255,0.25);border-radius:5px;background:rgba(0,0,0,0.2);color:#fff;outline:none" name="github_token">
+      <button type="submit" style="padding:4px 10px;font-size:11px;background:rgba(0,0,0,0.2);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:5px;cursor:pointer;font-family:inherit;flex-shrink:0">↻ Load</button>
+    </form>
+    <span id="syncStatus" style="font-size:10px;color:rgba(255,255,255,0.5)"></span>
+  </div>
+</header>
+
+<div id="gistWarning" class="gist-warning">
+  <div class="gist-warning-text">
+    <div class="gist-warning-dot">!</div>
+    <span>You have <strong id="gistWarningCount" style="color:#412402"></strong> in your Gist — approaching the ~300 file limit. Permanently delete old test deals to free up space.</span>
+  </div>
+  <a href="deleted-todo.html">Go to deleted deals →</a>
+</div>
+
+<div class="container">
+  <!-- Page-load timestamp — fixed top-right, just below the header -->
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">13:29 BST</div>
+
+  <div id="laneAppraise" class="lane">
+    <div class="lane-header">
+      <span class="lane-accent" style="background:var(--c-appraise)"></span>
+      <span class="lane-title">Appraise</span>
+      <span class="lane-count" id="countAppraise">0</span>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsAppraise"><div class="lane-empty">No deals here yet</div></div>
+  </div>
+
+  <div id="laneView" class="lane">
+    <div class="lane-header">
+      <span class="lane-accent" style="background:var(--c-view)"></span>
+      <span class="lane-title">View</span>
+      <span class="lane-count" id="countView">0</span>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsView"><div class="lane-empty">No deals here yet</div></div>
+  </div>
+
+  <div id="laneOffer" class="lane">
+    <div class="lane-header">
+      <span class="lane-accent" style="background:var(--c-offer)"></span>
+      <span class="lane-title">Offer</span>
+      <span class="lane-count" id="countOffer">0</span>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsOffer"><div class="lane-empty">No deals here yet</div></div>
+  </div>
+
+  <div id="laneFollowup" class="lane">
+    <div class="lane-header">
+      <span class="lane-accent" style="background:var(--c-followup)"></span>
+      <span class="lane-title">Follow Up</span>
+      <span class="lane-count" id="countFollowup">0</span>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsFollowup"><div class="lane-empty">No deals here yet</div></div>
+  </div>
+
+  <div class="archived-section">
+    <div id="laneArchived" class="lane" style="margin-bottom:0">
+      <div class="lane-header">
+        <span class="lane-accent" style="background:var(--c-archived)"></span>
+        <span class="lane-title">Archived</span>
+        <span class="lane-count" id="countArchived">0</span>
+      </div>
+      <div class="lane-cards empty-lane" id="cardsArchived"><div class="lane-empty">No archived deals</div></div>
+    </div>
+  </div>
+
+  <div class="topbar" style="margin-top:24px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="new-btn" onclick="showNewDeal()">+ New deal</button>
+      <button class="rm-paste-btn" onclick="showRmPaste()" title="Paste Rightmove HTML to create a deal">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="3" width="10" height="14" rx="1.5"/><path d="M8 3V2h4v1"/><path d="M7.5 9l2 2 3-3.5"/></svg>
+        Paste RM HTML
+      </button>
+    </div>
+    <a href="deleted-todo.html" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;text-decoration:none">🗑 Deleted deals</a>
+  </div>
+</div>
+
+<!-- Reusable building placeholder SVG (cloned into cards that have no photo) -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="icon-building" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 42 V14 L24 6 L40 14 V42"/>
+      <path d="M8 42 H40"/>
+      <rect x="14" y="20" width="5" height="6" rx="0.5"/>
+      <rect x="21.5" y="20" width="5" height="6" rx="0.5"/>
+      <rect x="29" y="20" width="5" height="6" rx="0.5"/>
+      <rect x="14" y="30" width="5" height="6" rx="0.5"/>
+      <rect x="29" y="30" width="5" height="6" rx="0.5"/>
+      <rect x="21.5" y="30" width="5" height="12" rx="0.5"/>
+    </g>
+  </symbol>
+</svg>
+
+<!-- ───── Paste Rightmove HTML modal ───── -->
+<div id="rmPasteOverlay" class="rm-modal-overlay" onclick="if(event.target===this) closeRmPaste()">
+  <div class="rm-modal" onclick="event.stopPropagation()">
+    <div class="rm-modal-head">
+      <h2>Paste Rightmove HTML</h2>
+      <button class="rm-modal-close" onclick="closeRmPaste()" aria-label="Close">✕</button>
+    </div>
+    <div class="rm-modal-body">
+      <p>Open the Rightmove listing &rarr; <strong>View Source</strong> (⌥⌘U on Mac, Ctrl+U on Windows) &rarr; Select all &rarr; Copy &rarr; paste below. Creates a new deal in <em>Appraise</em>.</p>
+      <textarea id="rmPasteArea" placeholder="Paste full HTML source here…" spellcheck="false"
+        onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); submitRmPaste('index'); }"></textarea>
+      <div id="rmPasteStatus" class="rm-modal-status"></div>
+    </div>
+    <div class="rm-modal-foot">
+      <button class="rm-btn-cancel" onclick="closeRmPaste()">Cancel</button>
+      <button class="rm-btn-open" id="rmPasteOpenBtn" onclick="submitRmPaste('open')">Open Page</button>
+      <button class="rm-btn-add"  id="rmPasteAddBtn"  onclick="submitRmPaste('index')">Add to Index</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var ANALYSER_PAGE = 'todo-v4.html';
+var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
+var dealsIndex = {};
+var photoCache = {}; // id -> data URL
+var gistFilesMeta = null; // cached reference to gist.files from last fetch
+
+// ───── Token / Gist management (unchanged) ─────
+function getToken(){
+  var inp = document.getElementById('syncToken');
+  var t = (inp ? inp.value.trim() : '') || localStorage.getItem('todoToken') || '';
+  if(t) localStorage.setItem('todoToken', t);
+  return t;
+}
+function getSyncGistId(){
+  var inp = document.getElementById('gistId');
+  var g = (inp ? inp.value.trim() : '') || localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
+  if(g) localStorage.setItem('todoGistId', g);
+  return g;
+}
+function syncButton(){
+  var gid = getSyncGistId();
+  if(!gid){ setStatus('Paste Gist ID', false); return; }
+  GIST_ID = gid;
+  localStorage.setItem('todoGistId', GIST_ID);
+  loadDeals();
+}
+function setStatus(msg, ok){
+  var el = document.getElementById('syncStatus');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = ok === false ? '#f88' : ok === true ? '#8f8' : 'rgba(255,255,255,0.5)';
+}
+
+async function getGist(){
+  var token = getToken();
+  if(!token){ setStatus('No token', false); return null; }
+  if(!GIST_ID){
+    setStatus('Creating new Gist…');
+    var createRes = await fetch('https://api.github.com/gists', {
+      method: 'POST',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: 'Deal Analyser Data', public: false, files: { 'deals-index.json': { content: '{}' } } })
+    });
+    if(!createRes.ok){ setStatus('Failed to create Gist: ' + createRes.status, false); return null; }
+    var created = await createRes.json();
+    GIST_ID = created.id;
+    localStorage.setItem('todoGistId', GIST_ID);
+    setStatus('New Gist created ✓', true);
+    return created;
+  }
+  var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+    headers: { Authorization: 'token ' + token }
+  });
+  if(!res.ok){ setStatus('GitHub error: ' + res.status, false); return null; }
+  try { return await res.json(); }
+  catch(e){ setStatus('Error reading Gist: ' + e.message, false); return null; }
+}
+
+async function saveIndex(){
+  var token = getToken();
+  if(!token) return;
+  var body = { files: { 'deals-index.json': { content: JSON.stringify(dealsIndex, null, 2) } } };
+  await fetch('https://api.github.com/gists/' + GIST_ID, {
+    method: 'PATCH',
+    headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+async function loadDeals(){
+  var token = getToken();
+  if(!token){ setStatus('No token', false); return; }
+  setStatus('Loading…');
+  try {
+    var data = await getGist();
+    if(!data) return;
+    gistFilesMeta = data.files || {};
+    dealsIndex = {};
+    if(gistFilesMeta['deals-index.json']){
+      var fileObj = gistFilesMeta['deals-index.json'];
+      var raw = fileObj.content;
+      if(!raw || !raw.trim() || fileObj.truncated){
+        var rawRes = await fetch(fileObj.raw_url);
+        raw = await rawRes.text();
+      }
+      if(!raw || !raw.trim() || raw === '{}'){ renderDeals(); setStatus('Ready ✓', true); return; }
+      dealsIndex = JSON.parse(raw);
+    }
+    // Back-fill propertyId for existing deals if missing — derive from each
+    // deal's _dealUrl in its state file. We do this lazily during photo load
+    // since that already iterates all deals; here we just check the index
+    // entries that already have a propertyId via a previous pass.
+    _backfillPropertyIdsLazy();
+    renderDeals();
+    setStatus('Loaded — ' + Object.keys(dealsIndex).length + ' deals', true);
+    var inp = document.getElementById('syncToken');
+    if(inp) inp.value = '';
+    // After render, lazily fetch photos
+    loadPhotosLazy();
+  } catch(e){
+    setStatus('Error: ' + e.message, false);
+  }
+}
+
+// ───── Back-fill propertyId on existing deals (one-time migration) ─────
+// On first load after this feature ships, existing deal index entries don't
+// have propertyId. We extract it from each deal's _dealUrl (stored in the
+// deal state file) and update dealsIndex. Best-effort; skips deals already
+// migrated.
+async function _backfillPropertyIdsLazy(){
+  if(!gistFilesMeta) return;
+  var token = getToken();
+  if(!token || !GIST_ID) return;
+  var ids = Object.keys(dealsIndex).filter(function(id){
+    return !dealsIndex[id].deleted && !dealsIndex[id].propertyId;
+  });
+  if(!ids.length) return;
+  var changed = false;
+  for(var i = 0; i < ids.length; i++){
+    var id = ids[i];
+    var f = gistFilesMeta['deal-' + id + '.json'];
+    if(!f) continue;
+    try {
+      var raw = f.content;
+      if(!raw || f.truncated){
+        raw = await (await fetch(f.raw_url)).text();
+      }
+      if(!raw) continue;
+      var s = JSON.parse(raw);
+      var url = s._dealUrl;
+      if(url){
+        var pid = _extractPropertyIdFromUrl(url);
+        if(pid){
+          dealsIndex[id].propertyId = pid;
+          changed = true;
+        }
+      }
+    } catch(e){ /* skip */ }
+  }
+  if(changed){
+    // Push the migrated index back to gist (best-effort)
+    try {
+      await fetch('https://api.github.com/gists/' + GIST_ID, {
+        method: 'PATCH',
+        headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: { 'deals-index.json': { content: JSON.stringify(dealsIndex, null, 2) } } })
+      });
+    } catch(e){}
+  }
+}
+
+// ───── Photo loading ─────
+async function loadPhotosLazy(){
+  if(!gistFilesMeta) return;
+  var token = getToken();
+  var ids = Object.keys(dealsIndex).filter(function(id){
+    return !dealsIndex[id].deleted;
+  });
+  // Try localStorage first for all
+  ids.forEach(function(id){
+    var mirror = localStorage.getItem('mirror-photo-' + id);
+    if(mirror){
+      photoCache[id] = mirror;
+      applyPhotoToCard(id, mirror);
+    }
+  });
+  // Then fetch from Gist for remaining
+  for(var i = 0; i < ids.length; i++){
+    var id = ids[i];
+    if(photoCache[id]) continue;
+    var key = 'photo-' + id + '.txt';
+    var f = gistFilesMeta[key];
+    if(!f) continue;
+    try {
+      var raw = f.content;
+      if(!raw || f.truncated){
+        var r = await fetch(f.raw_url);
+        raw = await r.text();
+      }
+      if(raw && raw.trim()){
+        photoCache[id] = raw.trim();
+        // Mirror to localStorage for next time (best-effort)
+        try { localStorage.setItem('mirror-photo-' + id, raw.trim()); } catch(e){}
+        applyPhotoToCard(id, raw.trim());
+      }
+    } catch(e){ /* ignore individual failures */ }
+  }
+}
+
+function applyPhotoToCard(id, dataUrl){
+  var cards = document.querySelectorAll('[data-id="' + id + '"] .card-photo');
+  cards.forEach(function(c){
+    c.style.backgroundImage = 'url("' + dataUrl + '")';
+    c.classList.add('has-photo');
+  });
+}
+
+// ───── Rendering ─────
+var STATUSES = ['appraise','view','offer','followup'];
+var STATUS_LABELS = {appraise:'Appraise',view:'View',offer:'Offer',followup:'Follow Up'};
+var STATUS_SHORT = {appraise:'Appr',view:'View',offer:'Offer',followup:'F/Up'};
+var STATUS_CLASS = {appraise:'c-appraise',view:'c-view',offer:'c-offer',followup:'c-followup'};
+
+function renderDeals(){
+  var buckets = { appraise:[], view:[], offer:[], followup:[], archived:[] };
+
+  Object.keys(dealsIndex).forEach(function(id){
+    var d = dealsIndex[id];
+    if(d.deleted) return;
+    if(d.archived){ buckets.archived.push(id); return; }
+    var s = d.status || 'appraise';
+    if(!buckets[s]) s = 'appraise';
+    buckets[s].push(id);
+  });
+
+  // Sort: manual _order (set by drag-and-drop) takes precedence, else most-recent first
+  var sortByOrder = function(a,b){
+    var da = dealsIndex[a], db = dealsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  };
+  Object.keys(buckets).forEach(function(k){ buckets[k].sort(sortByOrder); });
+
+  // Gist warning
+  var totalDeals = Object.keys(dealsIndex).length;
+  var warn = document.getElementById('gistWarning');
+  if(warn){
+    if(totalDeals >= 60){
+      document.getElementById('gistWarningCount').textContent = totalDeals + ' deals';
+      warn.classList.add('show');
+    } else {
+      warn.classList.remove('show');
+    }
+  }
+
+  // Render each lane
+  renderLane('cardsAppraise', 'countAppraise', buckets.appraise, false);
+  renderLane('cardsView',     'countView',     buckets.view,     false);
+  renderLane('cardsOffer',    'countOffer',    buckets.offer,    false);
+  renderLane('cardsFollowup', 'countFollowup', buckets.followup, false);
+  renderLane('cardsArchived', 'countArchived', buckets.archived, true);
+  if(typeof _wireDrag === 'function') _wireDrag();
+}
+
+function renderLane(cardsId, countId, ids, isArchived){
+  var el = document.getElementById(cardsId);
+  var countEl = document.getElementById(countId);
+  if(countEl) countEl.textContent = ids.length;
+  if(!ids.length){
+    el.classList.add('empty-lane');
+    el.innerHTML = '<div class="lane-empty">' + (isArchived ? 'No archived deals' : 'No deals here yet') + '</div>';
+    return;
+  }
+  el.classList.remove('empty-lane');
+  // Clear any inline styles left over from drag collapse/expansion
+  el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = '';
+  el.innerHTML = ids.map(function(id){ return cardHTML(id, isArchived); }).join('');
+  // Re-apply cached photos
+  ids.forEach(function(id){
+    if(photoCache[id]) applyPhotoToCard(id, photoCache[id]);
+  });
+}
+
+function cardHTML(id, isArchived){
+  var d = dealsIndex[id];
+  var date = d.updated
+    ? new Date(d.updated).toLocaleDateString('en-GB', { day:'numeric', month:'short' })
+    : '';
+  var link = ANALYSER_PAGE + '?deal=' + encodeURIComponent(id);
+  var currentStatus = d.status || 'appraise';
+  var name = (d.name || id).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; });
+
+  var statusRow = '';
+  if(!isArchived){
+    statusRow = '<div class="card-status-row">' +
+      STATUSES.map(function(s){
+        var isActive = s === currentStatus;
+        var cls = 'status-chip' + (isActive ? ' active ' + STATUS_CLASS[s] : '');
+        return '<button class="' + cls + '" title="' + STATUS_LABELS[s] + '" onclick="setDealStatus(this,\'' + s + '\')">' + STATUS_SHORT[s] + '</button>';
+      }).join('') +
+    '</div>';
+  }
+
+  var footer = '';
+  if(isArchived){
+    footer = '<div class="card-footer">' +
+      '<button class="card-icon-btn" onclick="unarchiveDeal(this)" title="Restore to pipeline">' +
+        iconSvg('restore') + ' Restore' +
+      '</button>' +
+      '<button class="card-icon-btn danger" onclick="deleteDeal(this)" title="Move to deleted">' +
+        iconSvg('trash') + '' +
+      '</button>' +
+    '</div>';
+  } else {
+    footer = '<div class="card-footer">' +
+      '<button class="card-icon-btn" onclick="duplicateDeal(this)" title="Duplicate deal">' +
+        iconSvg('duplicate') +
+      '</button>' +
+      '<button class="card-icon-btn" onclick="archiveDeal(this)" title="Archive">' +
+        iconSvg('archive') +
+      '</button>' +
+      '<button class="card-icon-btn danger" onclick="deleteDeal(this)" title="Move to deleted">' +
+        iconSvg('trash') +
+      '</button>' +
+    '</div>';
+  }
+
+  var d = dealsIndex[id] || {};
+  var noteText = d.note || '';
+  var noteColor = d.noteColor || '#C0392B';
+  var ribbonClass = 'card-note-ribbon' + (noteText ? ' visible' : ' empty');
+  var ribbonStyle = noteText ? 'background:'+noteColor : '';
+  var ribbonHtml = '<div class="'+ribbonClass+'" data-deal-id="'+id+'" style="'+ribbonStyle+'" title="Click to edit note">' + (noteText ? escapeHtml(noteText) : 'Add note') + '</div>';
+
+  // For placeholder cards (created from a mobile URL), the photo click should
+  // jump straight to the Rightmove listing in a new tab — much more useful than
+  // opening an empty analyser. The card body / name link still goes to analyser.
+  // We also record which placeholder was clicked so a subsequent Cmd+V on this
+  // tab can target THIS specific card (important when duplicates exist).
+  var photoHref = link;
+  var photoTargetAttr = '';
+  var photoOnclick = '';
+  if(d.placeholder && d.propertyId){
+    photoHref = 'https://www.rightmove.co.uk/properties/' + d.propertyId;
+    photoTargetAttr = ' target="_blank" rel="noopener"';
+    photoOnclick = ' onclick="_recordPlaceholderClick(\''+id+'\')"';
+  }
+
+  return '<div class="deal-card' + (isArchived ? ' archived' : '') + (d.placeholder ? ' placeholder' : '') + (d.placeholder && d.source === 'rm' ? ' from-rm' : '') + (d.placeholder && d.source === 'siri' ? ' from-siri' : '') + '" data-id="' + id + '">' +
+    '<a class="card-photo" href="' + photoHref + '"' + photoTargetAttr + photoOnclick + ' draggable="false">' +
+      '<svg class="placeholder" viewBox="0 0 48 48"><use href="#icon-building"/></svg>' +
+      ribbonHtml +
+    '</a>' +
+    '<div class="card-body">' +
+      '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>' +
+      (date ? '<div class="card-meta">Updated ' + date + '</div>' : '') +
+      statusRow +
+    '</div>' +
+    footer +
+  '</div>';
+}
+
+function iconSvg(kind){
+  var defs = {
+    duplicate: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="10" height="12" rx="1"/><rect x="7" y="7" width="9" height="9" rx="1" fill="white"/></svg>',
+    archive:   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="14" height="3" rx="0.5"/><path d="M4 8 v8 h12 v-8"/><path d="M8 11 h4"/></svg>',
+    trash:     '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 6 h10 v10 a1 1 0 0 1 -1 1 h-8 a1 1 0 0 1 -1 -1 z"/><path d="M3 6 h14"/><path d="M8 4 h4 v2"/><path d="M9 9 v5 M11 9 v5"/></svg>',
+    restore:   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10 a6 6 0 1 1 2 4.2"/><polyline points="4,5 4,10 9,10"/></svg>'
+  };
+  return defs[kind] || '';
+}
+
+function getId(btn){ return btn.closest('.deal-card').dataset.id; }
+
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ───── Note ribbon (per-card editable note) ─────
+var NOTE_COLORS = ['#C0392B','#27AE60','#2980B9','#E67E22','#7E57C2'];
+var _activeRibbon = null;
+var _activePicker = null;
+
+function _closeRibbon(commit){
+  if(!_activeRibbon) return;
+  var r = _activeRibbon;
+  var id = r.dataset.dealId;
+  var rawText = (r.innerText || '').trim();
+  if(commit !== false){
+    if(!dealsIndex[id]) dealsIndex[id] = {};
+    var prevText = dealsIndex[id].note || '';
+    var prevColor = dealsIndex[id].noteColor || '';
+    var newColor = r.dataset.color || '#C0392B';
+    if(rawText !== prevText || newColor !== prevColor){
+      dealsIndex[id].note = rawText;
+      dealsIndex[id].noteColor = newColor;
+      dealsIndex[id].updated = new Date().toISOString();
+      saveIndex();
+    }
+  }
+  r.removeAttribute('contenteditable');
+  r.classList.remove('editing');
+  if(rawText){
+    r.classList.add('visible');
+    r.classList.remove('empty');
+    r.style.background = r.dataset.color || '#C0392B';
+    r.textContent = rawText;
+  } else {
+    r.classList.remove('visible');
+    r.classList.add('empty');
+    r.style.background = '';
+    r.textContent = 'Add note';
+  }
+  if(_activePicker){ _activePicker.remove(); _activePicker = null; }
+  _activeRibbon = null;
+}
+
+function _openRibbon(r){
+  if(_activeRibbon === r) return;
+  if(_activeRibbon) _closeRibbon(true);
+  var id = r.dataset.dealId;
+  var d = dealsIndex[id] || {};
+  var color = d.noteColor || '#C0392B';
+  r.dataset.color = color;
+  r.classList.add('editing');
+  r.classList.remove('empty');
+  r.style.background = color;
+  r.textContent = d.note || '';
+  r.setAttribute('contenteditable','plaintext-only');
+  _activeRibbon = r;
+  // Focus & place cursor at end
+  setTimeout(function(){
+    r.focus();
+    var range = document.createRange();
+    range.selectNodeContents(r);
+    range.collapse(false);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }, 0);
+  // Build color picker
+  var picker = document.createElement('div');
+  picker.className = 'card-note-color-picker';
+  NOTE_COLORS.forEach(function(c){
+    var sw = document.createElement('span');
+    sw.className = 'card-note-color-swatch' + (c === color ? ' active' : '');
+    sw.style.background = c;
+    sw.style.color = c;
+    sw.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    sw.addEventListener('click', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      r.dataset.color = c;
+      r.style.background = c;
+      picker.querySelectorAll('.card-note-color-swatch').forEach(function(s){ s.classList.remove('active'); });
+      sw.classList.add('active');
+      r.focus();
+    });
+    picker.appendChild(sw);
+  });
+  // Position picker just below the ribbon
+  var photo = r.parentElement;
+  photo.appendChild(picker);
+  var rRect = r.getBoundingClientRect();
+  var pRect = photo.getBoundingClientRect();
+  picker.style.top = (rRect.bottom - pRect.top + 6) + 'px';
+  _activePicker = picker;
+}
+
+function _enforceMaxLines(r){
+  var lines = (r.innerText || '').split(/\r?\n/);
+  if(lines.length > 3){
+    var trimmed = lines.slice(0,3).join('\n');
+    r.textContent = trimmed;
+    // Restore cursor to end
+    var range = document.createRange();
+    range.selectNodeContents(r);
+    range.collapse(false);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+document.addEventListener('click', function(e){
+  var ribbon = e.target.closest('.card-note-ribbon');
+  if(ribbon){
+    e.preventDefault();
+    e.stopPropagation();
+    _openRibbon(ribbon);
+    return;
+  }
+  // Click outside any picker / ribbon → commit
+  if(_activeRibbon && !e.target.closest('.card-note-color-picker') && !e.target.closest('.card-note-ribbon')){
+    _closeRibbon(true);
+  }
+}, true);
+
+document.addEventListener('keydown', function(e){
+  if(!_activeRibbon) return;
+  if(e.key === 'Escape'){
+    e.preventDefault();
+    _activeRibbon.blur();
+    _closeRibbon(true);
+  } else if(e.key === 'Enter'){
+    // Allow up to 3 lines: block Enter if already at 3 lines
+    var lines = (_activeRibbon.innerText || '').split(/\r?\n/);
+    if(lines.length >= 3){ e.preventDefault(); }
+  }
+});
+
+document.addEventListener('input', function(e){
+  if(e.target === _activeRibbon){ _enforceMaxLines(_activeRibbon); }
+});
+
+document.addEventListener('paste', function(e){
+  if(e.target === _activeRibbon){
+    e.preventDefault();
+    var text = (e.clipboardData || window.clipboardData).getData('text');
+    var lines = text.split(/\r?\n/).slice(0,3).join('\n');
+    document.execCommand('insertText', false, lines);
+    setTimeout(function(){ _enforceMaxLines(_activeRibbon); }, 0);
+  }
+});
+
+// ───── FLIP animation helpers ─────
+// Capture {left, top, width, height} for every card currently in the DOM,
+// keyed by deal id. Used as the "First" snapshot for FLIP.
+function captureRects(){
+  var rects = {};
+  document.querySelectorAll('.deal-card').forEach(function(el){
+    var id = el.dataset.id;
+    if(!id) return;
+    rects[id] = el.getBoundingClientRect();
+  });
+  return rects;
+}
+// Build a ghost clone of a card so we can animate it out AFTER it's been
+// removed from the real DOM. Must be called BEFORE the mutation.
+function prepareRemovalGhost(id){
+  var el = document.querySelector('[data-id="' + id + '"]');
+  if(!el) return null;
+  return { clone: el.cloneNode(true), rect: el.getBoundingClientRect() };
+}
+// Run FLIP: for every card that existed before AND still exists, translate
+// it from its old position back to the new one. For removed ghosts, fade
+// them out in place. For newIds, fade/scale them in.
+function animateFlip(oldRects, opts){
+  opts = opts || {};
+  var removedGhosts = opts.removedGhosts || [];
+  var newIds = opts.newIds || [];
+  var DURATION_MOVE = 380;   // ms — card slide
+  var DURATION_FADE = 280;   // ms — enter/exit
+  var EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+
+  // Existing + new cards
+  document.querySelectorAll('.deal-card').forEach(function(el){
+    var id = el.dataset.id;
+    if(!id) return;
+
+    if(newIds.indexOf(id) >= 0){
+      // New card: scale up from 0.85 with a fade-in
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(0.85)';
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          el.style.transition = 'opacity ' + DURATION_FADE + 'ms ease-out, transform ' + DURATION_FADE + 'ms ' + EASE;
+          el.style.opacity = '';
+          el.style.transform = '';
+          setTimeout(function(){ el.style.transition = ''; }, DURATION_FADE + 50);
+        });
+      });
+      return;
+    }
+
+    if(!oldRects[id]) return; // card is neither old nor flagged new; leave it
+
+    var oldRect = oldRects[id];
+    var newRect = el.getBoundingClientRect();
+    var dx = oldRect.left - newRect.left;
+    var dy = oldRect.top - newRect.top;
+    if(Math.abs(dx) < 1 && Math.abs(dy) < 1) return; // unchanged
+
+    // INVERT — place card back at old visual position instantly
+    el.style.transition = 'none';
+    el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        // PLAY — animate back to new position
+        el.style.transition = 'transform ' + DURATION_MOVE + 'ms ' + EASE;
+        el.style.transform = '';
+        setTimeout(function(){ el.style.transition = ''; }, DURATION_MOVE + 50);
+      });
+    });
+  });
+
+  // Removed card ghosts: pin clone at old position, then fade + shrink
+  removedGhosts.forEach(function(ghost){
+    var g = ghost.clone;
+    g.style.position = 'fixed';
+    g.style.left = ghost.rect.left + 'px';
+    g.style.top = ghost.rect.top + 'px';
+    g.style.width = ghost.rect.width + 'px';
+    g.style.height = ghost.rect.height + 'px';
+    g.style.margin = '0';
+    g.style.pointerEvents = 'none';
+    g.style.zIndex = '1000';
+    g.style.transition = 'none';
+    g.style.transformOrigin = 'center center';
+    document.body.appendChild(g);
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        g.style.transition = 'opacity ' + DURATION_FADE + 'ms ease-out, transform ' + DURATION_FADE + 'ms ' + EASE;
+        g.style.opacity = '0';
+        g.style.transform = 'scale(0.85)';
+        setTimeout(function(){ g.remove(); }, DURATION_FADE + 80);
+      });
+    });
+  });
+}
+
+// ───── Actions ─────
+async function setDealStatus(btn, newStatus){
+  var id = getId(btn);
+  if(!dealsIndex[id]) return;
+  if(dealsIndex[id].status === newStatus) return; // no-op
+  // Brief wait so any in-flight save from an open analyser tab lands first
+  await new Promise(function(r){ setTimeout(r, 400); });
+  var oldRects = captureRects();
+  dealsIndex[id].status = newStatus;
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex();
+  renderDeals();
+  animateFlip(oldRects);
+}
+
+async function archiveDeal(btn){
+  var id = getId(btn);
+  await new Promise(function(r){ setTimeout(r, 800); });
+  var oldRects = captureRects();
+  dealsIndex[id].archived = true;
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderDeals();
+  animateFlip(oldRects);
+}
+
+async function unarchiveDeal(btn){
+  var id = getId(btn);
+  await new Promise(function(r){ setTimeout(r, 800); });
+  var oldRects = captureRects();
+  dealsIndex[id].archived = false;
+  if(!dealsIndex[id].status) dealsIndex[id].status = 'appraise';
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderDeals();
+  animateFlip(oldRects);
+}
+
+async function deleteDeal(btn){
+  var id = getId(btn);
+  var name = dealsIndex[id].name;
+  if(!confirm('Move "' + name + '" to Deleted Deals?')) return;
+  await new Promise(function(r){ setTimeout(r, 800); });
+  // Capture BEFORE mutation so remaining cards can FLIP to fill the gap,
+  // and clone the outgoing card so it can fade out as a ghost.
+  var oldRects = captureRects();
+  var ghost = prepareRemovalGhost(id);
+  dealsIndex[id].deleted = true;
+  dealsIndex[id].archived = false;
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderDeals();
+  animateFlip(oldRects, { removedGhosts: ghost ? [ghost] : [] });
+}
+
+async function duplicateDeal(btn){
+  var id = getId(btn);
+  var d = dealsIndex[id];
+  var sourceName = d.name || id;
+  var token = getToken();
+
+  // Stagger so the duplicate ID timestamp differs from any rapid prior action
+  var newId = 'deal-' + Date.now();
+  await new Promise(function(r){ setTimeout(r, 1200); });
+
+  // Defaults used when there is no gist (token-less / offline)
+  var newName = sourceName + ' Duplicate 1';
+  var newState = { _new: true, _duplicateCount: 0 };
+  var srcPhoto = null;
+  var srcFloorplan = null;
+  var srcDuplicateCount = 0;
+  var parsedSrc = null; // original source state, kept for writing back to source
+
+  if(token && GIST_ID){
+    try {
+      // ONE gist fetch — reads _duplicateCount, full deal state, and media
+      // file metadata all in one shot. No second or third fetch needed.
+      var res = await fetch('https://api.github.com/gists/' + GIST_ID, { headers: { Authorization: 'token ' + token } });
+      var gist = await res.json();
+      var srcFile = gist.files['deal-' + id + '.json'];
+      if(srcFile){
+        var raw = srcFile.truncated ? await (await fetch(srcFile.raw_url)).text() : srcFile.content;
+        parsedSrc = JSON.parse(raw);
+        srcDuplicateCount = parsedSrc._duplicateCount || 0;
+        newName = sourceName + ' Duplicate ' + (srcDuplicateCount + 1);
+
+        // Deep-copy so parsedSrc stays pristine for writing back to source
+        newState = JSON.parse(JSON.stringify(parsedSrc));
+        newState.dealName = newName;
+        newState._duplicateCount = 0;
+        delete newState._new;
+
+        async function _pullMedia(key){
+          if(!key || !gist.files[key]) return null;
+          var f = gist.files[key];
+          var content = f.truncated ? await (await fetch(f.raw_url)).text() : f.content;
+          return content && content.trim() ? content : null;
+        }
+        var photoFromUpload = false;
+        if(newState._dealPhotoKey){
+          srcPhoto = await _pullMedia(newState._dealPhotoKey);
+          photoFromUpload = !!srcPhoto;
+        }
+        else if(newState._dealPhoto){
+          srcPhoto = newState._dealPhoto; delete newState._dealPhoto;
+          photoFromUpload = true;
+        }
+        if(newState._dealFloorplanKey){ srcFloorplan = await _pullMedia(newState._dealFloorplanKey); }
+        else if(newState._dealFloorplan){ srcFloorplan = newState._dealFloorplan; delete newState._dealFloorplan; }
+
+        // RM-only deals: copy photo-{id}.txt so index thumbnail appears on
+        // the duplicate. Don't set _dealPhotoKey — file is a URL string, not
+        // base64; analyser continues to use _rmLeadImageUrl.
+        if(!srcPhoto){
+          srcPhoto = await _pullMedia('photo-' + id + '.txt');
+        }
+
+        if(srcPhoto && photoFromUpload){ newState._dealPhotoKey = 'photo-' + newId + '.txt'; }
+        if(srcFloorplan){ newState._dealFloorplanKey = 'floorplan-' + newId + '.txt'; }
+      }
+    } catch(e){ console.warn('Could not copy deal data:', e); }
+  }
+
+  // Inherit status from the source deal (or default to appraise)
+  var inheritedStatus = d.status || 'appraise';
+  var oldRects = captureRects(); // FLIP snapshot before mutation
+  dealsIndex[newId] = { name: newName, updated: new Date().toISOString(), status: inheritedStatus };
+  _placeAtFront(newId, inheritedStatus);
+
+  dealsIndex[id] = dealsIndex[id] || {};
+  dealsIndex[id]._duplicateCount = srcDuplicateCount + 1;
+
+  if(token && GIST_ID){
+    var body = { files: {} };
+    body.files['deal-' + newId + '.json'] = { content: JSON.stringify(newState, null, 2) };
+    if(srcPhoto) body.files['photo-' + newId + '.txt'] = { content: srcPhoto };
+    if(srcFloorplan) body.files['floorplan-' + newId + '.txt'] = { content: srcFloorplan };
+
+    // Write bumped _duplicateCount back to source using parsedSrc (already in
+    // memory — no extra API fetch needed).
+    var srcStateForWrite = parsedSrc || {};
+    srcStateForWrite._duplicateCount = srcDuplicateCount + 1;
+    body.files['deal-' + id + '.json'] = { content: JSON.stringify(srcStateForWrite, null, 2) };
+
+    body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
+    await fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  }
+  renderDeals();
+  animateFlip(oldRects, { newIds: [newId] });
+  setStatus('Duplicated as "' + newName + '" ✓', true);
+  if(srcPhoto){
+    photoCache[newId] = srcPhoto;
+    try { localStorage.setItem('mirror-photo-' + newId, srcPhoto); } catch(e){}
+    applyPhotoToCard(newId, srcPhoto);
+  }
+}
+
+// Re-index a lane so `id` sits at _order:0 (leftmost) and existing
+// siblings shift right. Used by new deal, RM paste, and duplicate.
+function _placeAtFront(id, laneKey){
+  var siblings = Object.keys(dealsIndex).filter(function(otherId){
+    if(otherId === id) return false;
+    var od = dealsIndex[otherId];
+    if(!od || od.deleted || od.archived) return false;
+    return (od.status || 'appraise') === laneKey;
+  });
+  siblings.sort(function(a, b){
+    var da = dealsIndex[a], db = dealsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  });
+  dealsIndex[id]._order = 0;
+  siblings.forEach(function(sid, i){ dealsIndex[sid]._order = i + 1; });
+}
+
+function showNewDeal(){
+  var ts = Date.now();
+  var num = Object.keys(dealsIndex).filter(function(k){ return !dealsIndex[k].archived && !dealsIndex[k].deleted; }).length + 1;
+  var name = 'Deal-' + num;
+  var id = 'deal-' + ts;
+  dealsIndex[id] = { name: name, updated: new Date().toISOString(), status: 'appraise' };
+  _placeAtFront(id, 'appraise');
+  var base = ANALYSER_PAGE;
+  var dest = base + '?deal=' + id + '&name=' + encodeURIComponent(name);
+  var token = getToken();
+  if(token && GIST_ID){
+    var body = { files: {} };
+    body.files['deal-' + id + '.json'] = { content: JSON.stringify({ _new: true }) };
+    body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
+    fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).finally(function(){ window.location.href = dest; });
+  } else {
+    window.location.href = dest;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Rightmove HTML paste → new deal
+// Pasting the full page source extracts every structured field Rightmove
+// embeds (postcode, lat/lng, price, lease, ground rent, stations, agent,
+// images) plus the description prose. Builds a deal-{id}.json populated
+// with input values + RM image URLs as fallbacks, writes a plain-text
+// photo-{id}.txt with the lead image URL (no base64), then opens the
+// analyser. Upload-wins-RM-fallback for both the photo and floorplan.
+// ═══════════════════════════════════════════════════════════════════════
+
+function parseRightmoveHtml(rawHtml) {
+  // ── PAGE_MODEL RESOLVER ──
+  // RM ships data as `window.__PAGE_MODEL = {"data":"<JSON-encoded indexed array>"}`.
+  // The array uses positional indices: e.g. {"propertyData":1} means propertyData
+  // lives at array[1]. We resolve the structure into a normal object tree.
+  var _pageModel = null;
+  (function _decodePageModel(){
+    try {
+      var pmM = rawHtml.match(/window\.__PAGE_MODEL\s*=\s*\{\s*"data"\s*:\s*"((?:\\.|[^"\\])*)"/);
+      if (!pmM) return;
+      var jsonStr = JSON.parse('"' + pmM[1] + '"');  // unwrap one escape layer
+      var arr = JSON.parse(jsonStr);
+      if (!Array.isArray(arr) || arr.length < 2) return;
+      function resolve(idx, depth, seen){
+        if (depth > 8) return null;
+        if (typeof idx !== 'number') return idx;
+        if (seen[idx]) return null;
+        seen[idx] = true;
+        var v = arr[idx];
+        if (v === null || typeof v !== 'object') {
+          delete seen[idx];
+          return v;
+        }
+        var out;
+        if (Array.isArray(v)) {
+          out = v.map(function(c){ return typeof c === 'number' ? resolve(c, depth+1, seen) : c; });
+        } else {
+          out = {};
+          for (var k in v) {
+            var c = v[k];
+            out[k] = typeof c === 'number' ? resolve(c, depth+1, seen) : c;
+          }
+        }
+        delete seen[idx];
+        return out;
+      }
+      var root = resolve(0, 0, {});
+      if (root && root.propertyData) _pageModel = root.propertyData;
+    } catch(e) { /* swallow — will fall back to regex parsing */ }
+  })();
+
+  var R = {
+    propertyId: null, dealName: null, askingPrice: null, postcode: null,
+    outcode: null, latitude: null, longitude: null, sqft: null, sqm: null,
+    sizeUnit: 'ft', bedrooms: null, bathrooms: null, propertyType: null,
+    tenureType: null, yearsRemainingOnLease: null, annualGroundRent: null,
+    serviceCharge: null, groundRentFromText: null, serviceChargeFromText: null,
+    leaseFromText: null, councilTaxBand: null, epcRating: null,
+    epcCurrentScore: null, epcPotentialRating: null, epcPotentialScore: null,
+    epcImageUrl: null, epcGovUrl: null,
+    floor: null,
+    shareOfFreehold: false, listedDate: null, reducedInfo: null, keyFeatures: [],
+    description: '', displayAddress: null,
+    agent: { name: null, branch: null, phone: null, address: null },
+    stations: [], closestStationWalk: null,
+    leadImageUrl: null, floorplanUrl: null, floorplanUrls: [], photoUrls: []
+  };
+  function grab(re, group){
+    var m = rawHtml.match(re);
+    return m ? (group !== undefined ? m[group] : m[1]) : null;
+  }
+
+  R.propertyId = grab(/\/properties\/(\d{7,10})/) || grab(/"id"\s*:\s*(\d{7,10})/);
+  R.postcode = grab(/"postcode"\s*:\s*"([^"]+)"/);
+  R.outcode = grab(/"outcode"\s*:\s*"([^"]+)"/);
+  var lat = parseFloat(grab(/"latitude"\s*:\s*(-?[0-9.]+)/));
+  var lng = parseFloat(grab(/"longitude"\s*:\s*(-?[0-9.]+)/));
+  if (!isNaN(lat)) R.latitude = lat;
+  if (!isNaN(lng)) R.longitude = lng;
+  var bed = parseInt(grab(/"bedrooms"\s*:\s*(\d+)/), 10);
+  var bath = parseInt(grab(/"bathrooms"\s*:\s*(\d+)/), 10);
+  if (!isNaN(bed)) R.bedrooms = bed;
+  if (!isNaN(bath)) R.bathrooms = bath;
+  R.propertyType = grab(/"propertySubType"\s*:\s*"([^"]+)"/);
+  R.tenureType = grab(/"tenureType"\s*:\s*"([^"]+)"/);
+  var leaseYrs = parseInt(grab(/"yearsRemainingOnLease"\s*:\s*(\d+)/), 10);
+  if (!isNaN(leaseYrs)) R.yearsRemainingOnLease = leaseYrs;
+  var gr = parseFloat(grab(/"annualGroundRent"\s*:\s*([0-9.]+)/));
+  if (!isNaN(gr)) R.annualGroundRent = gr;
+
+  var primaryPrice = grab(/"primaryPrice"\s*:\s*"£([0-9,]+)"/);
+  if (primaryPrice) R.askingPrice = parseInt(primaryPrice.replace(/,/g, ''), 10);
+  else {
+    var amt = grab(/"amount"\s*:\s*(\d+)/);
+    if (amt) R.askingPrice = parseInt(amt, 10);
+  }
+
+  R.reducedInfo = grab(/"listingUpdateReason"\s*:\s*"([^"]+)"/);
+  R.listedDate = grab(/"firstVisibleDate"\s*:\s*"([^"]+)"/) ||
+               grab(/"dateAdded"\s*:\s*"([^"]+)"/) ||
+               grab(/"listingDate"\s*:\s*"([^"]+)"/) ||
+               grab(/"addedDate"\s*:\s*"([^"]+)"/);
+  R.displayAddress = grab(/"displayAddress"\s*:\s*"([^"]+)"/);
+  // Helper: reject generic / non-address strings that RM uses as titles
+  function _isGenericTitle(s) {
+    if (!s) return true;
+    var t = s.trim().toLowerCase();
+    if (!t) return true;
+    if (/^check\s+out/i.test(t)) return true;
+    if (/property\s+(for\s+sale|to\s+rent)/i.test(t)) return true;
+    if (/houses?\s+(for\s+sale|to\s+rent)/i.test(t)) return true;
+    if (/flats?\s+(for\s+sale|to\s+rent)/i.test(t)) return true;
+    if (/bedroom\s+(flat|house|property)\s+for\s+sale/i.test(t)) return true;
+    if (/^rightmove/i.test(t)) return true;
+    return false;
+  }
+  // Fallback 1: JSON-LD streetAddress (newer RM pages)
+  if (!R.displayAddress) {
+    R.displayAddress = grab(/"streetAddress"\s*:\s*"([^"]+)"/);
+  }
+  // Fallback 2: og:title meta tag — usually the actual address on individual listings
+  if (!R.displayAddress) {
+    var ogM = rawHtml.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)
+           || rawHtml.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:title["']/i);
+    if (ogM) {
+      var ogTitle = ogM[1].replace(/\s*[\|\-–—]\s*Rightmove.*$/i, '').trim();
+      ogTitle = ogTitle.replace(/^.*?for\s+sale\s+in\s+/i, '').trim();
+      if (ogTitle && !_isGenericTitle(ogTitle)) R.displayAddress = ogTitle;
+    }
+  }
+  // Fallback 3: <title> tag — only if it looks like an actual address
+  if (!R.displayAddress) {
+    var tM = rawHtml.match(/<title>([^<]+)<\/title>/i);
+    if (tM) {
+      var t = tM[1].replace(/\s*[\|\-–—]\s*Rightmove.*$/i, '').trim();
+      t = t.replace(/^.*?for\s+sale\s+in\s+/i, '').trim();
+      if (t && !_isGenericTitle(t)) R.displayAddress = t;
+    }
+  }
+  // Fallback 4: any "address":"..." JSON field (RM's newer schema variants)
+  if (!R.displayAddress) {
+    R.displayAddress = grab(/"address"\s*:\s*"([^"]+)"/) ||
+                       grab(/"propertyAddress"\s*:\s*"([^"]+)"/) ||
+                       grab(/"location"\s*:\s*\{[^}]*"address"\s*:\s*"([^"]+)"/);
+  }
+  // Fallback 5: og:description tag — sometimes contains "Property for sale in <ADDRESS>"
+  if (!R.displayAddress) {
+    var odM = rawHtml.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i)
+           || rawHtml.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:description["']/i);
+    if (odM) {
+      var od = odM[1];
+      var addrM = od.match(/(?:for\s+sale|to\s+rent)\s+in\s+([^.,]+(?:,[^.,]+)?)/i);
+      if (addrM && !_isGenericTitle(addrM[1])) R.displayAddress = addrM[1].trim();
+    }
+  }
+  R.shareOfFreehold = /"tenureType"\s*:\s*"SHARE_OF_FREEHOLD"/.test(rawHtml) ||
+                       /share\s+of\s+freehold/i.test(rawHtml);
+
+  var kfMatch = rawHtml.match(/"keyFeatures"\s*:\s*(\[[^\]]*\])/);
+  if (kfMatch) { try { R.keyFeatures = JSON.parse(kfMatch[1]); } catch(e){} }
+
+  var stMatch = rawHtml.match(/"nearestStations"\s*:\s*(\[[\s\S]*?\}\s*\])/);
+  if (stMatch) {
+    try {
+      var stations = JSON.parse(stMatch[1]);
+      R.stations = stations.slice(0,5).map(function(s){
+        return {
+          name: String(s.name||'').replace(/\s+Station$/i,'').trim(),
+          distanceMi: s.distance,
+          types: s.types || []
+        };
+      });
+    } catch(e){}
+  }
+
+  // Floor area
+  var sizeMatch = rawHtml.match(/"sizings"\s*:\s*(\[.*?\])/);
+  if (sizeMatch && sizeMatch[1] !== '[]') {
+    try {
+      var sizings = JSON.parse(sizeMatch[1]);
+      for (var i=0; i<sizings.length; i++){
+        var sz = sizings[i], u = String(sz.unit||'').toUpperCase();
+        var val = sz.maximumSize || sz.minimumSize;
+        if (/FT|FOOT/.test(u) && val) { R.sqft = Math.round(val); break; }
+        if (/M(?!IL)/.test(u) && val) { R.sqm = Math.round(val); break; }
+      }
+    } catch(e){}
+  }
+  if (!R.sqft && !R.sqm) {
+    var both = rawHtml.match(/(\d{2,5})\s*sq\s*ft[\s\S]{1,80}?(\d{2,5})\s*sq\s*m/i);
+    if (both) { R.sqft = parseInt(both[1],10); R.sqm = parseInt(both[2],10); }
+    else {
+      var oFt = rawHtml.match(/(\d{2,5})\s*sq\s*ft/i);
+      if (oFt) R.sqft = parseInt(oFt[1],10);
+      var oM = rawHtml.match(/(\d{2,5})\s*sq\s*m(?![a-z])/i);
+      if (oM) R.sqm = parseInt(oM[1],10);
+    }
+  }
+  R.sizeUnit = R.sqft ? 'ft' : (R.sqm ? 'm' : 'ft');
+
+  R.councilTaxBand = grab(/"councilTaxBand"\s*:\s*"?([A-H])"?/i) ||
+                      grab(/Band:\s*([A-H])\b/);
+  R.epcRating = grab(/EPC\s*Rating:\s*([A-G])/i) ||
+                 grab(/"currentEnergyRating"\s*:\s*"([A-G])"/i);
+  var _epcCurScore = parseInt(grab(/"currentEnergyEfficiencyRating"\s*:\s*(\d+)/), 10) ||
+                     parseInt(grab(/"eerCurrentRating"\s*:\s*(\d+)/), 10);
+  var _epcPotScore = parseInt(grab(/"potentialEnergyEfficiencyRating"\s*:\s*(\d+)/), 10) ||
+                     parseInt(grab(/"eerPotentialRating"\s*:\s*(\d+)/), 10);
+  var _epcPotBand  = grab(/"potentialEnergyRating"\s*:\s*"([A-G])"/i);
+  if (!isNaN(_epcCurScore) && _epcCurScore > 0) R.epcCurrentScore   = _epcCurScore;
+  if (!isNaN(_epcPotScore) && _epcPotScore > 0) R.epcPotentialScore = _epcPotScore;
+  if (_epcPotBand) R.epcPotentialRating = _epcPotBand;
+  if (!R.epcRating && R.epcCurrentScore != null) {
+    var _s = R.epcCurrentScore;
+    R.epcRating = _s>=92?'A':_s>=81?'B':_s>=69?'C':_s>=55?'D':_s>=39?'E':_s>=21?'F':'G';
+  }
+  if (!R.epcPotentialRating && R.epcPotentialScore != null) {
+    var _ps = R.epcPotentialScore;
+    R.epcPotentialRating = _ps>=92?'A':_ps>=81?'B':_ps>=69?'C':_ps>=55?'D':_ps>=39?'E':_ps>=21?'F':'G';
+  }
+  // EPC image or gov link — stored in epcGraphs array
+  var _epcImgMatch = rawHtml.match(/"epcGraphs"\s*:\s*\[\s*\{[^}]*"url"\s*:\s*"([^"]+\.png)"/);
+  if (_epcImgMatch) {
+    R.epcImageUrl = _epcImgMatch[1];
+  } else {
+    var _epcAnyMatch = rawHtml.match(/"epcGraphs"\s*:\s*\[\s*\{[^}]*"url"\s*:\s*"([^"]+)"/);
+    if (_epcAnyMatch) {
+      var _epcUrl = _epcAnyMatch[1];
+      if (_epcUrl.indexOf('find-energy-certificate') >= 0 || _epcUrl.indexOf('.gov.uk') >= 0) {
+        R.epcGovUrl = _epcUrl;  // open in browser, not lightbox
+      } else {
+        R.epcImageUrl = _epcUrl;
+      }
+    }
+  }
+
+  var floorMatch = rawHtml.match(/\b(raised ground floor|lower ground floor|ground floor|first floor|second floor|third floor|fourth floor|fifth floor|sixth floor|top floor|basement|mezzanine)\b/i);
+  if (floorMatch) {
+    R.floor = floorMatch[1].toLowerCase().replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+  }
+
+  // Image URLs — full-resolution (strip dir/ and any _max_NNNxNNN)
+  var photoRe = /media\.rightmove\.co\.uk\/(?:dir\/)?property-photo\/[a-f0-9]+\/\d+\/[a-f0-9]+(?:_max_\d+x\d+)?\.jpeg/g;
+  // Image URLs — try the structured JSON images array first (preserves RM's
+  // intended order including the lead image), then fall back to a URL scan.
+  // The regex approach can miss the lead image if its URL uses uppercase hex
+  // or a non-.jpeg extension. The JSON approach avoids all of these edge cases.
+  var photoSet = {}, m;
+  var imgJsonM = rawHtml.match(/"images"\s*:\s*\[([^\]]{20,})\]/);
+  if(imgJsonM){
+    var imgInner = imgJsonM[1];
+    var imgUrlRe = /"(?:srcUrl|url)"\s*:\s*"([^"]+property-photo[^"]+)"/g, imgU;
+    while((imgU = imgUrlRe.exec(imgInner)) !== null){
+      var u = imgU[1]
+        .replace('dir/property-photo/','property-photo/')
+        .replace(/_max_\d+x\d+/,'');
+      if(u && !photoSet[u]) photoSet[u] = 1;
+    }
+  }
+  if(!Object.keys(photoSet).length){
+    // Fallback: scan raw HTML — case-insensitive hex, jpeg/jpg/png
+    var photoRe = /media\.rightmove\.co\.uk\/(?:dir\/)?property-photo\/[a-fA-F0-9]+\/\d+\/[a-fA-F0-9]+(?:_max_\d+x\d+)?\.(?:jpeg|jpg|png)/gi;
+    while((m = photoRe.exec(rawHtml)) !== null){
+      var full = m[0]
+        .replace('dir/property-photo/','property-photo/')
+        .replace(/_max_\d+x\d+/,'');
+      var fu = 'https://' + full;
+      if(!photoSet[fu]) photoSet[fu] = 1;
+    }
+  }
+  R.photoUrls = Object.keys(photoSet);
+  R.leadImageUrl = R.photoUrls[0] || null;
+
+  // Floorplan: try the structured "floorplans" JSON array first (handles any
+  // image format and any URL path), then fall back to a URL regex scan.
+  // Some agents upload two floorplans (e.g. an "area for info only" image as
+  // plan 1 and a blank as plan 2) — extract all URLs and take the first
+  // non-empty one; blank/null entries are skipped automatically.
+  var fpUrls = [];
+  var fpJsonM = rawHtml.match(/"floorplans"\s*:\s*\[([^\]]*)\]/);
+  if(fpJsonM){
+    var fpInner = fpJsonM[1];
+    var fpUrlRe2 = /"url"\s*:\s*"([^"]+)"/g, fpU;
+    while((fpU = fpUrlRe2.exec(fpInner)) !== null){
+      if(fpU[1] && fpU[1].trim()) fpUrls.push(fpU[1].trim());
+    }
+  }
+  if(!fpUrls.length){
+    // Fallback regex — widen to jpeg/jpg/png
+    var fpRe = /media\.rightmove\.co\.uk\/(?:dir\/)?property-floorplan\/[a-f0-9]+\/\d+\/[a-f0-9]+(?:_max_\d+x\d+)?\.(?:jpeg|jpg|png)/gi;
+    var fpM;
+    while((fpM = fpRe.exec(rawHtml)) !== null){
+      fpUrls.push('https://' + fpM[0]);
+    }
+  }
+  if(fpUrls.length){
+    var cleanedFps = fpUrls.map(function(u){
+      return u.replace('dir/property-floorplan/', 'property-floorplan/').replace(/_max_\d+x\d+/, '');
+    });
+    R.floorplanUrl = cleanedFps[0];      // first one for legacy code paths
+    R.floorplanUrls = cleanedFps;        // full array for multi-floorplan handling
+  }
+
+  // Agent
+  R.agent.name = grab(/"branchDisplayName"\s*:\s*"([^"]+)"/) ||
+                  grab(/"brandName"\s*:\s*"([^"]+)"/) ||
+                  grab(/"tradingName"\s*:\s*"([^"]+)"/);
+  R.agent.phone = grab(/"localNumber"\s*:\s*"([^"]+)"/) ||
+                   grab(/tel:([0-9 +\-]+)/);
+  R.agent.branch = grab(/"branchName"\s*:\s*"([^"]+)"/);
+  R.agent.logoUrl = grab(/"logoPath"\s*:\s*"([^"]+)"/);
+  // Agent Rightmove page — branchId gives a stable URL
+  var _branchIdM = rawHtml.match(/"branchId"\s*:\s*(\d+)/);
+  // Agent page URL: search the raw HTML for the slug pattern anchored to the branchId.
+  // Works whether the URL appears in href attributes, JSON strings, or JS variables.
+  // Handles escaped slashes (e.g. \/estate-agents in JSON blobs).
+  if(_branchIdM){
+    var _bid = _branchIdM[1];
+    // Match: estate-agents/agent/Name-Slug/City-{id}.html (slashes may be backslash-escaped)
+    var _urlRe = new RegExp('estate-agents(?:\\/|/)agent(?:\\/|/)([A-Za-z0-9._%-]+)(?:\\/|/)([A-Za-z0-9._%-]+-' + _bid + ')\.html');
+    var _urlM = rawHtml.match(_urlRe);
+    if(_urlM){
+      R.agent.branchUrl = 'https://www.rightmove.co.uk/estate-agents/agent/' + _urlM[1] + '/' + _urlM[2] + '.html';
+    }
+  }
+
+  // Date added / reduced (e.g. "Added today", "Reduced on 25/03/2026")
+  var aorM = rawHtml.match(/"addedOrReduced"\s*:\s*"([^"]+)"/);
+  if(aorM) R.addedOrReduced = aorM[1].trim();
+  // Fallback: find "Added on" / "Reduced on" literal text anywhere in the HTML
+  if(!R.addedOrReduced){
+    var _aorTextM = rawHtml.match(/(?:Added|Reduced)\s+on\s+(\d{1,2}\/\d{1,2}\/\d{4})/);
+    if(_aorTextM) R.addedOrReduced = _aorTextM[0];
+  }
+  // Fallback: catch "Added today" / "Added yesterday" / "Reduced today" etc.
+  if(!R.addedOrReduced){
+    var _aorRelM = rawHtml.match(/(?:Added|Reduced)\s+(?:today|yesterday)/i);
+    if(_aorRelM) R.addedOrReduced = _aorRelM[0];
+  }
+  // Also try ISO date from listedDate as last resort for age calculation
+  if(!R.addedOrReduced && R.listedDate) R.addedOrReduced = 'Added on ' + (function(){
+    var d = new Date(R.listedDate); if(isNaN(d)) return '';
+    return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
+  })();
+
+  // Asking price — try several RM JSON patterns.
+  // RM uses "primaryPrice":"£500,000" and/or "price":{"amount":500000}
+  var priceAmtM = rawHtml.match(/"primaryPrice"\s*:\s*"[^"£]*£([\d,]+)"/) ||
+                  rawHtml.match(/"displayPrice"\s*:\s*"[^"£]*£([\d,]+)"/) ||
+                  rawHtml.match(/"price"\s*:\s*\{[^}]*"amount"\s*:\s*(\d+)/) ||
+                  rawHtml.match(/"amount"\s*:\s*(\d{5,8})/);
+  if(priceAmtM) R.priceAmt = parseInt((priceAmtM[1]||'').replace(/,/g,''))||null;
+  var qualM = rawHtml.match(/"displayPriceQualifier"\s*:\s*"([^"]+)"/) ||
+              rawHtml.match(/"priceQualifier"\s*:\s*"([^"]+)"/) ||
+              rawHtml.match(/"qualifier"\s*:\s*"([^"]+)"/);
+  var _qv = qualM && qualM[1] && qualM[1].trim();
+  if(_qv && _qv.toLowerCase() !== 'asking price') R.priceQualifier = _qv;
+
+  // Description — find "<h2…>Description</h2>" and grab text until disclaimer
+  var descHtmlMatch = rawHtml.match(
+    /<h2[^>]*>\s*Description\s*<\/h2>([\s\S]*?)(?:<button[^>]*>Read full description|Brochures|<h2|\d+\.\s*MONEY LAUNDERING)/i
+  );
+  if (descHtmlMatch) {
+    R.description = descHtmlMatch[1]
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/?b>/gi, '')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, '&').replace(/&#x27;|&apos;/g, "'")
+      .replace(/&quot;/g, '"').replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+      .replace(/[ \t]+/g, ' ').replace(/\n[ \t]+/g, '\n')
+      .replace(/^\s*DESCRIPTION\s*$/gim, '')
+      .replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  // DOMParser fallback for description / key features when HTML didn't match
+  if (!R.description || !R.keyFeatures.length) {
+    try {
+      var doc = new DOMParser().parseFromString(rawHtml, 'text/html');
+      if (!R.description) {
+        var hs = Array.prototype.slice.call(doc.querySelectorAll('h2, h3'));
+        var dh = hs.find(function(h){ return /^description$/i.test(h.textContent.trim()); });
+        if (dh) {
+          var node = dh.parentElement;
+          var t = (node && node.textContent) || '';
+          var c = t.replace(/^[\s\S]*?Description/i,'').replace(/Brochures[\s\S]*$/i,'')
+                    .replace(/Read full description.*$/i,'').trim();
+          if (c) R.description = c;
+        }
+      }
+      if (!R.keyFeatures.length) {
+        var hs2 = Array.prototype.slice.call(doc.querySelectorAll('h2, h3'));
+        var kh = hs2.find(function(h){ return /key features/i.test(h.textContent); });
+        if (kh) {
+          var sib = kh.nextElementSibling;
+          while (sib && sib.tagName !== 'UL') sib = sib.nextElementSibling;
+          if (sib) {
+            R.keyFeatures = Array.prototype.slice.call(sib.querySelectorAll('li'))
+              .map(function(li){ return li.textContent.trim(); }).filter(Boolean);
+          }
+        }
+      }
+    } catch(e){}
+  }
+
+  // Service charge — try JSON first (RM PAGE_MODEL has structured field),
+  // then fall back to text scan of description.
+  var scJsonM = rawHtml.match(/"serviceCharge"\s*:\s*\{\s*"amount"\s*:\s*(\d+)/);
+  if(!scJsonM) scJsonM = rawHtml.match(/"annualServiceCharge"\s*:\s*(\d+)/);
+  if(scJsonM) R.serviceCharge = parseInt(scJsonM[1], 10);
+
+  // Text-based scans
+  var textSrc = R.description || rawHtml;
+  var leaseM = textSrc.match(/(Length of [Ll]ease:?[^.<\n]{1,80})|([Ll]ease[^.<\n]{0,25}\d+[\s\xa0]*years?[^.<\n]{0,60})/);
+  if (leaseM) R.leaseFromText = (leaseM[1]||leaseM[2]).replace(/<[^>]+>/g,'').trim();
+  var scM = textSrc.match(/[Ss]ervice\s*charge[^.<\n]{1,140}/);
+  if (scM) {
+    R.serviceChargeFromText = scM[0].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+    var amtM = scM[0].match(/£\s*([\d,]+)/);
+    if (amtM) R.serviceCharge = parseInt(amtM[1].replace(/,/g,''), 10);
+  }
+  var grTM = textSrc.match(/[Gg]round\s*rent[^.<\n]{1,140}/);
+  if (grTM) R.groundRentFromText = grTM[0].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+
+  // Closest station walking time
+  if (R.stations.length && R.stations[0].distanceMi != null) {
+    var mi = parseFloat(R.stations[0].distanceMi);
+    if (!isNaN(mi)) R.closestStationWalk = Math.round(mi * 20) + ' min walk to ' + R.stations[0].name;
+  }
+
+  if (!R.dealName && false) {
+    // (deferred — see PAGE_MODEL block below; this block intentionally disabled
+    // so PAGE_MODEL data takes priority for dealName.)
+  }
+
+  // ── Apply PAGE_MODEL data (overrides regex results when available) ──
+  if (_pageModel) {
+    var pd = _pageModel;
+    if (pd.id) R.propertyId = String(pd.id);
+    if (pd.address) {
+      if (pd.address.displayAddress) R.displayAddress = pd.address.displayAddress;
+      if (pd.address.outcode) R.outcode = pd.address.outcode;
+      if (pd.address.outcode && pd.address.incode) R.postcode = pd.address.outcode + ' ' + pd.address.incode;
+    }
+    if (pd.location) {
+      if (pd.location.latitude  != null) R.latitude  = pd.location.latitude;
+      if (pd.location.longitude != null) R.longitude = pd.location.longitude;
+    }
+    if (pd.bedrooms  != null) R.bedrooms  = pd.bedrooms;
+    if (pd.bathrooms != null) R.bathrooms = pd.bathrooms;
+    if (pd.prices && pd.prices.primaryPrice) {
+      var pp = String(pd.prices.primaryPrice).replace(/[£,\s]/g, '');
+      var pn = parseInt(pp, 10);
+      if (!isNaN(pn)) R.askingPrice = pn;
+    }
+    if (pd.tenure && pd.tenure.tenureType) R.tenureType = pd.tenure.tenureType;
+    if (pd.tenure && pd.tenure.yearsRemainingOnLease != null) R.yearsRemainingOnLease = pd.tenure.yearsRemainingOnLease;
+    if (pd.listingHistory && pd.listingHistory.listingUpdateReason) R.reducedInfo = pd.listingHistory.listingUpdateReason;
+    if (pd.keyFeatures && pd.keyFeatures.length) R.keyFeatures = pd.keyFeatures.slice();
+    // Floor: pd.entranceFloor sometimes set, otherwise look in keyFeatures for "X Floor"
+    if (pd.entranceFloor) R.floor = pd.entranceFloor;
+    else if (R.keyFeatures && R.keyFeatures.length) {
+      for (var i = 0; i < R.keyFeatures.length; i++) {
+        if (/floor/i.test(R.keyFeatures[i])) { R.floor = R.keyFeatures[i]; break; }
+      }
+    }
+    if (pd.propertySubType) R.propertyType = pd.propertySubType;
+    // Description (used downstream for lease years/service charge/ground rent extraction)
+    if (pd.text && pd.text.description) {
+      R.description = String(pd.text.description)
+        .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+    // Agent
+    if (pd.customer) {
+      if (pd.customer.companyName) R.agent.name = pd.customer.companyName;
+      if (pd.customer.branchDisplayName) {
+        R.agent.branch = pd.customer.branchDisplayName;
+        // Combined display name preferred for "Hamptons, Maida Vale"-style display
+        R.agent.name = pd.customer.branchDisplayName;
+      }
+      if (pd.customer.logoPath) R.agent.logoUrl = pd.customer.logoPath;
+      if (pd.customer.displayAddress) R.agent.address = pd.customer.displayAddress;
+      if (pd.customer.customerProfileUrl) R.agent.branchUrl = 'https://www.rightmove.co.uk' + pd.customer.customerProfileUrl;
+    }
+    if (pd.contactInfo && pd.contactInfo.telephoneNumbers && pd.contactInfo.telephoneNumbers.localNumber) {
+      R.agent.phone = pd.contactInfo.telephoneNumbers.localNumber;
+    }
+    // Photos / floorplans / EPC
+    if (pd.images && pd.images.length) {
+      R.photoUrls = pd.images.map(function(im){ return im && im.url; }).filter(Boolean);
+      R.leadImageUrl = R.photoUrls[0] || R.leadImageUrl;
+    }
+    if (pd.floorplans && pd.floorplans.length) {
+      R.floorplanUrls = pd.floorplans.map(function(fp){ return fp && fp.url; }).filter(Boolean);
+      R.floorplanUrl  = R.floorplanUrls[0] || R.floorplanUrl;
+    }
+    if (pd.epcGraphs && pd.epcGraphs.length && pd.epcGraphs[0].url) {
+      R.epcImageUrl = pd.epcGraphs[0].url;
+    }
+    // Stations
+    if (pd.nearestStations && pd.nearestStations.length) {
+      R.stations = pd.nearestStations.map(function(s){
+        return {
+          name: s && s.name,
+          types: (s && s.types) || [],
+          distanceMi: s && s.distance
+        };
+      }).filter(function(s){ return s.name; });
+    }
+    // Size from infoReelItems (where SIZE.primaryText is "Ask agent" or "807 sq ft / 75 sq m")
+    if (pd.infoReelItems && pd.infoReelItems.length) {
+      pd.infoReelItems.forEach(function(item){
+        if (!item) return;
+        if (item.type === 'SIZE' && item.primaryText && /sq\s*ft|sqft|sq\s*m|sqm/i.test(item.primaryText)) {
+          var ftM = item.primaryText.match(/([\d,]+)\s*sq\s*ft/i);
+          var smM = item.primaryText.match(/([\d,]+)\s*sq\s*m/i);
+          if (ftM) R.sqft = parseInt(ftM[1].replace(/,/g,''), 10);
+          if (smM) R.sqm  = parseInt(smM[1].replace(/,/g,''), 10);
+        }
+      });
+    }
+    // SHARE_OF_FREEHOLD
+    if (pd.tenure && pd.tenure.tenureType === 'SHARE_OF_FREEHOLD') R.shareOfFreehold = true;
+  }
+
+  // dealName: prefer displayAddress (which PAGE_MODEL or regex set), fallback to type+postcode
+  if (!R.dealName) {
+    if (R.displayAddress) {
+      R.dealName = R.displayAddress;
+    } else {
+      var parts = [];
+      if (R.bedrooms != null) parts.push(R.bedrooms + '-bed');
+      if (R.propertyType) parts.push(String(R.propertyType).toLowerCase());
+      var head = parts.join(' ').trim();
+      var tail = R.postcode || '';
+      R.dealName = [head, tail].filter(Boolean).join(' · ') || 'Rightmove deal';
+    }
+  }
+
+  return R;
+}
+
+function buildNotesFromParsed(p) {
+  var SEP = '          |          ';
+  var L = [];
+
+  // ── Helpers ──
+  function _ageStr(aorRaw, listedDate) {
+    var _clean = (aorRaw||'').replace(/^date\s+added\s*:\s*unknown\s*[\u2014\-]\s*/i,'').replace(/^date\s+added\s*:\s*/i,'').trim();
+    var _verb = /reduced/i.test(_clean) ? 'Reduced' : 'Added';
+    var _ref = null;
+    var _m = _clean.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (_m) { _ref = new Date(parseInt(_m[3]), parseInt(_m[2])-1, parseInt(_m[1])); }
+    else if (listedDate) { _ref = new Date(listedDate); }
+    else if (/today/i.test(_clean)) { _ref = new Date(); _ref.setHours(0,0,0,0); }
+    else if (/yesterday/i.test(_clean)) { _ref = new Date(); _ref.setDate(_ref.getDate()-1); _ref.setHours(0,0,0,0); }
+    if (!_ref || isNaN(_ref.getTime())) return '';
+    var d = Math.round((Date.now() - _ref.getTime()) / 86400000);
+    if (d < 1)       return _verb + ' today';
+    if (d < 14)      return _verb + ' ' + d + (d===1?' day':' days') + ' ago';
+    if (d < 56)      return _verb + ' ' + Math.floor(d/7) + ' weeks ago';
+    return _verb + ' ' + Math.floor(d/30) + ' months ago';
+  }
+
+  // ── Line 1: [Qualifier] £Price  |  Added X weeks ago ──
+  var _pStr = '';
+  if (p.priceAmt) {
+    _pStr = '\u00a3' + p.priceAmt.toLocaleString('en-GB');
+    if (p.priceQualifier && p.priceQualifier.toLowerCase() !== 'none') _pStr = p.priceQualifier + ' ' + _pStr;
+  }
+  // Show the actual date (not relative age) in notes; relative age goes in the lozenge
+  var _aorRaw = p.addedOrReduced || '';
+  var _aorDate = _aorRaw.replace(/^date\s+added\s*:\s*unknown\s*[\u2014\-]\s*/i,'').replace(/^date\s+added\s*:\s*/i,'').trim();
+  if(_aorDate) _aorDate = _aorDate.charAt(0).toUpperCase() + _aorDate.slice(1);
+  var line1Parts = [];
+  if (_pStr)    line1Parts.push(_pStr);
+  if (_aorDate) line1Parts.push(_aorDate);
+  if (line1Parts.length) L.push(line1Parts.join(SEP));
+  L.push('');
+
+  // ── Line 2: Lease: X  |  Service Charge £X  [Share of Freehold] ──
+  var leaseCat;
+  if (p.tenureType === 'SHARE_OF_FREEHOLD') {
+    leaseCat = 'Share of Freehold' + (p.yearsRemainingOnLease ? ' \u00b7 ' + p.yearsRemainingOnLease + ' yrs' : '');
+  } else if (p.yearsRemainingOnLease != null) {
+    leaseCat = p.yearsRemainingOnLease + ' yrs remaining';
+  } else if (p.tenureType) {
+    leaseCat = p.tenureType.replace(/_/g,' ').toLowerCase();
+  } else {
+    leaseCat = 'Unknown';
+  }
+  var scCat = p.serviceCharge != null ? '\u00a3' + p.serviceCharge.toLocaleString() : 'Unknown';
+  var line2 = 'Lease: ' + leaseCat + SEP + 'Service Charge ' + scCat;
+  if (p.shareOfFreehold) line2 += '          Share of Freehold';
+  L.push(line2);
+  L.push('');
+
+  // ── Ground rent ──
+  var grLine = 'Ground rent: ' + (p.annualGroundRent != null ? '\u00a3' + p.annualGroundRent.toLocaleString() + ' pa' : 'Unknown');
+  if (p.groundRentFromText && p.groundRentFromText !== 'Not mentioned') grLine += ', Ground rent from text: ' + p.groundRentFromText;
+  L.push(grLine);
+  L.push('');
+
+  // ── Council Tax ──
+  if (p.councilTaxBand) { L.push('Council Tax Band ' + p.councilTaxBand); L.push(''); }
+
+  // ── Key Features ──
+  if (p.keyFeatures && p.keyFeatures.length) {
+    L.push('KEY FEATURES');
+    p.keyFeatures.forEach(function(f){ L.push('\u2022 ' + f); });
+    L.push('');
+  }
+
+  // ── Description ──
+  if (p.description) { L.push('DESCRIPTION'); L.push(p.description); L.push(''); }
+
+  // ── Location: postcode only ──
+  L.push('LOCATION');
+  if (p.postcode) L.push(p.postcode);
+
+  return L.join('\n');
+}
+
+function buildDealStateFromParsed(p) {
+  var s = { _new: false };
+  s.dealName = p.dealName;
+  // Asking price + purchase price both prefilled from RM. Sam adjusts purchase
+  // price separately when he firms up an offer; defaulting them equal saves a
+  // step on first appraisal.
+  if (p.askingPrice) {
+    s['__cw__askingPrice']   = String(p.askingPrice);
+    s['__cw__purchasePrice'] = String(p.askingPrice);
+  }
+  if (p.sqft) { s.sqft = String(p.sqft); s._sizeUnit = 'ft'; }
+  else if (p.sqm) { s.sqft = String(p.sqm); s._sizeUnit = 'm'; }
+  if (p.annualGroundRent != null) s['__cw__holdGroundRentAmt'] = String(p.annualGroundRent);
+  if (p.serviceCharge   != null) s['__cw__holdServiceChgAmt'] = String(p.serviceCharge);
+  s._dealNotes = buildNotesFromParsed(p);
+  if (p.leadImageUrl) s._rmLeadImageUrl = p.leadImageUrl;
+  if (p.photoUrls && p.photoUrls.length) s._rmPhotoUrls = p.photoUrls;
+  if (p.floorplanUrl) s._rmFloorplanUrl = p.floorplanUrl;
+  if (p.floorplanUrls && p.floorplanUrls.length) s._rmFloorplanUrls = p.floorplanUrls;
+  if (p.bedrooms  != null) s._rmBedrooms  = p.bedrooms;
+  if (p.bathrooms != null) s._rmBathrooms = p.bathrooms;
+  if (p.agent && p.agent.name)  s._rmAgentName  = p.agent.name;
+  if (p.agent && p.agent.phone) s._rmAgentPhone = p.agent.phone;
+  if (p.agent && p.agent.logoUrl) s._rmAgentLogoUrl = p.agent.logoUrl;
+  if (p.agent && p.agent.branchUrl) s._rmAgentBranchUrl = p.agent.branchUrl;
+  // Nearest rail station — pick closest with any recognised type, with a
+  // fallback to the closest station of any type (for outside-London properties
+  // where RM may use empty or unrecognised type arrays e.g. York mainline).
+  var RAIL_TYPES = ['LONDON_UNDERGROUND','LONDON_OVERGROUND','ELIZABETH_LINE','NATIONAL_RAIL','NATIONAL_TRAIN','LONDON_DLR','TRAM','RAILWAY_STATION'];
+  if (p.stations && p.stations.length) {
+    var tubeStation = p.stations.filter(function(st){ return st.types && st.types.some(function(t){ return RAIL_TYPES.indexOf(t) >= 0; }); })[0];
+    if(!tubeStation) tubeStation = p.stations.filter(function(st){ return st.name && st.name.trim(); })[0];
+    if (tubeStation) {
+      s._rmNearestTube     = tubeStation.name;
+      s._rmNearestTubeMins = Math.round(tubeStation.distanceMi * 20);
+    }
+    // Save the full list (with name, types, distance) for the hover tooltip
+    s._rmStations = p.stations.map(function(st){
+      return { name: st.name, types: st.types || [], distanceMi: st.distanceMi };
+    });
+  }
+  if (p.floor)    s._rmFloor    = p.floor;
+  if (p.sqft)     s._rmSizeSqft = p.sqft;
+  if (p.sqm)      s._rmSizeSqm  = p.sqm;
+  // If only one unit provided by RM, derive the other
+  if (p.sqft && !p.sqm) s._rmSizeSqm  = Math.round(p.sqft / 10.764);
+  if (p.sqm  && !p.sqft) s._rmSizeSqft = Math.round(p.sqm  * 10.764);
+  if (p.epcRating)          s._rmEpcBand    = p.epcRating;
+  if (p.epcCurrentScore  != null) s._rmEpcScore    = p.epcCurrentScore;
+  if (p.epcPotentialRating)       s._rmEpcPotBand  = p.epcPotentialRating;
+  if (p.epcPotentialScore != null) s._rmEpcPotScore = p.epcPotentialScore;
+  if (p.epcImageUrl)              s._rmEpcImageUrl = p.epcImageUrl;
+  if (p.epcGovUrl)                s._rmEpcGovUrl   = p.epcGovUrl;
+  if (p.postcode) s._rmPostcode = p.postcode;
+  if (p.addedOrReduced)  s._rmAddedOrReduced = p.addedOrReduced;
+  if (p.priceAmt)        s._rmPrice          = p.priceAmt;
+  if (p.priceQualifier)  s._rmPriceQualifier = p.priceQualifier;
+  // Price is now included inside buildNotesFromParsed
+  // Listing URL — the propertyId is always in the page (it's in the URL path).
+  // The analyser stores this in _dealUrl and shows it as a clickable arrow on
+  // the deal title; clicking the photo also opens it.
+  if (p.propertyId) {
+    s._dealUrl = 'https://www.rightmove.co.uk/properties/' + p.propertyId;
+  }
+  if (p.latitude && p.longitude) {
+    var c = p.latitude + ',' + p.longitude;
+    s._dealMapUrl = 'https://www.google.com/maps/search/?api=1&query=' + c + '&basemap=roadmap';
+    s._dealSvUrl  = 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + c;
+  }
+  return s;
+}
+
+function showRmPaste() {
+  var ovl = document.getElementById('rmPasteOverlay');
+  var ta = document.getElementById('rmPasteArea');
+  var st = document.getElementById('rmPasteStatus');
+  if (!ovl) return;
+  ovl.classList.add('open');
+  if (ta) { ta.value = ''; setTimeout(function(){ ta.focus(); }, 30); }
+  if (st) { st.textContent = ''; st.className = 'rm-modal-status'; }
+  ['rmPasteAddBtn','rmPasteOpenBtn'].forEach(function(id){
+    var b = document.getElementById(id); if (b) b.disabled = false;
+  });
+}
+function closeRmPaste() {
+  var ovl = document.getElementById('rmPasteOverlay');
+  if (ovl) ovl.classList.remove('open');
+}
+function setRmStatus(msg, kind) {
+  var st = document.getElementById('rmPasteStatus');
+  if (!st) return;
+  st.textContent = msg || '';
+  st.className = 'rm-modal-status' + (kind ? ' ' + kind : '');
+}
+
+/* ── Global Ctrl+V listener ─────────────────────────────────────────────────
+   If the clipboard content looks like a Rightmove listing page (contains the
+   RM fingerprint strings and is long enough), parse and add it automatically
+   — no need to open the modal first. Works from anywhere on the page as long
+   as focus isn't inside a text input or textarea. */
+document.addEventListener('paste', async function _globalRmPaste(e) {
+  var tag = (e.target && e.target.tagName || '').toUpperCase();
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+  var text = (e.clipboardData && e.clipboardData.getData('text')) || '';
+  if (text.length < 500) return;
+  // RM fingerprint: must contain 'rightmove' plus at least one structural marker
+  var isRM = /rightmove/i.test(text) && (
+    text.indexOf('PAGE_MODEL') >= 0 ||
+    text.indexOf('nearestStations') >= 0 ||
+    text.indexOf('propertyData') >= 0 ||
+    text.indexOf('media.rightmove.co.uk') >= 0
+  );
+  if (!isRM) return;
+  e.preventDefault();
+  await _handleRmFullPaste(text);
+});
+
+// ── Match-handling helpers ──────────────────────────────────────────────
+// On any RM paste, check if a deal with the same propertyId already exists.
+// Behavior depends on whether existing card is a placeholder or fully-populated.
+
+function _extractPropertyIdFromUrl(url){
+  if(!url) return null;
+  var m = String(url).match(/\/properties\/(\d{7,10})/);
+  return m ? m[1] : null;
+}
+
+function _findDealIdByPropertyId(propId){
+  if(!propId) return null;
+  for(var id in dealsIndex){
+    if(!dealsIndex.hasOwnProperty(id)) continue;
+    if(dealsIndex[id].deleted) continue;
+    if(dealsIndex[id].propertyId === propId) return id;
+  }
+  return null;
+}
+
+// When the user clicks a placeholder card's photo (which opens RM in a new tab),
+// remember which deal they came from so a subsequent Cmd+V can target THAT
+// specific card — critical when duplicates exist (otherwise we'd update the
+// first match found, which is rarely what the user wants).
+function _recordPlaceholderClick(dealId){
+  try {
+    sessionStorage.setItem('_lastClickedPlaceholder', JSON.stringify({
+      id: dealId,
+      ts: Date.now()
+    }));
+  } catch(e){}
+}
+
+function _getRecentPlaceholderClick(){
+  try {
+    var raw = sessionStorage.getItem('_lastClickedPlaceholder');
+    if(!raw) return null;
+    var p = JSON.parse(raw);
+    // Only honour clicks within the last 30 minutes
+    if(!p || !p.id || (Date.now() - (p.ts || 0)) > 30 * 60 * 1000) return null;
+    if(!dealsIndex[p.id]) return null;
+    return p.id;
+  } catch(e){ return null; }
+}
+
+function _clearPlaceholderClick(){
+  try { sessionStorage.removeItem('_lastClickedPlaceholder'); } catch(e){}
+}
+
+function _generateDuplicateName(baseName){
+  if(!baseName) return 'New deal Duplicate 1';
+  // Strip any existing " Duplicate N" suffix to get the true base
+  var rootName = baseName;
+  var suffixMatch = baseName.match(/^(.*?)\s+Duplicate\s+(\d+)\s*$/i);
+  if(suffixMatch){ rootName = suffixMatch[1]; }
+  var legacyMatch = baseName.match(/^(.*?)\s*\(duplicate(?:\s+\d+)?\)\s*$/);
+  if(legacyMatch){ rootName = legacyMatch[1]; }
+  return rootName + ' Duplicate 1'; // fallback if caller doesn't pass the highest-existing context
+}
+
+// Given a root name (e.g. "RM 162701936") and a propertyId, find the next
+// available "Duplicate N" suffix by scanning all existing deals with that
+// propertyId and incrementing past the highest used number.
+function _nextDuplicateName(rootName, propertyId){
+  if(!propertyId) return rootName + ' Duplicate 1';
+  var highest = 0;
+  for(var id in dealsIndex){
+    if(!dealsIndex.hasOwnProperty(id)) continue;
+    var d = dealsIndex[id];
+    if(!d || d.deleted) continue;
+    if(d.propertyId !== propertyId) continue;
+    var name = d.name || '';
+    var m = name.match(/Duplicate\s+(\d+)\s*$/i);
+    if(m){
+      var n = parseInt(m[1], 10);
+      if(n > highest) highest = n;
+    }
+  }
+  return rootName + ' Duplicate ' + (highest + 1);
+}
+
+// ── Match modal ─────────────────────────────────────────────────────────
+var _rmMatchPending = null; // { parsed, existingId, mode: 'full'|'url' }
+
+function _rmMatchShow(opts){
+  // opts: { parsed, existingId, isPlaceholder, mode }
+  _rmMatchPending = opts;
+  var ovl = document.getElementById('rmMatchOverlay');
+  var sub = document.getElementById('rmMatchSubtitle');
+  var btns = document.getElementById('rmMatchButtons');
+  if(!ovl || !btns) return;
+  var existing = dealsIndex[opts.existingId] || {};
+  var existingName = existing.name || 'this deal';
+  if(opts.mode === 'url'){
+    // Mobile URL-only paste; existing card is anything (placeholder or full)
+    sub.textContent = '"' + existingName + '" is already in your pipeline. What would you like to do?';
+    btns.innerHTML =
+      '<button class="rm-match-secondary" onclick="_rmMatchAction(\'duplicate\')">Create duplicate</button>' +
+      '<button class="rm-match-cancel" onclick="_rmMatchClose()">Cancel</button>';
+  } else if(opts.isPlaceholder){
+    sub.textContent = '"' + existingName + '" is a placeholder added from mobile. Update it with the full data, or create a separate duplicate?';
+    btns.innerHTML =
+      '<button class="rm-match-primary" onclick="_rmMatchAction(\'updateFull\')">Update with full data</button>' +
+      '<button class="rm-match-secondary" onclick="_rmMatchAction(\'duplicate\')">Create duplicate</button>' +
+      '<button class="rm-match-cancel" onclick="_rmMatchClose()">Cancel</button>';
+  } else {
+    sub.textContent = '"' + existingName + '" is already fully populated. Replace its photos and floorplan only, or create a separate duplicate?';
+    btns.innerHTML =
+      '<button class="rm-match-primary" onclick="_rmMatchAction(\'replaceMedia\')">Replace photos and floorplan</button>' +
+      '<button class="rm-match-secondary" onclick="_rmMatchAction(\'duplicate\')">Create duplicate</button>' +
+      '<button class="rm-match-cancel" onclick="_rmMatchClose()">Cancel</button>';
+  }
+  ovl.classList.add('open');
+  // Move focus to the primary action button so Enter activates it
+  // (not whatever was focused on the page underneath, e.g. a card link).
+  // Also blur any active element first so Enter doesn't double-fire.
+  setTimeout(function(){
+    if(document.activeElement && document.activeElement.blur){
+      try { document.activeElement.blur(); } catch(e){}
+    }
+    var firstBtn = btns.querySelector('button');
+    if(firstBtn) firstBtn.focus();
+  }, 30);
+}
+
+function _rmMatchClose(){
+  var ovl = document.getElementById('rmMatchOverlay');
+  if(ovl) ovl.classList.remove('open');
+  _rmMatchPending = null;
+}
+
+// Global Escape closes the match modal if open
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    var ovl = document.getElementById('rmMatchOverlay');
+    if(ovl && ovl.classList.contains('open')){
+      e.preventDefault();
+      _rmMatchClose();
+    }
+  }
+});
+
+async function _rmMatchAction(action){
+  var p = _rmMatchPending;
+  if(!p) return;
+  _rmMatchClose();
+  try {
+    if(action === 'duplicate'){
+      if(p.mode === 'url'){
+        await _createPlaceholderFromUrl(p.parsedUrl, true);
+      } else {
+        // Force a fully new deal, even though propertyId matches.
+        await createDealFromRM(p.parsed, 'index', { forceDuplicate: true });
+      }
+    } else if(action === 'updateFull'){
+      // Placeholder → full: overwrite with parsed data, keep notes/status/position
+      await _updatePlaceholderWithFullData(p.existingId, p.parsed);
+    } else if(action === 'replaceMedia'){
+      // Full → full: only replace photos and floorplan
+      await _replaceMediaForDeal(p.existingId, p.parsed);
+    }
+  } catch(err){
+    _rmToast('Failed: ' + err.message, 'error');
+  }
+}
+
+// ── Full-HTML paste flow (desktop) ──────────────────────────────────────
+async function _handleRmFullPaste(text){
+  _rmToast('Parsing…');
+  var parsed;
+  try { parsed = parseRightmoveHtml(text); }
+  catch (err) { _rmToast('Parse error: ' + err.message, 'error'); return; }
+  if (!parsed.askingPrice && !parsed.displayAddress && !parsed.propertyId) {
+    _rmToast("Couldn't recognise this as a Rightmove listing", 'error'); return;
+  }
+  // Prefer the recently-clicked placeholder if its propertyId matches —
+  // ensures Cmd+V updates the SPECIFIC card the user just clicked through to.
+  var clickedId = _getRecentPlaceholderClick();
+  var existingId = null;
+  if(clickedId && dealsIndex[clickedId] && dealsIndex[clickedId].propertyId === parsed.propertyId){
+    existingId = clickedId;
+    _clearPlaceholderClick();
+  } else {
+    existingId = _findDealIdByPropertyId(parsed.propertyId);
+  }
+  if(existingId){
+    var isPlaceholder = !!dealsIndex[existingId].placeholder;
+    if(isPlaceholder){
+      // No modal needed — placeholders only exist to be hydrated by full data,
+      // and the URL matched, so the only sensible action is to update.
+      try {
+        await _updatePlaceholderWithFullData(existingId, parsed);
+        _rmToast((parsed.displayAddress || 'Deal') + ' updated ✓', 'ok');
+      } catch (err) { _rmToast('Save failed: ' + err.message, 'error'); }
+      return;
+    }
+    _rmMatchShow({ parsed: parsed, existingId: existingId, isPlaceholder: isPlaceholder, mode: 'full' });
+    return;
+  }
+  // No match — create normally
+  try {
+    await createDealFromRM(parsed, 'index');
+    _rmToast((parsed.displayAddress || 'Deal') + ' added ✓', 'ok');
+  } catch (err) { _rmToast('Save failed: ' + err.message, 'error'); }
+}
+
+// ── Update placeholder → full data (preserves notes, status, position) ──
+async function _updatePlaceholderWithFullData(existingId, parsed){
+  var state = buildDealStateFromParsed(parsed);
+  var existing = dealsIndex[existingId] || {};
+  // Capture positions BEFORE mutating, so FLIP can animate the slide
+  var oldRects = captureRects();
+  // Preserve the placeholder's note + position-defining fields
+  var preservedStatus = existing.status || 'appraise';
+  var preservedNote = existing.note;
+  var preservedNoteColor = existing.noteColor;
+  // Update index entry: lose the placeholder flag, gain a proper name + propertyId
+  dealsIndex[existingId] = {
+    name: parsed.dealName || existing.name || 'Updated deal',
+    updated: new Date().toISOString(),
+    status: preservedStatus,
+    propertyId: parsed.propertyId
+  };
+  if(preservedNote){ dealsIndex[existingId].note = preservedNote; }
+  if(preservedNoteColor){ dealsIndex[existingId].noteColor = preservedNoteColor; }
+  // Place at front of its lane so the user sees the freshly-updated card
+  _placeAtFront(existingId, preservedStatus);
+  // Push state + photo + index to gist
+  var token = getToken();
+  if(token && GIST_ID){
+    var body = { files: {} };
+    body.files['deal-' + existingId + '.json'] = { content: JSON.stringify(state, null, 2) };
+    body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
+    if(parsed.leadImageUrl){
+      body.files['photo-' + existingId + '.txt'] = { content: parsed.leadImageUrl };
+    }
+    var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok) throw new Error('Gist save failed: ' + res.status);
+  }
+  if(parsed.leadImageUrl){
+    photoCache[existingId] = parsed.leadImageUrl;
+    try { localStorage.setItem('mirror-photo-' + existingId, parsed.leadImageUrl); } catch(e){}
+  }
+  renderDeals();
+  // FLIP animation: existing cards slide to make room, the updated card moves
+  // to the front of its lane with a smooth slide.
+  animateFlip(oldRects, {});
+  // Morph pulse on the updated card itself: a brief glow + scale-up so it's
+  // clear which card just changed.
+  setTimeout(function(){
+    var card = document.querySelector('.deal-card[data-id="' + existingId + '"]');
+    if(card){
+      card.classList.add('just-updated');
+      setTimeout(function(){ card.classList.remove('just-updated'); }, 1400);
+    }
+  }, 50);
+  if(parsed.leadImageUrl) applyPhotoToCard(existingId, parsed.leadImageUrl);
+  _rmToast((parsed.displayAddress || 'Deal') + ' updated ✓', 'ok');
+}
+
+// ── Replace photos and floorplan only (preserves everything else) ───────
+async function _replaceMediaForDeal(existingId, parsed){
+  var token = getToken();
+  if(!token || !GIST_ID){ _rmToast('No gist credentials', 'error'); return; }
+  // Fetch the existing deal state so we can edit only the media fields
+  var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+    headers: { Authorization: 'token ' + token }
+  });
+  if(!res.ok) throw new Error('Gist fetch failed: ' + res.status);
+  var data = await res.json();
+  var f = data.files && data.files['deal-' + existingId + '.json'];
+  if(!f){ _rmToast('Existing deal not found in gist', 'error'); return; }
+  var raw = f.content;
+  if(!raw && f.raw_url){
+    raw = await (await fetch(f.raw_url)).text();
+  }
+  var state;
+  try { state = JSON.parse(raw); } catch(e){ _rmToast('Existing deal corrupt', 'error'); return; }
+  // Replace ONLY photos and floorplan related fields
+  if(parsed.leadImageUrl) state._rmLeadImageUrl = parsed.leadImageUrl;
+  if(parsed.photoUrls && parsed.photoUrls.length) state._rmPhotoUrls = parsed.photoUrls;
+  if(parsed.floorplanUrl) state._rmFloorplanUrl = parsed.floorplanUrl;
+  if(parsed.floorplanUrls && parsed.floorplanUrls.length) state._rmFloorplanUrls = parsed.floorplanUrls;
+  // Reset lead-image override so default (first photo) takes over
+  delete state._dealPhoto;
+  delete state._floorplanMeasures; // measurements were tied to old floorplan
+  // Update index timestamp
+  if(dealsIndex[existingId]){
+    dealsIndex[existingId].updated = new Date().toISOString();
+    if(parsed.propertyId) dealsIndex[existingId].propertyId = parsed.propertyId;
+  }
+  var body = { files: {} };
+  body.files['deal-' + existingId + '.json'] = { content: JSON.stringify(state, null, 2) };
+  body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
+  if(parsed.leadImageUrl){
+    body.files['photo-' + existingId + '.txt'] = { content: parsed.leadImageUrl };
+  }
+  var res2 = await fetch('https://api.github.com/gists/' + GIST_ID, {
+    method: 'PATCH',
+    headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if(!res2.ok) throw new Error('Gist save failed: ' + res2.status);
+  if(parsed.leadImageUrl){
+    photoCache[existingId] = parsed.leadImageUrl;
+    try { localStorage.setItem('mirror-photo-' + existingId, parsed.leadImageUrl); } catch(e){}
+    applyPhotoToCard(existingId, parsed.leadImageUrl);
+  }
+  _rmToast('Photos & floorplan replaced ✓', 'ok');
+}
+
+// ── Create placeholder from URL (mobile shortcut path) ──────────────────
+async function _createPlaceholderFromUrl(parsedUrl, forceDuplicate){
+  // parsedUrl: { url, propertyId }
+  if(!parsedUrl || !parsedUrl.propertyId){
+    _rmToast("Couldn't extract property ID from URL", 'error');
+    return;
+  }
+  // Always look up an existing match — we need this for naming the duplicate.
+  // Only the modal-triggering check is gated by forceDuplicate.
+  var existingId = _findDealIdByPropertyId(parsedUrl.propertyId);
+  if(existingId && !forceDuplicate){
+    var existing = dealsIndex[existingId] || {};
+    _rmMatchShow({ parsedUrl: parsedUrl, existingId: existingId, mode: 'url' });
+    return;
+  }
+  var id = 'deal-' + Date.now();
+  var name = '\u2197 RM ' + parsedUrl.propertyId;
+  if(forceDuplicate){
+    name = _nextDuplicateName('\u2197 RM ' + parsedUrl.propertyId, parsedUrl.propertyId);
+  }
+  var state = {
+    _new: false,
+    _dealUrl: parsedUrl.url,
+    _placeholder: true,
+    _source: 'rm',
+    dealName: name,
+    _dealNotes: 'From RM on Mobile: ' + parsedUrl.url
+  };
+  dealsIndex[id] = {
+    name: name,
+    updated: new Date().toISOString(),
+    status: 'appraise',
+    propertyId: parsedUrl.propertyId,
+    placeholder: true,
+    source: 'rm'
+  };
+  _placeAtFront(id, 'appraise');
+  var token = getToken();
+  if(token && GIST_ID){
+    var body = { files: {} };
+    body.files['deal-' + id + '.json'] = { content: JSON.stringify(state, null, 2) };
+    body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
+    var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok) throw new Error('Gist save failed: ' + res.status);
+  }
+  renderDeals();
+  _rmToast(name + ' added ✓ (placeholder)', 'ok');
+}
+
+// ── Mobile capture-paste banner ─────────────────────────────────────────
+// Triggered when ?paste=1 is in the URL on a mobile device. The iOS Shortcut
+// adds this flag after copying RM HTML to the clipboard. User taps the banner
+// → JS reads clipboard → existing RM paste handler creates the deal.
+function _isMobileDevice(){
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPhone|iPad|iPod/i.test(ua);
+  var isAndroid = /Android/i.test(ua);
+  var hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  return (isIOS || isAndroid) && hasTouch;
+}
+
+function _showMobilePasteBannerIfNeeded(){
+  var params = new URLSearchParams(window.location.search);
+  if(params.get('paste') !== '1') return;
+  if(!_isMobileDevice()) return;
+  var b = document.getElementById('mobilePasteBanner');
+  if(b) b.classList.add('show');
+}
+
+async function _mobilePasteHandler(){
+  var b = document.getElementById('mobilePasteBanner');
+  if(!b) return;
+  // Try the modern Clipboard API first — works on iOS 15+ when permissioned
+  var got = await _tryClipboardRead();
+  if(got){
+    return await _mobileProcessPastedText(got);
+  }
+  // Fall back: focus a hidden textarea, trigger paste via execCommand,
+  // capture from the paste event handler. This routes through iOS's native
+  // paste mechanism so the user gets the standard "Paste" UI.
+  var ta = document.getElementById('mobilePasteCatcher');
+  if(!ta){
+    _rmToast('Paste catcher missing', 'error');
+    return;
+  }
+  // Make textarea briefly focusable so iOS can paste into it
+  ta.style.pointerEvents = 'auto';
+  ta.style.opacity = '0.01';
+  ta.value = '';
+  ta.focus();
+  // Try execCommand first (works on older iOS)
+  var pasted = false;
+  try { pasted = document.execCommand('paste'); } catch(e){}
+  setTimeout(function(){
+    var pastedText = ta.value;
+    ta.style.pointerEvents = 'none';
+    ta.style.opacity = '0';
+    ta.blur();
+    if(pastedText){
+      _mobileProcessPastedText(pastedText);
+    } else {
+      // Last resort: prompt user to use the page's address-bar paste flow
+      _rmToast('Could not auto-paste. Tap address bar → Paste & Go instead.', 'error');
+    }
+  }, 80);
+}
+
+async function _tryClipboardRead(){
+  try {
+    if(navigator.clipboard && navigator.clipboard.readText){
+      var t = await navigator.clipboard.readText();
+      if(t) return t;
+    }
+  } catch(e){}
+  return null;
+}
+
+async function _mobileProcessPastedText(text){
+  var b = document.getElementById('mobilePasteBanner');
+  if(b) b.classList.add('busy');
+  if(!text){
+    _rmToast('Clipboard is empty.', 'error');
+    if(b) b.classList.remove('busy');
+    return;
+  }
+  var trimmed = text.trim();
+  // Path A: clipboard is just a Rightmove URL (mobile shortcut path)
+  var urlMatch = trimmed.match(/^https?:\/\/(?:www\.)?rightmove\.co\.uk\/properties\/(\d{7,10})/i);
+  if(urlMatch && trimmed.length < 500){
+    var propId = urlMatch[1];
+    var url = 'https://www.rightmove.co.uk/properties/' + propId;
+    try {
+      await _createPlaceholderFromUrl({ url: url, propertyId: propId }, false);
+      if(b) b.classList.remove('show');
+      var u = new URL(window.location);
+      u.searchParams.delete('paste');
+      window.history.replaceState({}, '', u);
+    } catch(err){
+      _rmToast('Save failed: ' + err.message, 'error');
+    }
+    if(b) b.classList.remove('busy');
+    return;
+  }
+  // Path B: clipboard contains full RM HTML
+  if(text.length < 500){
+    _rmToast("Clipboard doesn't contain a Rightmove URL or full listing.", 'error');
+    if(b) b.classList.remove('busy');
+    return;
+  }
+  var isRM = /rightmove/i.test(text) && (
+    text.indexOf('PAGE_MODEL') >= 0 ||
+    text.indexOf('nearestStations') >= 0 ||
+    text.indexOf('propertyData') >= 0 ||
+    text.indexOf('media.rightmove.co.uk') >= 0
+  );
+  if(!isRM){
+    _rmToast("Clipboard doesn't look like a Rightmove listing", 'error');
+    if(b) b.classList.remove('busy');
+    return;
+  }
+  try {
+    await _handleRmFullPaste(text);
+    if(b) b.classList.remove('show');
+    var u2 = new URL(window.location);
+    u2.searchParams.delete('paste');
+    window.history.replaceState({}, '', u2);
+  } catch(err){
+    _rmToast('Save failed: ' + err.message, 'error');
+  }
+  if(b) b.classList.remove('busy');
+}
+
+// Listen for paste events on the catcher — iOS routes them here when the
+// textarea is focused and the user chooses "Paste" from the iOS UI
+document.addEventListener('DOMContentLoaded', function(){
+  var ta = document.getElementById('mobilePasteCatcher');
+  if(!ta) return;
+  ta.addEventListener('paste', function(e){
+    var data = (e.clipboardData || window.clipboardData);
+    var text = data ? data.getData('text') : '';
+    if(text){
+      // Stop the default paste from inserting into the textarea (we don't need it)
+      // and process directly
+      setTimeout(function(){
+        ta.value = '';
+        ta.blur();
+        _mobileProcessPastedText(text);
+      }, 0);
+    }
+  });
+});
+
+// ── ?rmUrl= handler ──────────────────────────────────────────────────
+// Triggered when ?rmUrl=<encoded RM url> is in the URL. The iOS Shortcut
+// reads the clipboard URL itself and builds this URL — no paste step
+// required on the page. We extract the property ID and create a placeholder
+// card directly, mirroring what the ?paste=1 + clipboard URL path does.
+//
+// CRITICAL: this must wait for dealsIndex to load from the Gist before
+// running, otherwise it would write an empty dealsIndex over the live one.
+async function _rmUrlHandlerIfNeeded(){
+  var params = new URLSearchParams(window.location.search);
+  var rmUrl = params.get('rmUrl');
+  if(!rmUrl) return;
+  var trimmed = String(rmUrl).trim();
+  // Strip the param immediately so reloads don't re-trigger
+  try {
+    var u = new URL(window.location);
+    u.searchParams.delete('rmUrl');
+    window.history.replaceState({}, '', u);
+  } catch(e){}
+  var urlMatch = trimmed.match(/^https?:\/\/(?:www\.)?rightmove\.co\.uk\/properties\/(\d{7,10})/i);
+  if(!urlMatch){
+    _rmToast('Invalid Rightmove URL', 'error');
+    return;
+  }
+  var propId = urlMatch[1];
+  var cleanUrl = 'https://www.rightmove.co.uk/properties/' + propId;
+  // Wait for dealsIndex to be populated from the Gist before proceeding.
+  // If we don't wait, we'd write an empty dealsIndex over the live one,
+  // wiping out all existing deals.
+  var token = getToken();
+  if(token && GIST_ID){
+    var waitedMs = 0;
+    while(Object.keys(dealsIndex).length === 0 && waitedMs < 10000){
+      await new Promise(function(r){ setTimeout(r, 200); });
+      waitedMs += 200;
+    }
+    if(Object.keys(dealsIndex).length === 0){
+      _rmToast('Could not load existing deals — aborting to protect your data', 'error');
+      return;
+    }
+  }
+  try {
+    await _createPlaceholderFromUrl({ url: cleanUrl, propertyId: propId }, false);
+  } catch(err){
+    _rmToast('Save failed: ' + (err && err.message ? err.message : err), 'error');
+  }
+}
+
+// ── ?addDeal= handler ────────────────────────────────────────────────
+// Triggered when ?addDeal=<freeform name>&source=siri (or similar) is in the
+// URL. Used by the iOS Shortcut "Add to pipeline" → Siri voice trigger.
+// Creates a placeholder card with the given name in the appraise lane.
+// Like _rmUrlHandlerIfNeeded, must wait for dealsIndex to load before writing
+// or it would overwrite the live index with an empty one.
+async function _addDealHandlerIfNeeded(){
+  var params = new URLSearchParams(window.location.search);
+  var rawName = params.get('addDeal');
+  if(!rawName) return;
+  var source = params.get('source') || '';
+  // Strip params immediately so reloads don't re-trigger
+  try {
+    var u = new URL(window.location);
+    u.searchParams.delete('addDeal');
+    u.searchParams.delete('source');
+    window.history.replaceState({}, '', u);
+  } catch(e){}
+  var name = String(rawName).trim();
+  if(!name){
+    _rmToast('Empty deal name', 'error');
+    return;
+  }
+  // Defensive cap on name length
+  if(name.length > 200) name = name.slice(0, 200);
+  // Wait for dealsIndex to populate from Gist before writing
+  var token = getToken();
+  if(token && GIST_ID){
+    var waitedMs = 0;
+    while(Object.keys(dealsIndex).length === 0 && waitedMs < 10000){
+      await new Promise(function(r){ setTimeout(r, 200); });
+      waitedMs += 200;
+    }
+    if(Object.keys(dealsIndex).length === 0){
+      _rmToast('Could not load existing deals — aborting to protect your data', 'error');
+      return;
+    }
+  }
+  try {
+    var id = 'deal-' + Date.now();
+    var notesText = (source === 'siri' ? 'From Siri: ' : 'Added: ') + name;
+    var state = {
+      _new: false,
+      _placeholder: true,
+      _source: source || 'addDeal',
+      dealName: name,
+      _dealNotes: notesText
+    };
+    dealsIndex[id] = {
+      name: name,
+      updated: new Date().toISOString(),
+      status: 'appraise',
+      placeholder: true,
+      source: source || 'addDeal'
+    };
+    _placeAtFront(id, 'appraise');
+    if(token && GIST_ID){
+      var body = { files: {} };
+      body.files['deal-' + id + '.json'] = { content: JSON.stringify(state, null, 2) };
+      body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
+      var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+        method: 'PATCH',
+        headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if(!res.ok) throw new Error('Gist save failed: ' + res.status);
+    }
+    renderDeals();
+    _rmToast(name + ' added ✓', 'ok');
+  } catch(err){
+    _rmToast('Save failed: ' + (err && err.message ? err.message : err), 'error');
+  }
+}
+
+// Run on DOM ready
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', _showMobilePasteBannerIfNeeded);
+  document.addEventListener('DOMContentLoaded', _rmUrlHandlerIfNeeded);
+  document.addEventListener('DOMContentLoaded', _addDealHandlerIfNeeded);
+} else {
+  _showMobilePasteBannerIfNeeded();
+  _rmUrlHandlerIfNeeded();
+  _addDealHandlerIfNeeded();
+}
+
+function _rmToast(msg, type) {
+  var t = document.getElementById('_rmPasteToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_rmPasteToast';
+    t.style.cssText = [
+      'position:fixed','bottom:28px','left:50%','transform:translateX(-50%) translateY(8px)',
+      'padding:9px 18px','border-radius:8px','font-size:13px','font-weight:500',
+      'color:#fff','z-index:9999','pointer-events:none',
+      'opacity:0','transition:opacity .18s,transform .18s',
+      'white-space:nowrap','box-shadow:0 4px 16px rgba(0,0,0,0.25)'
+    ].join(';');
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = type === 'error' ? '#7a1e1e' : type === 'ok' ? '#1e5c30' : '#2a2a2a';
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(t._to);
+  t._to = setTimeout(function() {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(8px)';
+  }, type === 'error' ? 4000 : 2500);
+}
+
+async function submitRmPaste(action) {
+  var ta = document.getElementById('rmPasteArea');
+  if (!ta) return;
+  var html = (ta.value || '').trim();
+  if (html.length < 200) {
+    setRmStatus('Paste the full HTML source (currently too short).', 'error');
+    return;
+  }
+  setRmStatus('Parsing…');
+  var addBtn  = document.getElementById('rmPasteAddBtn');
+  var openBtn = document.getElementById('rmPasteOpenBtn');
+  if (addBtn)  addBtn.disabled  = true;
+  if (openBtn) openBtn.disabled = true;
+
+  var parsed;
+  try { parsed = parseRightmoveHtml(html); }
+  catch (e) {
+    setRmStatus('Parser error: ' + e.message, 'error');
+    if (addBtn)  addBtn.disabled  = false;
+    if (openBtn) openBtn.disabled = false;
+    return;
+  }
+  if (!parsed.askingPrice && !parsed.displayAddress && !parsed.propertyId) {
+    setRmStatus("Couldn't recognise this as a Rightmove listing — paste the full HTML source.", 'error');
+    if (addBtn)  addBtn.disabled  = false;
+    if (openBtn) openBtn.disabled = false;
+    return;
+  }
+  setRmStatus('Parsed ✓ — saving…');
+  try { await createDealFromRM(parsed, action || 'open'); }
+  catch (e) {
+    setRmStatus('Save failed: ' + e.message, 'error');
+    if (addBtn)  addBtn.disabled  = false;
+    if (openBtn) openBtn.disabled = false;
+  }
+}
+
+async function createDealFromRM(parsed, action, opts) {
+  opts = opts || {};
+  var id = 'deal-' + Date.now();
+  var state = buildDealStateFromParsed(parsed);
+
+  // Capture old card positions BEFORE mutating, so FLIP can animate the new
+  // card sliding in when we stay on the index page.
+  var oldRects = (action === 'index') ? captureRects() : null;
+
+  // Compute the deal name, appending "Duplicate N" if this is a forced duplicate
+  var dealName = parsed.dealName || 'New deal';
+  if(opts.forceDuplicate && parsed.propertyId){
+    dealName = _nextDuplicateName(dealName, parsed.propertyId);
+  }
+
+  dealsIndex[id] = {
+    name: dealName,
+    updated: new Date().toISOString(),
+    status: 'appraise'
+  };
+  if(parsed.propertyId){ dealsIndex[id].propertyId = parsed.propertyId; }
+  _placeAtFront(id, 'appraise');
+
+  var token = getToken();
+  if (token && GIST_ID) {
+    var body = { files: {} };
+    body.files['deal-' + id + '.json'] = { content: JSON.stringify(state, null, 2) };
+    body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
+    if (parsed.leadImageUrl) {
+      body.files['photo-' + id + '.txt'] = { content: parsed.leadImageUrl };
+    }
+    var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('Gist save failed: ' + res.status);
+  }
+
+  // Mirror lead image URL so the card thumbnail lights up immediately
+  if (parsed.leadImageUrl) {
+    photoCache[id] = parsed.leadImageUrl;
+    try { localStorage.setItem('mirror-photo-' + id, parsed.leadImageUrl); } catch(e){}
+  }
+
+  if (action === 'index') {
+    // Stay on the index page: render the new card with the FLIP animation
+    // used elsewhere for duplicates/restores. Close the modal once it lands.
+    setRmStatus('Added ✓', 'ok');
+    renderDeals();
+    if (parsed.leadImageUrl) applyPhotoToCard(id, parsed.leadImageUrl);
+    if (oldRects) animateFlip(oldRects, { newIds: [id] });
+    setTimeout(closeRmPaste, 600);
+    return;
+  }
+
+  // 'open' (default): navigate to the analyser
+  setRmStatus('Created ✓ — opening deal…', 'ok');
+  var dest = ANALYSER_PAGE + '?deal=' + encodeURIComponent(id);
+  setTimeout(function(){ window.location.href = dest; }, 250);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Drag and drop — reorder within a lane, move between lanes
+//
+// Approach: cards get draggable=true wired in JS (not in HTML). The drop
+// indicator is a single floating <div> bar that follows the cursor — it
+// never modifies card styles. Lane-level dragover handlers compute the
+// insertion point from card geometry on every move, so empty-lane drops
+// and end-of-lane drops both work without special cases.
+// ═══════════════════════════════════════════════════════════════════════
+
+var _dnd = { id:null, sourceLane:null, targetLane:null, targetIndex:null, bar:null, ghost:null };
+var LANE_KEYS = ['appraise','view','offer','followup','archived'];
+
+function _laneForId(id){
+  var d = dealsIndex[id]; if(!d) return null;
+  if(d.archived) return 'archived';
+  return d.status || 'appraise';
+}
+
+function _orderedLaneIds(laneKey){
+  return Object.keys(dealsIndex).filter(function(id){
+    var d = dealsIndex[id];
+    if(!d || d.deleted) return false;
+    return laneKey === 'archived' ? !!d.archived : (!d.archived && (d.status||'appraise') === laneKey);
+  }).sort(function(a,b){
+    var da = dealsIndex[a], db = dealsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  });
+}
+
+function _ensureDnDBar(){
+  if(_dnd.bar) return _dnd.bar;
+  var b = document.createElement('div');
+  b.id = '_dndBar';
+  b.style.cssText =
+    'position:fixed;width:3px;background:var(--brown);border-radius:2px;' +
+    'pointer-events:none;z-index:1000;opacity:0;' +
+    'transition:opacity 0.12s ease-out, left 0.16s cubic-bezier(0.2,0.8,0.2,1),' +
+    ' top 0.16s cubic-bezier(0.2,0.8,0.2,1), height 0.16s cubic-bezier(0.2,0.8,0.2,1);';
+  document.body.appendChild(b);
+  _dnd.bar = b;
+  return b;
+}
+function _showBar(x,y,h){
+  var b = _ensureDnDBar();
+  b.style.left = x + 'px';
+  b.style.top  = y + 'px';
+  b.style.height = h + 'px';
+  b.style.opacity = '1';
+}
+function _hideBar(){
+  if(_dnd.bar) _dnd.bar.style.opacity = '0';
+  _dnd.targetLane = null;
+  _dnd.targetIndex = null;
+}
+
+// Compute drop position from cursor position over a lane element
+function _updateIndicator(laneEl, laneKey, x){
+  var cards = Array.prototype.slice.call(laneEl.querySelectorAll('.deal-card:not(.dnd-dragging)'));
+  var laneRect = laneEl.getBoundingClientRect();
+  var barX, barY, barH, idx;
+
+  if(cards.length === 0){
+    // Empty lane — show bar at the lane's left edge
+    barX = laneRect.left + 14;
+    barY = laneRect.top + 12;
+    barH = Math.max(120, Math.min(laneRect.height - 24, 240));
+    idx  = 0;
+  } else {
+    // Find first card whose centre is to the right of the cursor
+    var targetCard = null, before = false;
+    for(var i = 0; i < cards.length; i++){
+      var r = cards[i].getBoundingClientRect();
+      if(x < r.left + r.width / 2){
+        targetCard = cards[i]; before = true; idx = i; break;
+      }
+    }
+    if(!targetCard){
+      // Past all cards — insert after the last
+      targetCard = cards[cards.length - 1]; before = false; idx = cards.length;
+    }
+    var tr = targetCard.getBoundingClientRect();
+    barX = before ? tr.left  - 8 : tr.right + 5;
+    barY = tr.top;
+    barH = tr.height;
+  }
+
+  _dnd.targetLane  = laneKey;
+  _dnd.targetIndex = idx;
+  _updateLiveLayout();
+}
+
+async function _dndPerformDrop(){
+  var dragId = _dnd.id;
+  var toLane = _dnd.targetLane;
+  var toIdx  = _dnd.targetIndex;
+  _hideBar();
+  _dnd.id = null;
+  if(!dragId || !toLane || toIdx == null) return;
+
+  var d = dealsIndex[dragId];
+  if(!d) return;
+  var fromLane = _laneForId(dragId);
+
+  // Build the new list for the target lane (with the dragged card removed),
+  // then insert at toIdx.
+  var ids = _orderedLaneIds(toLane).filter(function(id){ return id !== dragId; });
+  ids.splice(toIdx, 0, dragId);
+
+  // FLIP snapshot before mutation. For cross-lane drops, override the dragged
+  // card's old rect with the ghost's rect so the new card's FLIP animation
+  // starts from where the user *saw* it (target slot) rather than from the
+  // hidden source position. Distance ≈ 0 → it just settles in.
+  var oldRects = captureRects();
+  if(_dnd.ghost){
+    oldRects[dragId] = _dnd.ghost.getBoundingClientRect();
+  }
+  _destroyGhost();
+
+  // Re-index target lane
+  ids.forEach(function(id, i){ if(dealsIndex[id]) dealsIndex[id]._order = i; });
+
+  if(fromLane !== toLane){
+    if(toLane === 'archived'){ d.archived = true; }
+    else { d.archived = false; d.status = toLane; }
+    d.updated = new Date().toISOString();
+    // Re-index source lane to remove the gap
+    var src = _orderedLaneIds(fromLane);
+    src.forEach(function(id, i){ if(dealsIndex[id]) dealsIndex[id]._order = i; });
+  }
+
+  saveIndex();
+  renderDeals();
+  animateFlip(oldRects);
+}
+
+// Live layout — as the user drags, surrounding cards translate to make room
+// for the dragged card at its current target position. The DOM stays in its
+// original order; only inline transforms are applied. On drop, transforms
+// remain in place (showing the user where things "are") and the FLIP system
+// animates from there to the post-mutation natural layout. On cancel, all
+// transforms are cleared and the cards smoothly slide back via the existing
+// CSS transition on `.deal-card { transition: transform 0.15s ... }`.
+
+var _lastLayoutKey = null;
+
+function _getLanePitch(laneKey){
+  var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+  if(!laneEl) return 186;
+  var cards = laneEl.querySelectorAll('.deal-card');
+  if(cards.length >= 2) return cards[1].offsetLeft - cards[0].offsetLeft;
+  if(cards.length === 1) return cards[0].offsetWidth + 14;
+  return 186;
+}
+
+function _applyShift(card, shift, pitch){
+  if(!shift){
+    if(card.style.transform) card.style.transform = '';
+    return;
+  }
+  var t = 'translateX(' + (shift * pitch) + 'px)';
+  if(card.style.transform !== t) card.style.transform = t;
+}
+
+function _updateLiveLayout(){
+  // Skip if state hasn't changed since last call (dragover fires constantly)
+  var key = (_dnd.id || '') + '|' + (_dnd.targetLane || '') + '|' + (_dnd.targetIndex == null ? '' : _dnd.targetIndex);
+  if(key === _lastLayoutKey) return;
+  _lastLayoutKey = key;
+
+  if(!_dnd.id || !_dnd.targetLane || _dnd.targetIndex == null) return;
+
+  var dragId    = _dnd.id;
+  var sourceLane = _dnd.sourceLane;
+  var targetLane = _dnd.targetLane;
+  var targetIdx  = _dnd.targetIndex;
+  var sameLane   = sourceLane === targetLane;
+
+  // Ghost lifecycle: a dashed-outline placeholder is always shown at the
+  // target slot, in <body> with position:fixed so it can travel between
+  // lanes without being clipped by lane overflow. The original card is
+  // hidden (visibility:hidden) so the picked-up browser drag image is the
+  // only "real" representation following the cursor — the placeholder
+  // shows you where it'll land.
+  if(!_dnd.ghost) _createGhost();
+
+  // For each card in source/target lanes, compute the slot shift that places
+  // it where it would naturally end up if the drop happened now. Cards in
+  // other lanes are cleared.
+  var shifts = {};
+
+  if(sameLane){
+    var ids = _orderedLaneIds(sourceLane);
+    var D = ids.indexOf(dragId);
+    if(D < 0) return;
+    ids.forEach(function(id, i){
+      if(i === D){
+        // Dragged card stays put (visibility:hidden) while the ghost
+        // outline shows the target slot. Surrounding cards still shift
+        // exactly as before to open the gap at the right spot.
+        shifts[id] = 0;
+      } else if(i < D){
+        shifts[id] = (i >= targetIdx) ? 1 : 0; // cards left of origin push right if target is at-or-before them
+      } else {
+        shifts[id] = (i - 1 < targetIdx) ? -1 : 0; // cards right of origin pull left to close the origin gap
+      }
+    });
+  } else {
+    // Cross-lane: source closes the origin gap, target opens a gap at targetIdx.
+    // The dragged card itself is replaced by a position:fixed ghost clone in
+    // <body> (created/managed below), so its source DOM slot becomes visually
+    // free for the source-close animation without any paint-order conflict.
+    var srcIds = _orderedLaneIds(sourceLane);
+    var srcD = srcIds.indexOf(dragId);
+    if(srcD >= 0){
+      srcIds.forEach(function(id, i){
+        if(id === dragId) return;
+        shifts[id] = (i > srcD) ? -1 : 0;
+      });
+    }
+    var tgtIds = _orderedLaneIds(targetLane);
+    tgtIds.forEach(function(id, i){
+      shifts[id] = (i >= targetIdx) ? 1 : 0;
+    });
+  }
+
+  // Apply per-lane (each lane has its own pitch)
+  function applyLane(laneKey, pitch){
+    var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+    if(!laneEl) return;
+    laneEl.querySelectorAll('.deal-card').forEach(function(card){
+      _applyShift(card, shifts[card.dataset.id] || 0, pitch);
+    });
+  }
+  applyLane(sourceLane, _getLanePitch(sourceLane));
+  if(!sameLane) applyLane(targetLane, _getLanePitch(targetLane));
+
+  // Clear any stale transforms on lanes we're not currently affecting
+  LANE_KEYS.forEach(function(laneKey){
+    if(laneKey === sourceLane || laneKey === targetLane) return;
+    var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+    if(!laneEl) return;
+    laneEl.querySelectorAll('.deal-card').forEach(function(card){
+      if(card.style.transform) card.style.transform = '';
+    });
+  });
+
+  // Resize lanes FIRST (expand target, collapse source) — getBoundingClientRect
+  // in _moveGhostToTargetSlot forces a synchronous reflow, so the ghost will
+  // read the updated lane geometry rather than stale pre-collapse positions.
+  var ghostH = _dnd.ghost ? (_dnd.ghost.offsetHeight + 28) : 0;
+  LANE_KEYS.forEach(function(k){
+    var el = document.getElementById('cards' + k.charAt(0).toUpperCase() + k.slice(1));
+    if(!el) return;
+    if(el.classList.contains('empty-lane')){
+      el.style.minHeight = (k === targetLane && ghostH > 0) ? ghostH + 'px' : '';
+    } else if(k === _dnd.sourceLane){
+      var crossLane = (targetLane !== _dnd.sourceLane);
+      var visible = el.querySelectorAll('.deal-card:not(.dnd-dragging)').length;
+      if(crossLane && visible === 0){ el.style.minHeight = '80px'; el.style.maxHeight = '80px'; el.style.overflow = 'hidden'; }
+      else { el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = ''; }
+    }
+  });
+
+  // Now move the ghost — coordinates reflect the resized layout.
+  if(_dnd.ghost) _moveGhostToTargetSlot(targetLane, targetIdx);
+}
+
+// Cross-lane ghost: a position:fixed placeholder mounted on <body> so it can
+// travel freely across lanes without being clipped by any `overflow-x: auto`
+// lane container. Renders as a simple dashed outline (not a card clone) so
+// it doesn't visually compete with the browser's own drag image (which now
+// lifts the actual card and follows the cursor since we marked inner <a>
+// tags as draggable=false). While it's active the original card is
+// visibility:hidden — still occupying its source flex slot, so the source
+// lane's "close-gap" translateX shifts cleanly land on top of it.
+function _createGhost(){
+  if(_dnd.ghost || !_dnd.id) return;
+  var card = document.querySelector('.deal-card[data-id="' + _dnd.id + '"]');
+  if(!card) return;
+  var rect = card.getBoundingClientRect();
+  var ghost = document.createElement('div');
+  ghost.id = '_dndGhost';
+  ghost.style.cssText = [
+    'position:fixed',
+    'left:' + rect.left + 'px',
+    'top:'  + rect.top  + 'px',
+    'width:'  + rect.width  + 'px',
+    'height:' + rect.height + 'px',
+    'margin:0',
+    'box-sizing:border-box',
+    'border:2px dashed rgba(0,0,0,0.18)',
+    'border-radius:10px',
+    'background:transparent',
+    'z-index:100',
+    'pointer-events:none',
+    'transition:left 0.15s ease-out, top 0.15s ease-out'
+  ].join(';');
+  document.body.appendChild(ghost);
+  _dnd.ghost = ghost;
+  card.style.visibility = 'hidden';
+}
+
+function _moveGhostToTargetSlot(laneKey, targetIdx){
+  if(!_dnd.ghost) return;
+  var pos = _getTargetSlotViewportPos(laneKey, targetIdx);
+  if(!pos) return;
+  _dnd.ghost.style.left = pos.x + 'px';
+  _dnd.ghost.style.top  = pos.y + 'px';
+}
+
+function _destroyGhost(){
+  if(_dnd.ghost){
+    _dnd.ghost.remove();
+    _dnd.ghost = null;
+  }
+  if(_dnd.id){
+    var card = document.querySelector('.deal-card[data-id="' + _dnd.id + '"]');
+    if(card) card.style.visibility = '';
+  }
+}
+
+// Compute viewport position of where the dragged card should appear if dropped
+// at `targetIdx` in `laneKey`. Uses pure geometry (lane content edge + N *
+// pitch) rather than cards[targetIdx].offsetLeft, because in same-lane drags
+// the hidden dragged card occupies a slot in flex flow — meaning the cards
+// array's index N doesn't correspond to visual slot N. Lane left + padding-
+// left + targetIdx * pitch always gives the correct slot regardless.
+function _getTargetSlotViewportPos(laneKey, targetIdx){
+  var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+  if(!laneEl) return null;
+  var laneRect = laneEl.getBoundingClientRect();
+  var laneStyle = window.getComputedStyle(laneEl);
+  var paddingLeft = parseFloat(laneStyle.paddingLeft) || 0;
+  var paddingTop  = parseFloat(laneStyle.paddingTop)  || 0;
+  var gapPx = parseFloat(laneStyle.gap) || 14;
+
+  var cards = laneEl.querySelectorAll('.deal-card:not(.dnd-dragging)');
+  var cardWidth = cards.length > 0 ? cards[0].offsetWidth : 172;
+  var pitch = cardWidth + gapPx;
+
+  return {
+    x: laneRect.left + paddingLeft + targetIdx * pitch - laneEl.scrollLeft,
+    y: laneRect.top  + paddingTop
+  };
+}
+
+function _clearLiveLayout(){
+  _destroyGhost();
+  document.querySelectorAll('.deal-card').forEach(function(card){
+    if(card.style.transform) card.style.transform = '';
+  });
+  // Reset all per-drag lane style overrides (expanded empty target, collapsed source)
+  LANE_KEYS.forEach(function(k){
+    var el = document.getElementById('cards' + k.charAt(0).toUpperCase() + k.slice(1));
+    if(el){ el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = ''; }
+  });
+  _lastLayoutKey = null;
+}
+
+function _wireDrag(){
+  // Wire each card for dragstart/dragend only — dragover/drop bubble to lane
+  document.querySelectorAll('.deal-card').forEach(function(card){
+    if(card._dndWired) return;
+    card._dndWired = true;
+    card.setAttribute('draggable', 'true');
+    var id = card.dataset.id;
+
+    card.addEventListener('dragstart', function(e){
+      _dnd.id = id;
+      _dnd.sourceLane = _laneForId(id);
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', id); } catch(_){}
+      // Defer the dim so the browser can snapshot the card for the drag image
+      setTimeout(function(){ card.classList.add('dnd-dragging'); }, 0);
+    });
+
+    card.addEventListener('dragend', function(){
+      card.classList.remove('dnd-dragging');
+      // Only clear live layout if drag was canceled (no drop). On successful
+      // drop, _dnd.id is already null and FLIP transforms must be preserved.
+      if(_dnd.id) _clearLiveLayout();
+      _hideBar();
+      _dnd.id = null;
+    });
+  });
+
+  // Wire each lane container for dragover/drop
+  LANE_KEYS.forEach(function(laneKey){
+    var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+    if(!laneEl || laneEl._dndWired) return;
+    laneEl._dndWired = true;
+
+    laneEl.addEventListener('dragover', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      _updateIndicator(laneEl, laneKey, e.clientX);
+    });
+
+    laneEl.addEventListener('drop', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      _dndPerformDrop();
+    });
+  });
+
+  // Document-level fallback: when the cursor leaves a lane (e.g. the user
+  // drags past its left edge to the leftmost slot), lane-level dragover stops
+  // firing — but we want the last-known target state to remain droppable.
+  // Calling preventDefault() in the document dragover keeps drops accepted
+  // anywhere on the page; the document drop then fires _dndPerformDrop using
+  // whatever target state was last set by the most recent lane.dragover.
+  if(!document._dndDocWired){
+    document._dndDocWired = true;
+    document.addEventListener('dragover', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      // Early-snap: if the cursor is above a lane-cards container but within
+      // SNAP_PX of its top edge, treat it as hovering that lane. This means
+      // the ghost snaps into a lane while the cursor is still in the lane header
+      // (the title row), rather than waiting until the cursor clears the header.
+      var SNAP_PX = 80;
+      for(var _si = 0; _si < LANE_KEYS.length; _si++){
+        var _sk = LANE_KEYS[_si];
+        var _sel = document.getElementById('cards' + _sk.charAt(0).toUpperCase() + _sk.slice(1));
+        if(!_sel) continue;
+        var _sr = _sel.getBoundingClientRect();
+        if(e.clientY >= _sr.top - SNAP_PX && e.clientY < _sr.top){
+          _updateIndicator(_sel, _sk, e.clientX);
+          break;
+        }
+      }
+    });
+    document.addEventListener('drop', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      _dndPerformDrop();
+    });
+    document.addEventListener('dragend', function(){ _hideBar(); });
+  }
+}
+
+(function(){
+  var t = localStorage.getItem('todoToken');
+  if(t) loadDeals();
+
+})();
+</script>
+
+</body>
+</html>
