@@ -81,33 +81,45 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .deal-card.archived:hover{opacity:0.85}
 .deal-card.dnd-dragging{opacity:0.35}
 
-/* ─── Note ribbon (top-of-card colour-changeable highlight bar) ─── */
+.card-photo{
+  width:100%;
+  aspect-ratio:4/3;
+  background:#F3F0EA;
+  background-size:cover;
+  background-position:center;
+  border-bottom:1px solid var(--line);
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  text-decoration:none;
+}
+.card-photo .placeholder{
+  color:#C0B9A8;
+  width:46px;height:46px;
+}
+.card-photo.has-photo .placeholder{display:none}
+
+/* ─── Note ribbon ─── */
 .card-note-ribbon{
-  display:block;
-  min-height:8px;
-  padding:0;
-  background:transparent;
-  color:#fff;
+  position:absolute;left:14px;right:0;top:10px;
+  background:#C0392B;color:#fff;
+  padding:6px 10px;border-radius:3px 0 0 3px;
   font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
   font-size:11px;font-weight:500;line-height:1.3;
   white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;
-  cursor:pointer;
-  outline:none;
-  transition:background 0.12s, min-height 0.12s, padding 0.12s;
+  z-index:3;cursor:text;outline:none;
+  box-shadow:0 1px 2px rgba(0,0,0,0.15);
+  display:none;
 }
-.card-note-ribbon.visible{
-  padding:6px 10px;
-  box-shadow:inset 0 -1px 0 rgba(0,0,0,0.06);
-}
+.card-note-ribbon.visible,.card-note-ribbon.editing{display:block}
 .card-note-ribbon.empty:not(.editing){
   background:transparent;color:transparent;
   font-style:italic;font-weight:400;
+  box-shadow:none;
+  display:block;
 }
 .card-note-ribbon.empty:not(.editing):hover{
-  background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.5);
-  min-height:18px;padding:3px 10px;
+  background:rgba(0,0,0,0.18);color:rgba(255,255,255,0.9);
 }
-.card-note-ribbon.editing{padding:6px 10px}
 .card-note-ribbon[contenteditable="true"]{cursor:text}
 .card-note-color-picker{
   position:absolute;left:50%;transform:translateX(-50%);
@@ -141,6 +153,42 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 }
 .card-name:hover{color:var(--brown)}
 .card-meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--mute);letter-spacing:-0.2px}
+
+/* Status dots — pipeline visible on every card */
+.card-status-row{
+  display:flex;gap:3px;margin-top:4px;
+}
+.status-chip{
+  flex:1;
+  height:22px;
+  border:1px solid var(--line-2);
+  background:#F3F0EA;
+  border-radius:4px;
+  cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+  font-size:10px;
+  font-weight:500;
+  color:#A6A294;
+  letter-spacing:0.02em;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 4px;
+  transition:all 0.1s;
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.status-chip:hover{border-color:var(--brown);color:var(--ink-2)}
+.status-chip.active{
+  background:#fff;
+  border-color:var(--ink-2);
+  color:var(--ink);
+  font-weight:600;
+}
+.status-chip.active.c-appraise{border-color:var(--c-appraise);color:var(--c-appraise);background:color-mix(in srgb, var(--c-appraise) 7%, #F7F6F1)}
+.status-chip.active.c-view{border-color:var(--c-view);color:var(--c-view);background:color-mix(in srgb, var(--c-view) 7%, #F7F6F1)}
+.status-chip.active.c-offer{border-color:var(--c-offer);color:var(--c-offer);background:color-mix(in srgb, var(--c-offer) 7%, #F7F6F1)}
+.status-chip.active.c-followup{border-color:var(--c-followup);color:var(--c-followup);background:color-mix(in srgb, var(--c-followup) 7%, #F7F6F1)}
 
 /* Footer icons (duplicate / archive / delete) */
 .card-footer{
@@ -179,19 +227,29 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   .container{padding:0 14px;margin-top:16px}
   .deal-card{width:148px}
   .card-name{font-size:13px;min-height:32px}
+  .status-chip{font-size:9px;height:20px}
   .lane-title{font-size:19px}
 }
 
-/* ───── Placeholder deal cards (added via Siri voice trigger) ───── */
-.deal-card.placeholder .card-body{opacity:0.85}
+/* ───── Placeholder deal cards (added via mobile, awaiting full scrape) ───── */
+/* Placeholder cards: dim the photo and body, NOT the parent — that way the
+   ::after pill stays full opacity and full colour. */
+.deal-card.placeholder .card-photo,
+.deal-card.placeholder .card-body{opacity:0.6;filter:saturate(0.4)}
+.deal-card.placeholder .card-photo{background:repeating-linear-gradient(45deg,#F3F0EA,#F3F0EA 8px,#EBE7DD 8px,#EBE7DD 16px)}
+/* Siri-source cards aren't greyed at all — pink pill alone identifies them */
+.deal-card.placeholder.from-siri .card-photo,
+.deal-card.placeholder.from-siri .card-body{opacity:1;filter:none}
+.deal-card.placeholder.from-siri .card-photo{background:#EBE7DD}
 .deal-card.placeholder::after{
-  content:'From Siri';
-  position:absolute;top:6px;right:6px;
-  background:rgba(200, 60, 130, 0.95);color:#fff;
-  font-size:9px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;
-  padding:2px 6px;border-radius:3px;
+  content:'From mobile';
+  position:absolute;top:8px;left:8px;
+  background:rgba(0,0,0,0.6);color:#fff;
+  font-size:10px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;
+  padding:3px 7px;border-radius:3px;
   z-index:2;pointer-events:none;
 }
+.deal-card.placeholder.from-siri::after{ content:'From Siri'; background:rgba(200, 60, 130, 0.95); }
 .deal-card{position:relative}
 
 /* ───── Just-updated card: subtle glow + scale pulse to draw the eye ───── */
@@ -231,7 +289,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:25 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">13:49 BST</div>
 
   <div id="laneAppraise" class="lane">
     <div class="lane-header">
@@ -288,10 +346,27 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   </div>
 </div>
 
+<!-- Reusable building placeholder SVG (cloned into cards that have no photo) -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="icon-building" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 42 V14 L24 6 L40 14 V42"/>
+      <path d="M8 42 H40"/>
+      <rect x="14" y="20" width="5" height="6" rx="0.5"/>
+      <rect x="21.5" y="20" width="5" height="6" rx="0.5"/>
+      <rect x="29" y="20" width="5" height="6" rx="0.5"/>
+      <rect x="14" y="30" width="5" height="6" rx="0.5"/>
+      <rect x="29" y="30" width="5" height="6" rx="0.5"/>
+      <rect x="21.5" y="30" width="5" height="12" rx="0.5"/>
+    </g>
+  </symbol>
+</svg>
+
 <script>
-var ANALYSER_PAGE = 'todo-v7.html';
+var ANALYSER_PAGE = 'todo-v6.html';
 var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
 var dealsIndex = {};
+var photoCache = {}; // id -> data URL
 var gistFilesMeta = null; // cached reference to gist.files from last fetch
 
 // ───── Token / Gist management (unchanged) ─────
@@ -402,16 +477,68 @@ async function loadDeals(){
     setStatus('Loaded — ' + Object.keys(dealsIndex).length + ' deals', true);
     var inp = document.getElementById('syncToken');
     if(inp) inp.value = '';
+    // After render, lazily fetch photos
+    loadPhotosLazy();
   } catch(e){
     setStatus('Error: ' + e.message, false);
   }
 }
 
 // ───── Photo loading ─────
+async function loadPhotosLazy(){
+  if(!gistFilesMeta) return;
+  var token = getToken();
+  var ids = Object.keys(dealsIndex).filter(function(id){
+    return !dealsIndex[id].deleted;
+  });
+  // Try localStorage first for all
+  ids.forEach(function(id){
+    var mirror = localStorage.getItem('mirror-photo-' + id);
+    if(mirror){
+      photoCache[id] = mirror;
+      applyPhotoToCard(id, mirror);
+    }
+  });
+  // Then fetch from Gist for remaining
+  for(var i = 0; i < ids.length; i++){
+    var id = ids[i];
+    if(photoCache[id]) continue;
+    var key = 'photo-' + id + '.txt';
+    var f = gistFilesMeta[key];
+    if(!f) continue;
+    try {
+      var raw = f.content;
+      if(!raw || f.truncated){
+        var r = await fetch(f.raw_url);
+        raw = await r.text();
+      }
+      if(raw && raw.trim()){
+        photoCache[id] = raw.trim();
+        // Mirror to localStorage for next time (best-effort)
+        try { localStorage.setItem('mirror-photo-' + id, raw.trim()); } catch(e){}
+        applyPhotoToCard(id, raw.trim());
+      }
+    } catch(e){ /* ignore individual failures */ }
+  }
+}
+
+function applyPhotoToCard(id, dataUrl){
+  var cards = document.querySelectorAll('[data-id="' + id + '"] .card-photo');
+  cards.forEach(function(c){
+    c.style.backgroundImage = 'url("' + dataUrl + '")';
+    c.classList.add('has-photo');
+  });
+}
+
 // ───── Rendering ─────
+var STATUSES = ['appraise','view','offer','followup'];
 var LANE_KEYS_ALL = ['appraise','view','offer','followup','archived'];
 var LANE_LABELS_DEFAULT = {appraise:'Appraise',view:'View',offer:'Offer',followup:'Follow Up',archived:'Archived'};
 var LANE_LABELS = Object.assign({}, LANE_LABELS_DEFAULT);
+// STATUS_LABELS is kept as an alias for the four pipeline statuses so existing
+// code (chip render, etc.) keeps working. We keep it in sync with LANE_LABELS.
+var STATUS_LABELS = {appraise:LANE_LABELS.appraise, view:LANE_LABELS.view, offer:LANE_LABELS.offer, followup:LANE_LABELS.followup};
+var STATUS_CLASS = {appraise:'c-appraise',view:'c-view',offer:'c-offer',followup:'c-followup'};
 
 // Hydrate from localStorage mirror immediately so the page renders correctly
 // before the gist fetch lands.
@@ -425,6 +552,7 @@ var LANE_LABELS = Object.assign({}, LANE_LABELS_DEFAULT);
         LANE_LABELS[k] = parsed[k];
       }
     });
+    STATUSES.forEach(function(k){ STATUS_LABELS[k] = LANE_LABELS[k]; });
   } catch(e){}
 })();
 
@@ -437,6 +565,8 @@ function applyLaneLabels(){
       el.textContent = label;
     }
   });
+  // Keep STATUS_LABELS (used by the card chip) in sync
+  STATUSES.forEach(function(k){ STATUS_LABELS[k] = LANE_LABELS[k] || LANE_LABELS_DEFAULT[k]; });
 }
 
 async function saveLaneLabels(){
@@ -546,6 +676,10 @@ function renderLane(cardsId, countId, ids, isArchived){
   // Clear any inline styles left over from drag collapse/expansion
   el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = '';
   el.innerHTML = ids.map(function(id){ return cardHTML(id, isArchived); }).join('');
+  // Re-apply cached photos
+  ids.forEach(function(id){
+    if(photoCache[id]) applyPhotoToCard(id, photoCache[id]);
+  });
 }
 
 function cardHTML(id, isArchived){
@@ -554,7 +688,19 @@ function cardHTML(id, isArchived){
     ? new Date(d.updated).toLocaleDateString('en-GB', { day:'numeric', month:'short' })
     : '';
   var link = ANALYSER_PAGE + '?deal=' + encodeURIComponent(id);
+  var currentStatus = d.status || 'appraise';
   var name = (d.name || id).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; });
+
+  var statusRow = '';
+  if(!isArchived){
+    statusRow = '<div class="card-status-row">' +
+      STATUSES.map(function(s){
+        var isActive = s === currentStatus;
+        var cls = 'status-chip' + (isActive ? ' active ' + STATUS_CLASS[s] : '');
+        return '<button class="' + cls + '" title="' + STATUS_LABELS[s] + '" onclick="setDealStatus(this,\'' + s + '\')">' + STATUS_LABELS[s] + '</button>';
+      }).join('') +
+    '</div>';
+  }
 
   var footer = '';
   if(isArchived){
@@ -580,6 +726,7 @@ function cardHTML(id, isArchived){
     '</div>';
   }
 
+  var d = dealsIndex[id] || {};
   var noteText = d.note || '';
   var noteColor = d.noteColor || '#C0392B';
   var ribbonClass = 'card-note-ribbon' + (noteText ? ' visible' : ' empty');
@@ -587,10 +734,14 @@ function cardHTML(id, isArchived){
   var ribbonHtml = '<div class="'+ribbonClass+'" data-deal-id="'+id+'" style="'+ribbonStyle+'" title="Click to edit note">' + (noteText ? escapeHtml(noteText) : 'Add note') + '</div>';
 
   return '<div class="deal-card' + (isArchived ? ' archived' : '') + (d.placeholder ? ' placeholder' : '') + (d.placeholder && d.source === 'siri' ? ' from-siri' : '') + '" data-id="' + id + '">' +
-    ribbonHtml +
+    '<a class="card-photo" href="' + link + '" draggable="false">' +
+      '<svg class="placeholder" viewBox="0 0 48 48"><use href="#icon-building"/></svg>' +
+      ribbonHtml +
+    '</a>' +
     '<div class="card-body">' +
       '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>' +
       (date ? '<div class="card-meta">Updated ' + date + '</div>' : '') +
+      statusRow +
     '</div>' +
     footer +
   '</div>';
@@ -857,6 +1008,20 @@ function animateFlip(oldRects, opts){
 }
 
 // ───── Actions ─────
+async function setDealStatus(btn, newStatus){
+  var id = getId(btn);
+  if(!dealsIndex[id]) return;
+  if(dealsIndex[id].status === newStatus) return; // no-op
+  // Brief wait so any in-flight save from an open analyser tab lands first
+  await new Promise(function(r){ setTimeout(r, 400); });
+  var oldRects = captureRects();
+  dealsIndex[id].status = newStatus;
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex();
+  renderDeals();
+  animateFlip(oldRects);
+}
+
 async function archiveDeal(btn){
   var id = getId(btn);
   await new Promise(function(r){ setTimeout(r, 800); });
@@ -993,6 +1158,11 @@ async function duplicateDeal(btn){
   renderDeals();
   animateFlip(oldRects, { newIds: [newId] });
   setStatus('Duplicated as "' + newName + '" ✓', true);
+  if(srcPhoto){
+    photoCache[newId] = srcPhoto;
+    try { localStorage.setItem('mirror-photo-' + newId, srcPhoto); } catch(e){}
+    applyPhotoToCard(newId, srcPhoto);
+  }
 }
 
 // Re-index a lane so `id` sits at _order:0 (leftmost) and existing
