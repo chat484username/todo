@@ -153,21 +153,8 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   -webkit-box-orient:vertical;
   word-break:break-word;
   min-height:36px;
-  cursor:text;
-  outline:none;
-  border-radius:3px;
-  padding:1px 3px;
-  margin:-1px -3px;
-  transition:background 0.12s, box-shadow 0.12s;
 }
-.card-name:hover{background:rgba(0,0,0,0.04)}
-.card-name:focus{
-  background:#fff;
-  box-shadow:0 0 0 2px rgba(0,0,0,0.12);
-  -webkit-line-clamp:unset;
-  overflow:visible;
-}
-.card-name.placeholder-name{color:var(--mute);font-style:italic}
+.card-name:hover{color:var(--brown)}
 
 /* Footer icons (archive / delete) */
 .card-footer{
@@ -259,7 +246,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">16:33 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">16:26 BST</div>
 
   <div id="laneAppraise" class="lane">
     <div class="lane-header">
@@ -601,16 +588,10 @@ function cardHTML(id, isArchived){
   var ribbonStyle = noteText ? 'background:'+noteColor : '';
   var ribbonHtml = '<div class="'+ribbonClass+'" data-deal-id="'+id+'" style="'+ribbonStyle+'" title="Click to edit note">' + (noteText ? escapeHtml(noteText) : 'Add note') + '</div>';
 
-  // Archived cards: keep name as plain link (no inline editing for archive)
-  // Active cards: contenteditable span for in-place rename; double-click navigates
-  var nameHtml = isArchived
-    ? '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>'
-    : '<span class="card-name" data-deal-id="' + id + '" contenteditable="plaintext-only" spellcheck="false" title="Click to edit · double-click to open">' + name + '</span>';
-
   return '<div class="deal-card' + (isArchived ? ' archived' : '') + (d.placeholder ? ' placeholder' : '') + (d.placeholder && d.source === 'siri' ? ' from-siri' : '') + '" data-id="' + id + '">' +
     ribbonHtml +
     '<div class="card-body">' +
-      nameHtml +
+      '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>' +
     '</div>' +
     footer +
   '</div>';
@@ -778,96 +759,6 @@ document.addEventListener('paste', function(e){
   }
 });
 
-// ───── Card name inline editing ─────
-// Click on a card name → cursor lands there for inline rename.
-// Enter or blur saves. Escape reverts. Double-click opens the to-do page.
-var _activeName = null;
-var _activeNameOriginal = '';
-
-function _openTodoPage(id){
-  var dest = ANALYSER_PAGE + '?deal=' + encodeURIComponent(id);
-  window.location.href = dest;
-}
-
-function _commitName(span, save){
-  if(!span) return;
-  var id = span.getAttribute('data-deal-id');
-  if(!id) return;
-  var raw = (span.textContent || '').replace(/\s+/g, ' ').trim();
-  if(save){
-    if(!raw){
-      // Empty name: revert to original (avoid blank cards)
-      span.textContent = _activeNameOriginal || id;
-    } else if(raw !== _activeNameOriginal){
-      if(dealsIndex[id]){
-        dealsIndex[id].name = raw;
-        dealsIndex[id].updated = new Date().toISOString();
-        saveIndex();
-      }
-    }
-  } else {
-    span.textContent = _activeNameOriginal;
-  }
-  _activeName = null;
-  _activeNameOriginal = '';
-}
-
-document.addEventListener('dblclick', function(e){
-  var span = e.target.closest('.card-name[contenteditable]');
-  if(!span) return;
-  var id = span.getAttribute('data-deal-id');
-  if(!id) return;
-  e.preventDefault();
-  // Commit anything in-flight first
-  if(_activeName === span) _commitName(span, true);
-  span.blur();
-  _openTodoPage(id);
-});
-
-document.addEventListener('focusin', function(e){
-  var span = e.target.closest('.card-name[contenteditable]');
-  if(!span) return;
-  _activeName = span;
-  _activeNameOriginal = (span.textContent || '').trim();
-});
-
-document.addEventListener('focusout', function(e){
-  var span = e.target.closest('.card-name[contenteditable]');
-  if(!span || span !== _activeName) return;
-  _commitName(span, true);
-});
-
-document.addEventListener('keydown', function(e){
-  if(!_activeName || e.target !== _activeName) return;
-  if(e.key === 'Enter'){
-    e.preventDefault();
-    _activeName.blur(); // triggers focusout → commit
-  } else if(e.key === 'Escape'){
-    e.preventDefault();
-    _commitName(_activeName, false);
-    if(_activeName) _activeName.blur();
-  }
-});
-
-// Focus the name field of a freshly-created card with an autoselect of any
-// placeholder name, so the user can immediately start typing to replace it.
-function focusNewCardName(id){
-  // Wait for FLIP animation to settle so the card is in its final position
-  requestAnimationFrame(function(){
-    requestAnimationFrame(function(){
-      var span = document.querySelector('.card-name[data-deal-id="' + id + '"]');
-      if(!span) return;
-      span.focus();
-      // Select all text so typing replaces the placeholder name
-      var range = document.createRange();
-      range.selectNodeContents(span);
-      var sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    });
-  });
-}
-
 // ───── FLIP animation helpers ─────
 // Capture {left, top, width, height} for every card currently in the DOM,
 // keyed by deal id. Used as the "First" snapshot for FLIP.
@@ -1034,7 +925,6 @@ function addDealToLane(laneKey){
   _placeAtFront(id, laneKey);
   renderDeals();
   animateFlip(oldRects, { newIds: [id] });
-  focusNewCardName(id);
   // Push to gist in the background (best-effort; saveIndex handles its own errors)
   var token = getToken();
   if(token && GIST_ID){
@@ -1530,8 +1420,6 @@ function _wireDrag(){
     var id = card.dataset.id;
 
     card.addEventListener('dragstart', function(e){
-      // If a name field is being edited, commit & blur first
-      if(_activeName){ _activeName.blur(); }
       _dnd.id = id;
       _dnd.sourceLane = _laneForId(id);
       e.dataTransfer.effectAllowed = 'move';
