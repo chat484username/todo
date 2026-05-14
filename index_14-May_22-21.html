@@ -146,32 +146,31 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .card-corner-btn.danger:hover{background:#FEF0F0;color:#C0392B}
 .card-corner-btn.affirm:hover{background:#F0F7EB;color:#5E7B3F}
 
-/* Chip strip across the bottom of Inbox cards — mirrors .card-footer/.card-icon-btn style */
+/* Chip strip across the bottom of Inbox cards */
 .card-chips{
   display:flex;
   flex-wrap:wrap;
-  border-top:1px solid var(--line);
-  margin-top:4px;
+  gap:4px;
+  padding:4px 8px 6px;
 }
 .list-chip{
-  flex:1 1 0;
-  min-width:0;
-  background:transparent;
-  border:none;
-  border-right:1px solid var(--line);
-  padding:4px 4px;
-  cursor:pointer;
   font-family:'DM Sans',sans-serif;
   font-weight:600;
   font-size:10px;
   letter-spacing:0.04em;
   color:var(--chip-color);
+  background:#fff;
+  border:1.5px solid var(--chip-color);
+  border-radius:4px;
+  padding:3px 6px;
+  cursor:pointer;
   line-height:1;
-  display:flex;align-items:center;justify-content:center;
-  transition:background 0.1s;
+  min-width:24px;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:background 0.1s, color 0.1s, transform 0.08s;
 }
-.list-chip:last-child{border-right:none}
-.list-chip:hover{background:rgba(0,0,0,0.04)}
+.list-chip:hover{background:var(--chip-color);color:#fff}
+.list-chip:active{transform:scale(0.94)}
 
 .card-body{padding:8px 11px;display:flex;flex-direction:column;gap:6px;flex:1}
 .card-name{
@@ -386,7 +385,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">22:17 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">22:02 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
