@@ -198,97 +198,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .archived-section{margin-top:40px;padding-top:20px;border-top:1px dashed var(--line-2)}
 .archived-section .lane-title{color:var(--c-archived)}
 
-/* ─── Lanes section (vertical columns, horizontally scrollable) ─── */
-.lanes-section{margin-top:40px;padding-top:20px;border-top:1px dashed var(--line-2)}
-.lanes-section-header{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:16px;
-}
-.lanes-section-title{
-  font-family:'EB Garamond',Georgia,serif;
-  font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink);
-}
-.add-lane-btn{
-  background:#fff;color:var(--ink-2);
-  border:1px dashed var(--line-2);
-  border-radius:6px;
-  padding:6px 12px;
-  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
-  cursor:pointer;
-  transition:background 0.12s, color 0.12s, border-color 0.12s;
-}
-.add-lane-btn:hover{background:#F3F0EA;color:var(--ink);border-color:var(--mute)}
-
-.lanes-container{
-  display:flex;gap:14px;
-  overflow-x:auto;
-  padding:6px 2px 18px;
-  scrollbar-width:thin;
-  align-items:flex-start;
-}
-
-/* Each vertical lane: title at top, cards stacking down */
-.v-lane{
-  flex:0 0 auto;
-  width:200px;
-  display:flex;flex-direction:column;
-  gap:10px;
-}
-.v-lane-header{
-  display:flex;align-items:center;gap:10px;
-  padding-bottom:6px;
-  border-bottom:1px solid var(--line);
-}
-.v-lane-cards{
-  display:flex;flex-direction:column;gap:10px;
-  min-height:80px;
-  padding:4px 0;
-}
-.v-lane-cards.empty-lane{
-  border:1px dashed var(--line-2);
-  border-radius:8px;
-  align-items:center;justify-content:center;
-  padding:18px 8px;
-  color:var(--mute);
-  font-size:12px;font-style:italic;
-}
-.v-lane-cards.empty-lane .lane-empty{display:block}
-.v-lane.dnd-target .v-lane-cards{
-  background:rgba(78,138,135,0.06);
-  border-radius:8px;
-}
-
-/* In vertical lanes, cards span the full lane width (still portrait-ish) */
-.v-lane-cards .deal-card{width:100%}
-
-/* ─── Card in two places: greyed-out home-lane copy ─── */
-.deal-card.has-row-copy{
-  opacity:0.5;
-  filter:saturate(0.5);
-}
-.deal-card.has-row-copy:hover{opacity:0.8}
-
-/* ─── Down-arrow "send home" button on row-cards ─── */
-.card-send-home{
-  position:absolute;top:6px;right:6px;
-  width:22px;height:22px;
-  border:none;background:rgba(0,0,0,0.06);
-  color:var(--ink-2);
-  border-radius:4px;
-  cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  padding:0;
-  font-size:14px;line-height:1;
-  z-index:2;
-  transition:background 0.12s, color 0.12s;
-}
-.card-send-home:hover{background:rgba(0,0,0,0.12);color:var(--ink)}
-.card-send-home svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-
-@media (max-width:600px){
-  .v-lane{width:170px}
-}
-
 .trash-link{display:block;text-align:center;margin-top:32px;font-size:13px;color:var(--mute);text-decoration:none}
 .trash-link:hover{color:var(--ink-2);text-decoration:underline}
 
@@ -339,62 +248,42 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">19:46 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:01 BST</div>
 
-  <!-- ─── ROWS (horizontal, full-width, stacking down) ─── -->
-  <!-- Row 1 = Inbox. Cards born here, no home lane. Has plus button. -->
-  <div id="laneRow1" class="lane" data-row="row1">
+  <div id="laneAppraise" class="lane">
     <div class="lane-header">
-      <button class="lane-add" style="--lane-color:var(--c-appraise)" onclick="addDealToInbox()" title="Add to Inbox" aria-label="Add to Inbox">+</button>
-      <span class="lane-title" data-lane="row1" contenteditable="plaintext-only" spellcheck="false">Inbox</span>
+      <button class="lane-add" style="--lane-color:var(--c-appraise)" onclick="addDealToLane('appraise')" title="Add to Appraise" aria-label="Add to Appraise">+</button>
+      <span class="lane-title" data-lane="appraise" contenteditable="plaintext-only" spellcheck="false">Appraise</span>
     </div>
-    <div class="lane-cards empty-lane" id="cardsRow1"><div class="lane-empty">Inbox is empty</div></div>
+    <div class="lane-cards empty-lane" id="cardsAppraise"><div class="lane-empty">No deals here yet</div></div>
   </div>
 
-  <!-- Rows 2-5 = working states. No plus buttons. Cards arrive by drag from lanes. -->
-  <div id="laneRow2" class="lane" data-row="row2">
+  <div id="laneView" class="lane">
     <div class="lane-header">
-      <span class="lane-title" data-lane="row2" contenteditable="plaintext-only" spellcheck="false">Row 2</span>
+      <button class="lane-add" style="--lane-color:var(--c-view)" onclick="addDealToLane('view')" title="Add to View" aria-label="Add to View">+</button>
+      <span class="lane-title" data-lane="view" contenteditable="plaintext-only" spellcheck="false">View</span>
     </div>
-    <div class="lane-cards empty-lane" id="cardsRow2"><div class="lane-empty">Drag a card here</div></div>
+    <div class="lane-cards empty-lane" id="cardsView"><div class="lane-empty">No deals here yet</div></div>
   </div>
 
-  <div id="laneRow3" class="lane" data-row="row3">
+  <div id="laneOffer" class="lane">
     <div class="lane-header">
-      <span class="lane-title" data-lane="row3" contenteditable="plaintext-only" spellcheck="false">Row 3</span>
+      <button class="lane-add" style="--lane-color:var(--c-offer)" onclick="addDealToLane('offer')" title="Add to Offer" aria-label="Add to Offer">+</button>
+      <span class="lane-title" data-lane="offer" contenteditable="plaintext-only" spellcheck="false">Offer</span>
     </div>
-    <div class="lane-cards empty-lane" id="cardsRow3"><div class="lane-empty">Drag a card here</div></div>
+    <div class="lane-cards empty-lane" id="cardsOffer"><div class="lane-empty">No deals here yet</div></div>
   </div>
 
-  <div id="laneRow4" class="lane" data-row="row4">
+  <div id="laneFollowup" class="lane">
     <div class="lane-header">
-      <span class="lane-title" data-lane="row4" contenteditable="plaintext-only" spellcheck="false">Row 4</span>
+      <button class="lane-add" style="--lane-color:var(--c-followup)" onclick="addDealToLane('followup')" title="Add to Follow Up" aria-label="Add to Follow Up">+</button>
+      <span class="lane-title" data-lane="followup" contenteditable="plaintext-only" spellcheck="false">Follow Up</span>
     </div>
-    <div class="lane-cards empty-lane" id="cardsRow4"><div class="lane-empty">Drag a card here</div></div>
+    <div class="lane-cards empty-lane" id="cardsFollowup"><div class="lane-empty">No deals here yet</div></div>
   </div>
 
-  <div id="laneRow5" class="lane" data-row="row5">
-    <div class="lane-header">
-      <span class="lane-title" data-lane="row5" contenteditable="plaintext-only" spellcheck="false">Row 5</span>
-    </div>
-    <div class="lane-cards empty-lane" id="cardsRow5"><div class="lane-empty">Drag a card here</div></div>
-  </div>
-
-  <!-- ─── LANES (vertical columns, stacking left-to-right, horizontally scrollable) ─── -->
-  <!-- Lanes are dynamically rendered into #lanesContainer by JS. -->
-  <div class="lanes-section">
-    <div class="lanes-section-header">
-      <span class="lanes-section-title">Lanes</span>
-      <button class="add-lane-btn" onclick="addNewLane()" title="Add a new lane">+ Add lane</button>
-    </div>
-    <div id="lanesContainer" class="lanes-container">
-      <!-- populated by JS -->
-    </div>
-  </div>
-
-  <!-- ─── ARCHIVED (kept as a row at the bottom, unchanged behaviour) ─── -->
   <div class="archived-section">
-    <div id="laneArchived" class="lane" style="margin-bottom:0" data-row="archived">
+    <div id="laneArchived" class="lane" style="margin-bottom:0">
       <div class="lane-header">
         <span class="lane-accent" style="background:var(--c-archived)"></span>
         <span class="lane-title" data-lane="archived" contenteditable="plaintext-only" spellcheck="false">Archived</span>
@@ -404,6 +293,9 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   </div>
 
   <div class="topbar" style="margin-top:24px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="new-btn" onclick="showNewDeal()">+ New deal</button>
+    </div>
     <a href="deleted-todo.html" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;text-decoration:none">🗑 Deleted deals</a>
   </div>
 </div>
@@ -496,29 +388,12 @@ async function loadDeals(){
         }
         if(lraw && lraw.trim()){
           var parsedLabels = JSON.parse(lraw);
-          // New shape: { rows: {...}, lanes: [{key,label}, ...] }
-          if(parsedLabels.rows){
-            Object.keys(parsedLabels.rows).forEach(function(k){
-              if(typeof parsedLabels.rows[k] === 'string'){
-                ROW_LABELS[k] = parsedLabels.rows[k];
-              }
-            });
-          }
-          if(Array.isArray(parsedLabels.lanes) && parsedLabels.lanes.length){
-            LANES = parsedLabels.lanes.map(function(L){
-              return { key:String(L.key), label:String(L.label) };
-            });
-          }
-          // Legacy back-compat: old flat {appraise:'Inbox', view:'X',...}
-          // becomes row labels mapped to row1..row4
-          var legacyMap = {appraise:'row1'};
-          Object.keys(legacyMap).forEach(function(oldK){
-            if(typeof parsedLabels[oldK] === 'string'){
-              ROW_LABELS[legacyMap[oldK]] = parsedLabels[oldK];
+          LANE_KEYS_ALL.forEach(function(k){
+            if(typeof parsedLabels[k] === 'string' && parsedLabels[k].trim()){
+              LANE_LABELS[k] = parsedLabels[k];
             }
           });
-          if(typeof parsedLabels.archived === 'string') ROW_LABELS.archived = parsedLabels.archived;
-          try { localStorage.setItem('mirror-laneLabels', JSON.stringify({rows:ROW_LABELS, lanes:LANES})); } catch(e){}
+          try { localStorage.setItem('mirror-laneLabels', JSON.stringify(LANE_LABELS)); } catch(e){}
           applyLaneLabels();
         }
       } catch(e){ /* labels file malformed — keep defaults */ }
@@ -532,12 +407,9 @@ async function loadDeals(){
         var rawRes = await fetch(fileObj.raw_url);
         raw = await rawRes.text();
       }
-      if(raw && raw.trim() && raw !== '{}'){
-        dealsIndex = JSON.parse(raw);
-      }
+      if(!raw || !raw.trim() || raw === '{}'){ renderDeals(); setStatus('Ready ✓', true); return; }
+      dealsIndex = JSON.parse(raw);
     }
-    // Migrate every entry to the new model (status mapping, lane field default)
-    Object.keys(dealsIndex).forEach(function(id){ migrateDealEntry(dealsIndex[id]); });
     renderDeals();
     setStatus('Loaded — ' + Object.keys(dealsIndex).length + ' deals', true);
     var inp = document.getElementById('syncToken');
@@ -547,73 +419,32 @@ async function loadDeals(){
   }
 }
 
+// ───── Photo loading ─────
 // ───── Rendering ─────
-// Rows (horizontal, fixed): inbox + 4 working states + archived
-var ROW_KEYS = ['row1','row2','row3','row4','row5'];
-var ROW_KEYS_INCL_ARCHIVED = ROW_KEYS.concat(['archived']);
-
-// Lane definitions: dynamic list of {key, label}. Defaults to 5 lanes.
-// Persisted to lane-labels.json as a `lanes` array; row labels persist as
-// `rows` object on the same file.
-var LANES = [
-  { key:'lane1', label:'Lane 1' },
-  { key:'lane2', label:'Lane 2' },
-  { key:'lane3', label:'Lane 3' },
-  { key:'lane4', label:'Lane 4' },
-  { key:'lane5', label:'Lane 5' }
-];
-
-// Plus button colour cycle for lanes (reused as more lanes are added)
-var LANE_COLOR_CYCLE = ['#3D6E92','#C48831','#6F8F4C','#6D4B6B','#5E8B86','#a85a3f','#8e8b82'];
-function laneColor(idx){ return LANE_COLOR_CYCLE[idx % LANE_COLOR_CYCLE.length]; }
-
-// Row labels (defaults) — editable inline
-var ROW_LABELS_DEFAULT = {row1:'Inbox',row2:'Row 2',row3:'Row 3',row4:'Row 4',row5:'Row 5',archived:'Archived'};
-var ROW_LABELS = Object.assign({}, ROW_LABELS_DEFAULT);
-
-// Legacy compatibility: when loading old gists, map old status values to row1
-// so existing cards in the old `appraise/view/offer/followup` lanes all land
-// in the Inbox row of the new model. Users can sort them from there.
-var LEGACY_STATUS_MAP = {appraise:'row1', view:'row1', offer:'row1', followup:'row1'};
-
-function migrateDealEntry(d){
-  if(!d) return;
-  // Status migration: old single-bucket model → row1
-  if(d.status && LEGACY_STATUS_MAP[d.status]){
-    d.status = LEGACY_STATUS_MAP[d.status];
-  }
-  // If no status at all (lane-only card), leave status null
-  if(d.status === undefined) d.status = null;
-  // lane defaults to null (Inbox cards have no home lane)
-  if(d.lane === undefined) d.lane = null;
-}
+var LANE_KEYS_ALL = ['appraise','view','offer','followup','archived'];
+var LANE_LABELS_DEFAULT = {appraise:'Appraise',view:'View',offer:'Offer',followup:'Follow Up',archived:'Archived'};
+var LANE_LABELS = Object.assign({}, LANE_LABELS_DEFAULT);
 
 // Hydrate from localStorage mirror immediately so the page renders correctly
 // before the gist fetch lands.
-(function _hydrateLabels(){
+(function _hydrateLaneLabels(){
   try {
     var raw = localStorage.getItem('mirror-laneLabels');
     if(!raw) return;
     var parsed = JSON.parse(raw);
-    if(parsed.rows){
-      Object.keys(parsed.rows).forEach(function(k){
-        if(typeof parsed.rows[k] === 'string') ROW_LABELS[k] = parsed.rows[k];
-      });
-    }
-    if(Array.isArray(parsed.lanes) && parsed.lanes.length){
-      LANES = parsed.lanes.map(function(L){
-        return { key:String(L.key), label:String(L.label) };
-      });
-    }
+    LANE_KEYS_ALL.forEach(function(k){
+      if(parsed && typeof parsed[k] === 'string' && parsed[k].trim()){
+        LANE_LABELS[k] = parsed[k];
+      }
+    });
   } catch(e){}
 })();
 
 function applyLaneLabels(){
-  // Row title spans
+  // Update the visible lane title spans
   document.querySelectorAll('.lane-title[data-lane]').forEach(function(el){
     var key = el.getAttribute('data-lane');
-    var label = ROW_LABELS[key] || ROW_LABELS_DEFAULT[key];
-    if(label === undefined) return; // a v-lane title; handled by renderLanes
+    var label = LANE_LABELS[key] || LANE_LABELS_DEFAULT[key];
     if(document.activeElement !== el && el.textContent !== label){
       el.textContent = label;
     }
@@ -621,9 +452,8 @@ function applyLaneLabels(){
 }
 
 async function saveLaneLabels(){
-  // Persist both rows + lanes to the same file
-  var payload = { rows: ROW_LABELS, lanes: LANES };
-  try { localStorage.setItem('mirror-laneLabels', JSON.stringify(payload)); } catch(e){}
+  // Mirror locally first so a refresh never loses an edit
+  try { localStorage.setItem('mirror-laneLabels', JSON.stringify(LANE_LABELS)); } catch(e){}
   var token = getToken();
   if(!token || !GIST_ID) return;
   try {
@@ -631,7 +461,7 @@ async function saveLaneLabels(){
     var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
       method: 'PATCH',
       headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: { 'lane-labels.json': { content: JSON.stringify(payload, null, 2) } } })
+      body: JSON.stringify({ files: { 'lane-labels.json': { content: JSON.stringify(LANE_LABELS, null, 2) } } })
     });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     setStatus('Saved ✓', true);
@@ -643,22 +473,22 @@ async function saveLaneLabels(){
 function wireLaneLabelEditing(){
   document.querySelectorAll('.lane-title[data-lane]').forEach(function(el){
     var key = el.getAttribute('data-lane');
-    if(!ROW_LABELS.hasOwnProperty(key)) return; // skip v-lane titles (handled separately)
     el.addEventListener('keydown', function(e){
       if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
       else if(e.key === 'Escape'){
         e.preventDefault();
-        el.textContent = ROW_LABELS[key] || ROW_LABELS_DEFAULT[key];
+        el.textContent = LANE_LABELS[key] || LANE_LABELS_DEFAULT[key];
         el.blur();
       }
     });
     el.addEventListener('blur', function(){
       var val = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      if(!val) val = ROW_LABELS_DEFAULT[key];
+      if(!val) val = LANE_LABELS_DEFAULT[key];
       el.textContent = val;
-      if(val !== ROW_LABELS[key]){
-        ROW_LABELS[key] = val;
+      if(val !== LANE_LABELS[key]){
+        LANE_LABELS[key] = val;
         applyLaneLabels();
+        if(typeof renderDeals === 'function') renderDeals();
         saveLaneLabels();
       }
     });
@@ -673,25 +503,15 @@ if(document.readyState === 'loading'){
 }
 
 function renderDeals(){
-  // Buckets: rows (5 + archived) + one per lane
-  var rowBuckets = {row1:[], row2:[], row3:[], row4:[], row5:[], archived:[]};
-  var laneBuckets = {}; // keyed by lane key
-  LANES.forEach(function(L){ laneBuckets[L.key] = []; });
+  var buckets = { appraise:[], view:[], offer:[], followup:[], archived:[] };
 
   Object.keys(dealsIndex).forEach(function(id){
     var d = dealsIndex[id];
     if(d.deleted) return;
-    if(d.archived){ rowBuckets.archived.push(id); return; }
-
-    // A card may appear in BOTH a row and a lane (when pulled up to work).
-    // Row placement:
-    if(d.status && rowBuckets[d.status]){
-      rowBuckets[d.status].push(id);
-    }
-    // Lane placement (home lane), if it has one:
-    if(d.lane && laneBuckets[d.lane]){
-      laneBuckets[d.lane].push(id);
-    }
+    if(d.archived){ buckets.archived.push(id); return; }
+    var s = d.status || 'appraise';
+    if(!buckets[s]) s = 'appraise';
+    buckets[s].push(id);
   });
 
   // Sort: manual _order (set by drag-and-drop) takes precedence, else most-recent first
@@ -702,8 +522,7 @@ function renderDeals(){
     if(db._order != null) return  1;
     return new Date(db.updated || 0) - new Date(da.updated || 0);
   };
-  Object.keys(rowBuckets).forEach(function(k){ rowBuckets[k].sort(sortByOrder); });
-  Object.keys(laneBuckets).forEach(function(k){ laneBuckets[k].sort(sortByOrder); });
+  Object.keys(buckets).forEach(function(k){ buckets[k].sort(sortByOrder); });
 
   // Gist warning
   var totalDeals = Object.keys(dealsIndex).length;
@@ -717,102 +536,30 @@ function renderDeals(){
     }
   }
 
-  // Render rows
-  renderLane('cardsRow1', rowBuckets.row1, {context:'row', row:'row1'});
-  renderLane('cardsRow2', rowBuckets.row2, {context:'row', row:'row2'});
-  renderLane('cardsRow3', rowBuckets.row3, {context:'row', row:'row3'});
-  renderLane('cardsRow4', rowBuckets.row4, {context:'row', row:'row4'});
-  renderLane('cardsRow5', rowBuckets.row5, {context:'row', row:'row5'});
-  renderLane('cardsArchived', rowBuckets.archived, {context:'archived'});
-
-  // Render lanes (build container DOM each render — simplest, layout settled)
-  renderLanes(laneBuckets);
-
+  // Render each lane
+  renderLane('cardsAppraise', buckets.appraise, false);
+  renderLane('cardsView',     buckets.view,     false);
+  renderLane('cardsOffer',    buckets.offer,    false);
+  renderLane('cardsFollowup', buckets.followup, false);
+  renderLane('cardsArchived', buckets.archived, true);
   if(typeof _wireDrag === 'function') _wireDrag();
 }
 
-function renderLane(cardsId, ids, ctx){
-  ctx = ctx || {context:'row'};
+function renderLane(cardsId, ids, isArchived){
   var el = document.getElementById(cardsId);
-  if(!el) return;
   if(!ids.length){
     el.classList.add('empty-lane');
-    var msg = 'No deals here yet';
-    if(ctx.context === 'archived') msg = 'No archived deals';
-    else if(ctx.row === 'row1') msg = 'Inbox is empty';
-    else if(ctx.context === 'row') msg = 'Drag a card here';
-    else if(ctx.context === 'lane') msg = 'Empty';
-    el.innerHTML = '<div class="lane-empty">' + msg + '</div>';
+    el.innerHTML = '<div class="lane-empty">' + (isArchived ? 'No archived deals' : 'No deals here yet') + '</div>';
     return;
   }
   el.classList.remove('empty-lane');
+  // Clear any inline styles left over from drag collapse/expansion
   el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = '';
-  el.innerHTML = ids.map(function(id){ return cardHTML(id, ctx); }).join('');
+  el.innerHTML = ids.map(function(id){ return cardHTML(id, isArchived); }).join('');
 }
 
-// Build the vertical-lanes section. Replaces #lanesContainer entirely each
-// render — cheap given lane counts will be in the tens, not thousands.
-function renderLanes(laneBuckets){
-  var container = document.getElementById('lanesContainer');
-  if(!container) return;
-  var html = LANES.map(function(L, i){
-    var color = laneColor(i);
-    var ids = laneBuckets[L.key] || [];
-    var cardsHtml;
-    if(!ids.length){
-      cardsHtml = '<div class="v-lane-cards empty-lane" id="cardsLane_' + L.key + '"><div class="lane-empty">Empty</div></div>';
-    } else {
-      var inner = ids.map(function(id){ return cardHTML(id, {context:'lane', lane:L.key}); }).join('');
-      cardsHtml = '<div class="v-lane-cards" id="cardsLane_' + L.key + '">' + inner + '</div>';
-    }
-    var labelEsc = escapeHtml(L.label);
-    return '<div class="v-lane" data-lane="' + L.key + '">' +
-      '<div class="v-lane-header">' +
-        '<button class="lane-add" style="--lane-color:' + color + '" onclick="addDealToLane(\'' + L.key + '\')" title="Add to ' + labelEsc + '" aria-label="Add to ' + labelEsc + '">+</button>' +
-        '<span class="lane-title v-lane-title" data-vlane-key="' + L.key + '" contenteditable="plaintext-only" spellcheck="false">' + labelEsc + '</span>' +
-      '</div>' +
-      cardsHtml +
-    '</div>';
-  }).join('');
-  container.innerHTML = html;
-  wireVLaneTitleEditing();
-}
-
-// Wire the dynamically-rendered v-lane titles for inline editing
-function wireVLaneTitleEditing(){
-  document.querySelectorAll('.v-lane-title[data-vlane-key]').forEach(function(el){
-    var key = el.getAttribute('data-vlane-key');
-    var laneObj = LANES.find(function(L){ return L.key === key; });
-    if(!laneObj) return;
-    el.addEventListener('keydown', function(e){
-      if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
-      else if(e.key === 'Escape'){
-        e.preventDefault();
-        el.textContent = laneObj.label;
-        el.blur();
-      }
-    });
-    el.addEventListener('blur', function(){
-      var val = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      if(!val) val = laneObj.label;
-      el.textContent = val;
-      if(val !== laneObj.label){
-        laneObj.label = val;
-        saveLaneLabels();
-      }
-    });
-  });
-}
-
-function cardHTML(id, ctx){
-  ctx = ctx || {context:'row'};
+function cardHTML(id, isArchived){
   var d = dealsIndex[id];
-  var isArchived = (ctx.context === 'archived');
-  var inLane = (ctx.context === 'lane');
-  var inRow = (ctx.context === 'row');
-  // Greyed home-lane copy when this same card is also showing in a row right now.
-  var hasRowCopy = inLane && !!d.status;
-
   var link = ANALYSER_PAGE + '?deal=' + encodeURIComponent(id);
   var name = (d.name || id).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; });
 
@@ -843,30 +590,14 @@ function cardHTML(id, ctx){
   var ribbonStyle = noteText ? 'background:'+noteColor : '';
   var ribbonHtml = '<div class="'+ribbonClass+'" data-deal-id="'+id+'" style="'+ribbonStyle+'" title="Click to edit note">' + (noteText ? escapeHtml(noteText) : 'Add note') + '</div>';
 
+  // Archived cards: keep name as plain link (no inline editing for archive)
+  // Active cards: contenteditable span for in-place rename; double-click navigates
   var nameHtml = isArchived
     ? '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>'
     : '<span class="card-name" data-deal-id="' + id + '" contenteditable="plaintext-only" spellcheck="false" title="Click to edit · double-click to open">' + name + '</span>';
 
-  // Send-home button: only on row-cards that have a home lane (rows 2-5; not Inbox; not archived)
-  var sendHomeBtn = '';
-  if(inRow && d.lane && d.status && d.status !== 'row1'){
-    sendHomeBtn = '<button class="card-send-home" onclick="sendCardHome(this)" title="Send back to home lane" aria-label="Send back to home lane">' +
-      '<svg viewBox="0 0 20 20"><polyline points="5,8 10,13 15,8"/></svg>' +
-    '</button>';
-  }
-
-  // data-ctx tells the drag layer where this card visually lives right now
-  var ctxAttr = ' data-ctx="' + ctx.context + '"';
-  if(ctx.row) ctxAttr += ' data-ctx-row="' + ctx.row + '"';
-  if(ctx.lane) ctxAttr += ' data-ctx-lane="' + ctx.lane + '"';
-
-  var classes = 'deal-card';
-  if(isArchived) classes += ' archived';
-  if(hasRowCopy) classes += ' has-row-copy';
-
-  return '<div class="' + classes + '" data-id="' + id + '"' + ctxAttr + '>' +
+  return '<div class="deal-card' + (isArchived ? ' archived' : '') + '" data-id="' + id + '">' +
     ribbonHtml +
-    sendHomeBtn +
     '<div class="card-body">' +
       nameHtml +
     '</div>' +
@@ -1061,10 +792,6 @@ function _commitName(span, save){
         dealsIndex[id].name = raw;
         dealsIndex[id].updated = new Date().toISOString();
         saveIndex();
-        // Sync any other DOM copy of this card (e.g. greyed lane copy)
-        document.querySelectorAll('.card-name[data-deal-id="' + id + '"]').forEach(function(el){
-          if(el !== span && el.textContent !== raw) el.textContent = raw;
-        });
       }
     }
   } else {
@@ -1265,15 +992,14 @@ async function deleteDeal(btn){
   animateFlip(oldRects, { removedGhosts: ghost ? [ghost] : [] });
 }
 
-// Re-index a sibling group so `id` sits at _order:0 (leftmost/topmost) and
-// existing siblings shift down. `predicate(otherId)` returns true if that
-// other card belongs in the same group.
-function _placeAtFront(id, predicate){
+// Re-index a lane so `id` sits at _order:0 (leftmost) and existing
+// siblings shift right. Used by new deal, RM paste, and duplicate.
+function _placeAtFront(id, laneKey){
   var siblings = Object.keys(dealsIndex).filter(function(otherId){
     if(otherId === id) return false;
     var od = dealsIndex[otherId];
     if(!od || od.deleted || od.archived) return false;
-    return predicate(otherId, od);
+    return (od.status || 'appraise') === laneKey;
   });
   siblings.sort(function(a, b){
     var da = dealsIndex[a], db = dealsIndex[b];
@@ -1286,37 +1012,19 @@ function _placeAtFront(id, predicate){
   siblings.forEach(function(sid, i){ dealsIndex[sid]._order = i + 1; });
 }
 
-// Add a card to the Inbox (row1). No home lane.
-function addDealToInbox(){
-  var ts = Date.now();
-  var num = Object.keys(dealsIndex).filter(function(k){ return !dealsIndex[k].archived && !dealsIndex[k].deleted; }).length + 1;
-  var name = 'Deal-' + num;
-  var id = 'deal-' + ts;
-  var oldRects = captureRects();
-  dealsIndex[id] = { name: name, updated: new Date().toISOString(), status: 'row1', lane: null };
-  _placeAtFront(id, function(otherId, od){ return od.status === 'row1' && !od.lane; });
-  renderDeals();
-  animateFlip(oldRects, { newIds: [id] });
-  focusNewCardName(id);
-  _pushIndexAndDealToGist(id);
-}
-
-// Add a card directly to a lane (skips Inbox).
 function addDealToLane(laneKey){
   var ts = Date.now();
   var num = Object.keys(dealsIndex).filter(function(k){ return !dealsIndex[k].archived && !dealsIndex[k].deleted; }).length + 1;
   var name = 'Deal-' + num;
   var id = 'deal-' + ts;
+  // Capture positions BEFORE mutating so existing cards FLIP-slide to fill the new layout
   var oldRects = captureRects();
-  dealsIndex[id] = { name: name, updated: new Date().toISOString(), status: null, lane: laneKey };
-  _placeAtFront(id, function(otherId, od){ return od.lane === laneKey; });
+  dealsIndex[id] = { name: name, updated: new Date().toISOString(), status: laneKey };
+  _placeAtFront(id, laneKey);
   renderDeals();
   animateFlip(oldRects, { newIds: [id] });
   focusNewCardName(id);
-  _pushIndexAndDealToGist(id);
-}
-
-function _pushIndexAndDealToGist(id){
+  // Push to gist in the background (best-effort; saveIndex handles its own errors)
   var token = getToken();
   if(token && GIST_ID){
     var body = { files: {} };
@@ -1330,42 +1038,8 @@ function _pushIndexAndDealToGist(id){
   }
 }
 
-// Add a brand-new lane to the end of LANES; immediately editable.
-function addNewLane(){
-  var n = LANES.length + 1;
-  var key = 'lane-' + Date.now();
-  LANES.push({ key: key, label: 'Lane ' + n });
-  saveLaneLabels();
-  renderDeals();
-  // Focus the new lane's title for immediate rename
-  requestAnimationFrame(function(){
-    var el = document.querySelector('.v-lane-title[data-vlane-key="' + key + '"]');
-    if(el){
-      el.focus();
-      var r = document.createRange();
-      r.selectNodeContents(el);
-      var s = window.getSelection();
-      s.removeAllRanges();
-      s.addRange(r);
-    }
-  });
-}
-
-// "Send back to home lane" button on a row-card. Clears its row placement.
-function sendCardHome(btn){
-  var id = btn.closest('.deal-card').dataset.id;
-  var d = dealsIndex[id];
-  if(!d || !d.lane) return;
-  var oldRects = captureRects();
-  d.status = null;
-  d.updated = new Date().toISOString();
-  saveIndex();
-  renderDeals();
-  animateFlip(oldRects);
-}
-
-// Legacy alias (still referenced from a couple of legacy paths)
-function showNewDeal(){ addDealToInbox(); }
+// Legacy top-of-page "+ New deal" button — drops into the Appraise lane.
+function showNewDeal(){ addDealToLane('appraise'); }
 
 // ── ?addDeal= handler ────────────────────────────────────────────────
 // Triggered when ?addDeal=<freeform name>&source=siri (or similar) is in the
@@ -1473,172 +1147,458 @@ function _rmToast(msg, type) {
   }, type === 'error' ? 4000 : 2500);
 }
 
-
 // ═══════════════════════════════════════════════════════════════════════
-// Drag and drop — simplified for the row + lane geometry
+// Drag and drop — reorder within a lane, move between lanes
 //
-// Cards are draggable. Lane containers (#cardsRow1..#cardsRow5, #cardsArchived,
-// and each v-lane's #cardsLane_*) are drop targets. The data-action is
-// computed from the source card's context AND the destination container, then
-// applied to the data model. We re-render after every drop.
+// Approach: cards get draggable=true wired in JS (not in HTML). The drop
+// indicator is a single floating <div> bar that follows the cursor — it
+// never modifies card styles. Lane-level dragover handlers compute the
+// insertion point from card geometry on every move, so empty-lane drops
+// and end-of-lane drops both work without special cases.
 // ═══════════════════════════════════════════════════════════════════════
 
-var _dnd = { id:null, sourceCtx:null };
+var _dnd = { id:null, sourceLane:null, targetLane:null, targetIndex:null, bar:null, ghost:null };
+var LANE_KEYS = ['appraise','view','offer','followup','archived'];
 
-function _ctxFromCard(card){
+function _laneForId(id){
+  var d = dealsIndex[id]; if(!d) return null;
+  if(d.archived) return 'archived';
+  return d.status || 'appraise';
+}
+
+function _orderedLaneIds(laneKey){
+  return Object.keys(dealsIndex).filter(function(id){
+    var d = dealsIndex[id];
+    if(!d || d.deleted) return false;
+    return laneKey === 'archived' ? !!d.archived : (!d.archived && (d.status||'appraise') === laneKey);
+  }).sort(function(a,b){
+    var da = dealsIndex[a], db = dealsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  });
+}
+
+function _ensureDnDBar(){
+  if(_dnd.bar) return _dnd.bar;
+  var b = document.createElement('div');
+  b.id = '_dndBar';
+  b.style.cssText =
+    'position:fixed;width:3px;background:var(--brown);border-radius:2px;' +
+    'pointer-events:none;z-index:1000;opacity:0;' +
+    'transition:opacity 0.12s ease-out, left 0.16s cubic-bezier(0.2,0.8,0.2,1),' +
+    ' top 0.16s cubic-bezier(0.2,0.8,0.2,1), height 0.16s cubic-bezier(0.2,0.8,0.2,1);';
+  document.body.appendChild(b);
+  _dnd.bar = b;
+  return b;
+}
+function _showBar(x,y,h){
+  var b = _ensureDnDBar();
+  b.style.left = x + 'px';
+  b.style.top  = y + 'px';
+  b.style.height = h + 'px';
+  b.style.opacity = '1';
+}
+function _hideBar(){
+  if(_dnd.bar) _dnd.bar.style.opacity = '0';
+  _dnd.targetLane = null;
+  _dnd.targetIndex = null;
+}
+
+// Compute drop position from cursor position over a lane element
+function _updateIndicator(laneEl, laneKey, x){
+  var cards = Array.prototype.slice.call(laneEl.querySelectorAll('.deal-card:not(.dnd-dragging)'));
+  var laneRect = laneEl.getBoundingClientRect();
+  var barX, barY, barH, idx;
+
+  if(cards.length === 0){
+    // Empty lane — show bar at the lane's left edge
+    barX = laneRect.left + 14;
+    barY = laneRect.top + 12;
+    barH = Math.max(120, Math.min(laneRect.height - 24, 240));
+    idx  = 0;
+  } else {
+    // Find first card whose centre is to the right of the cursor
+    var targetCard = null, before = false;
+    for(var i = 0; i < cards.length; i++){
+      var r = cards[i].getBoundingClientRect();
+      if(x < r.left + r.width / 2){
+        targetCard = cards[i]; before = true; idx = i; break;
+      }
+    }
+    if(!targetCard){
+      // Past all cards — insert after the last
+      targetCard = cards[cards.length - 1]; before = false; idx = cards.length;
+    }
+    var tr = targetCard.getBoundingClientRect();
+    barX = before ? tr.left  - 8 : tr.right + 5;
+    barY = tr.top;
+    barH = tr.height;
+  }
+
+  _dnd.targetLane  = laneKey;
+  _dnd.targetIndex = idx;
+  _updateLiveLayout();
+}
+
+async function _dndPerformDrop(){
+  var dragId = _dnd.id;
+  var toLane = _dnd.targetLane;
+  var toIdx  = _dnd.targetIndex;
+  _hideBar();
+  _dnd.id = null;
+  if(!dragId || !toLane || toIdx == null) return;
+
+  var d = dealsIndex[dragId];
+  if(!d) return;
+  var fromLane = _laneForId(dragId);
+
+  // Build the new list for the target lane (with the dragged card removed),
+  // then insert at toIdx.
+  var ids = _orderedLaneIds(toLane).filter(function(id){ return id !== dragId; });
+  ids.splice(toIdx, 0, dragId);
+
+  // FLIP snapshot before mutation. For cross-lane drops, override the dragged
+  // card's old rect with the ghost's rect so the new card's FLIP animation
+  // starts from where the user *saw* it (target slot) rather than from the
+  // hidden source position. Distance ≈ 0 → it just settles in.
+  var oldRects = captureRects();
+  if(_dnd.ghost){
+    oldRects[dragId] = _dnd.ghost.getBoundingClientRect();
+  }
+  _destroyGhost();
+
+  // Re-index target lane
+  ids.forEach(function(id, i){ if(dealsIndex[id]) dealsIndex[id]._order = i; });
+
+  if(fromLane !== toLane){
+    if(toLane === 'archived'){ d.archived = true; }
+    else { d.archived = false; d.status = toLane; }
+    d.updated = new Date().toISOString();
+    // Re-index source lane to remove the gap
+    var src = _orderedLaneIds(fromLane);
+    src.forEach(function(id, i){ if(dealsIndex[id]) dealsIndex[id]._order = i; });
+  }
+
+  saveIndex();
+  renderDeals();
+  animateFlip(oldRects);
+}
+
+// Live layout — as the user drags, surrounding cards translate to make room
+// for the dragged card at its current target position. The DOM stays in its
+// original order; only inline transforms are applied. On drop, transforms
+// remain in place (showing the user where things "are") and the FLIP system
+// animates from there to the post-mutation natural layout. On cancel, all
+// transforms are cleared and the cards smoothly slide back via the existing
+// CSS transition on `.deal-card { transition: transform 0.15s ... }`.
+
+var _lastLayoutKey = null;
+
+function _getLanePitch(laneKey){
+  var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+  if(!laneEl) return 186;
+  var cards = laneEl.querySelectorAll('.deal-card');
+  if(cards.length >= 2) return cards[1].offsetLeft - cards[0].offsetLeft;
+  if(cards.length === 1) return cards[0].offsetWidth + 14;
+  return 186;
+}
+
+function _applyShift(card, shift, pitch){
+  if(!shift){
+    if(card.style.transform) card.style.transform = '';
+    return;
+  }
+  var t = 'translateX(' + (shift * pitch) + 'px)';
+  if(card.style.transform !== t) card.style.transform = t;
+}
+
+function _updateLiveLayout(){
+  // Skip if state hasn't changed since last call (dragover fires constantly)
+  var key = (_dnd.id || '') + '|' + (_dnd.targetLane || '') + '|' + (_dnd.targetIndex == null ? '' : _dnd.targetIndex);
+  if(key === _lastLayoutKey) return;
+  _lastLayoutKey = key;
+
+  if(!_dnd.id || !_dnd.targetLane || _dnd.targetIndex == null) return;
+
+  var dragId    = _dnd.id;
+  var sourceLane = _dnd.sourceLane;
+  var targetLane = _dnd.targetLane;
+  var targetIdx  = _dnd.targetIndex;
+  var sameLane   = sourceLane === targetLane;
+
+  // Ghost lifecycle: a dashed-outline placeholder is always shown at the
+  // target slot, in <body> with position:fixed so it can travel between
+  // lanes without being clipped by lane overflow. The original card is
+  // hidden (visibility:hidden) so the picked-up browser drag image is the
+  // only "real" representation following the cursor — the placeholder
+  // shows you where it'll land.
+  if(!_dnd.ghost) _createGhost();
+
+  // For each card in source/target lanes, compute the slot shift that places
+  // it where it would naturally end up if the drop happened now. Cards in
+  // other lanes are cleared.
+  var shifts = {};
+
+  if(sameLane){
+    var ids = _orderedLaneIds(sourceLane);
+    var D = ids.indexOf(dragId);
+    if(D < 0) return;
+    ids.forEach(function(id, i){
+      if(i === D){
+        // Dragged card stays put (visibility:hidden) while the ghost
+        // outline shows the target slot. Surrounding cards still shift
+        // exactly as before to open the gap at the right spot.
+        shifts[id] = 0;
+      } else if(i < D){
+        shifts[id] = (i >= targetIdx) ? 1 : 0; // cards left of origin push right if target is at-or-before them
+      } else {
+        shifts[id] = (i - 1 < targetIdx) ? -1 : 0; // cards right of origin pull left to close the origin gap
+      }
+    });
+  } else {
+    // Cross-lane: source closes the origin gap, target opens a gap at targetIdx.
+    // The dragged card itself is replaced by a position:fixed ghost clone in
+    // <body> (created/managed below), so its source DOM slot becomes visually
+    // free for the source-close animation without any paint-order conflict.
+    var srcIds = _orderedLaneIds(sourceLane);
+    var srcD = srcIds.indexOf(dragId);
+    if(srcD >= 0){
+      srcIds.forEach(function(id, i){
+        if(id === dragId) return;
+        shifts[id] = (i > srcD) ? -1 : 0;
+      });
+    }
+    var tgtIds = _orderedLaneIds(targetLane);
+    tgtIds.forEach(function(id, i){
+      shifts[id] = (i >= targetIdx) ? 1 : 0;
+    });
+  }
+
+  // Apply per-lane (each lane has its own pitch)
+  function applyLane(laneKey, pitch){
+    var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+    if(!laneEl) return;
+    laneEl.querySelectorAll('.deal-card').forEach(function(card){
+      _applyShift(card, shifts[card.dataset.id] || 0, pitch);
+    });
+  }
+  applyLane(sourceLane, _getLanePitch(sourceLane));
+  if(!sameLane) applyLane(targetLane, _getLanePitch(targetLane));
+
+  // Clear any stale transforms on lanes we're not currently affecting
+  LANE_KEYS.forEach(function(laneKey){
+    if(laneKey === sourceLane || laneKey === targetLane) return;
+    var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+    if(!laneEl) return;
+    laneEl.querySelectorAll('.deal-card').forEach(function(card){
+      if(card.style.transform) card.style.transform = '';
+    });
+  });
+
+  // Resize lanes FIRST (expand target, collapse source) — getBoundingClientRect
+  // in _moveGhostToTargetSlot forces a synchronous reflow, so the ghost will
+  // read the updated lane geometry rather than stale pre-collapse positions.
+  var ghostH = _dnd.ghost ? (_dnd.ghost.offsetHeight + 28) : 0;
+  LANE_KEYS.forEach(function(k){
+    var el = document.getElementById('cards' + k.charAt(0).toUpperCase() + k.slice(1));
+    if(!el) return;
+    if(el.classList.contains('empty-lane')){
+      el.style.minHeight = (k === targetLane && ghostH > 0) ? ghostH + 'px' : '';
+    } else if(k === _dnd.sourceLane){
+      var crossLane = (targetLane !== _dnd.sourceLane);
+      var visible = el.querySelectorAll('.deal-card:not(.dnd-dragging)').length;
+      if(crossLane && visible === 0){ el.style.minHeight = '80px'; el.style.maxHeight = '80px'; el.style.overflow = 'hidden'; }
+      else { el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = ''; }
+    }
+  });
+
+  // Now move the ghost — coordinates reflect the resized layout.
+  if(_dnd.ghost) _moveGhostToTargetSlot(targetLane, targetIdx);
+}
+
+// Cross-lane ghost: a position:fixed placeholder mounted on <body> so it can
+// travel freely across lanes without being clipped by any `overflow-x: auto`
+// lane container. Renders as a simple dashed outline (not a card clone) so
+// it doesn't visually compete with the browser's own drag image (which now
+// lifts the actual card and follows the cursor since we marked inner <a>
+// tags as draggable=false). While it's active the original card is
+// visibility:hidden — still occupying its source flex slot, so the source
+// lane's "close-gap" translateX shifts cleanly land on top of it.
+function _createGhost(){
+  if(_dnd.ghost || !_dnd.id) return;
+  var card = document.querySelector('.deal-card[data-id="' + _dnd.id + '"]');
+  if(!card) return;
+  var rect = card.getBoundingClientRect();
+  var ghost = document.createElement('div');
+  ghost.id = '_dndGhost';
+  ghost.style.cssText = [
+    'position:fixed',
+    'left:' + rect.left + 'px',
+    'top:'  + rect.top  + 'px',
+    'width:'  + rect.width  + 'px',
+    'height:' + rect.height + 'px',
+    'margin:0',
+    'box-sizing:border-box',
+    'border:2px dashed rgba(0,0,0,0.18)',
+    'border-radius:10px',
+    'background:transparent',
+    'z-index:100',
+    'pointer-events:none',
+    'transition:left 0.15s ease-out, top 0.15s ease-out'
+  ].join(';');
+  document.body.appendChild(ghost);
+  _dnd.ghost = ghost;
+  card.style.visibility = 'hidden';
+}
+
+function _moveGhostToTargetSlot(laneKey, targetIdx){
+  if(!_dnd.ghost) return;
+  var pos = _getTargetSlotViewportPos(laneKey, targetIdx);
+  if(!pos) return;
+  _dnd.ghost.style.left = pos.x + 'px';
+  _dnd.ghost.style.top  = pos.y + 'px';
+}
+
+function _destroyGhost(){
+  if(_dnd.ghost){
+    _dnd.ghost.remove();
+    _dnd.ghost = null;
+  }
+  if(_dnd.id){
+    var card = document.querySelector('.deal-card[data-id="' + _dnd.id + '"]');
+    if(card) card.style.visibility = '';
+  }
+}
+
+// Compute viewport position of where the dragged card should appear if dropped
+// at `targetIdx` in `laneKey`. Uses pure geometry (lane content edge + N *
+// pitch) rather than cards[targetIdx].offsetLeft, because in same-lane drags
+// the hidden dragged card occupies a slot in flex flow — meaning the cards
+// array's index N doesn't correspond to visual slot N. Lane left + padding-
+// left + targetIdx * pitch always gives the correct slot regardless.
+function _getTargetSlotViewportPos(laneKey, targetIdx){
+  var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+  if(!laneEl) return null;
+  var laneRect = laneEl.getBoundingClientRect();
+  var laneStyle = window.getComputedStyle(laneEl);
+  var paddingLeft = parseFloat(laneStyle.paddingLeft) || 0;
+  var paddingTop  = parseFloat(laneStyle.paddingTop)  || 0;
+  var gapPx = parseFloat(laneStyle.gap) || 14;
+
+  var cards = laneEl.querySelectorAll('.deal-card:not(.dnd-dragging)');
+  var cardWidth = cards.length > 0 ? cards[0].offsetWidth : 172;
+  var pitch = cardWidth + gapPx;
+
   return {
-    context: card.getAttribute('data-ctx') || 'row',
-    row:     card.getAttribute('data-ctx-row') || null,
-    lane:    card.getAttribute('data-ctx-lane') || null
+    x: laneRect.left + paddingLeft + targetIdx * pitch - laneEl.scrollLeft,
+    y: laneRect.top  + paddingTop
   };
 }
 
-function _ctxFromTarget(targetEl){
-  // targetEl is a .lane-cards (row) or .v-lane-cards (lane)
-  // ID conventions: cardsRow1..5, cardsArchived, cardsLane_<key>
-  var id = targetEl.id || '';
-  if(id === 'cardsArchived') return { context:'archived' };
-  if(id.indexOf('cardsRow') === 0){
-    return { context:'row', row: 'row' + id.slice(8) };
-  }
-  if(id.indexOf('cardsLane_') === 0){
-    return { context:'lane', lane: id.slice('cardsLane_'.length) };
-  }
-  return null;
-}
-
-function _performDrop(dragId, srcCtx, dstCtx){
-  var d = dealsIndex[dragId];
-  if(!d) return;
-  // Archive drop: same as clicking archive button
-  if(dstCtx.context === 'archived'){
-    d.archived = true;
-    d.status = null;
-    d.updated = new Date().toISOString();
-    saveIndex();
-    renderDeals();
-    return;
-  }
-
-  // Dropping into a ROW
-  if(dstCtx.context === 'row'){
-    if(dstCtx.row === 'row1'){
-      // Dropping into Inbox: card loses its home lane and becomes Inbox-only
-      d.status = 'row1';
-      d.lane = null;
-    } else {
-      // Dropping into rows 2-5
-      if(srcCtx.context === 'lane'){
-        // Coming up from a lane to be worked on — keep home lane, set row
-        d.lane = srcCtx.lane;
-        d.status = dstCtx.row;
-      } else if(srcCtx.context === 'row' && srcCtx.row === 'row1'){
-        // Inbox card dragged into a working row — illegal (needs a home).
-        // Treat as a no-op; surface a hint.
-        setStatus('Drag Inbox cards into a lane first to give them a home', false);
-        return;
-      } else {
-        // Already in a row; just switch row
-        d.status = dstCtx.row;
-      }
-    }
-  }
-
-  // Dropping into a LANE
-  if(dstCtx.context === 'lane'){
-    if(srcCtx.context === 'row' && srcCtx.row !== 'row1'){
-      // Card going home (from a working row) — also changes home lane to destination
-      d.lane = dstCtx.lane;
-      d.status = null;
-    } else if(srcCtx.context === 'row' && srcCtx.row === 'row1'){
-      // Inbox card → lane: leaves Inbox, gets home lane
-      d.lane = dstCtx.lane;
-      d.status = null;
-    } else if(srcCtx.context === 'lane'){
-      // Lane → lane: change home
-      d.lane = dstCtx.lane;
-      d.status = null;
-    } else if(srcCtx.context === 'archived'){
-      // Unarchive into a lane
-      d.archived = false;
-      d.lane = dstCtx.lane;
-      d.status = null;
-    }
-  }
-
-  d.updated = new Date().toISOString();
-  // Place at front of new context
-  if(dstCtx.context === 'row'){
-    _placeAtFront(dragId, function(otherId, od){
-      return od.status === dstCtx.row && (dstCtx.row === 'row1' ? !od.lane : true);
-    });
-  } else if(dstCtx.context === 'lane'){
-    _placeAtFront(dragId, function(otherId, od){ return od.lane === dstCtx.lane; });
-  }
-  saveIndex();
-  renderDeals();
+function _clearLiveLayout(){
+  _destroyGhost();
+  document.querySelectorAll('.deal-card').forEach(function(card){
+    if(card.style.transform) card.style.transform = '';
+  });
+  // Reset all per-drag lane style overrides (expanded empty target, collapsed source)
+  LANE_KEYS.forEach(function(k){
+    var el = document.getElementById('cards' + k.charAt(0).toUpperCase() + k.slice(1));
+    if(el){ el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = ''; }
+  });
+  _lastLayoutKey = null;
 }
 
 function _wireDrag(){
-  // Cards: dragstart / dragend
+  // Wire each card for dragstart/dragend only — dragover/drop bubble to lane
   document.querySelectorAll('.deal-card').forEach(function(card){
     if(card._dndWired) return;
     card._dndWired = true;
     card.setAttribute('draggable', 'true');
+    var id = card.dataset.id;
 
     card.addEventListener('dragstart', function(e){
+      // If a name field is being edited, commit & blur first
       if(_activeName){ _activeName.blur(); }
-      _dnd.id = card.dataset.id;
-      _dnd.sourceCtx = _ctxFromCard(card);
+      _dnd.id = id;
+      _dnd.sourceLane = _laneForId(id);
       e.dataTransfer.effectAllowed = 'move';
-      try { e.dataTransfer.setData('text/plain', card.dataset.id); } catch(_){}
+      try { e.dataTransfer.setData('text/plain', id); } catch(_){}
+      // Defer the dim so the browser can snapshot the card for the drag image
       setTimeout(function(){ card.classList.add('dnd-dragging'); }, 0);
     });
 
     card.addEventListener('dragend', function(){
       card.classList.remove('dnd-dragging');
+      // Only clear live layout if drag was canceled (no drop). On successful
+      // drop, _dnd.id is already null and FLIP transforms must be preserved.
+      if(_dnd.id) _clearLiveLayout();
+      _hideBar();
       _dnd.id = null;
-      _dnd.sourceCtx = null;
-      // Clear all target highlights
-      document.querySelectorAll('.dnd-target').forEach(function(el){
-        el.classList.remove('dnd-target');
-      });
     });
   });
 
-  // Drop targets: all .lane-cards (rows + archived) and .v-lane-cards (lanes)
-  document.querySelectorAll('.lane-cards, .v-lane-cards').forEach(function(el){
-    if(el._dndDropWired) return;
-    el._dndDropWired = true;
+  // Wire each lane container for dragover/drop
+  LANE_KEYS.forEach(function(laneKey){
+    var laneEl = document.getElementById('cards' + laneKey.charAt(0).toUpperCase() + laneKey.slice(1));
+    if(!laneEl || laneEl._dndWired) return;
+    laneEl._dndWired = true;
 
-    el.addEventListener('dragover', function(e){
+    laneEl.addEventListener('dragover', function(e){
       if(!_dnd.id) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      // Highlight parent v-lane if applicable
-      var parent = el.closest('.v-lane');
-      if(parent) parent.classList.add('dnd-target');
+      _updateIndicator(laneEl, laneKey, e.clientX);
     });
 
-    el.addEventListener('dragleave', function(){
-      var parent = el.closest('.v-lane');
-      if(parent) parent.classList.remove('dnd-target');
-    });
-
-    el.addEventListener('drop', function(e){
+    laneEl.addEventListener('drop', function(e){
       if(!_dnd.id) return;
       e.preventDefault();
-      var dstCtx = _ctxFromTarget(el);
-      if(!dstCtx) return;
-      _performDrop(_dnd.id, _dnd.sourceCtx, dstCtx);
+      _dndPerformDrop();
     });
   });
-}
 
+  // Document-level fallback: when the cursor leaves a lane (e.g. the user
+  // drags past its left edge to the leftmost slot), lane-level dragover stops
+  // firing — but we want the last-known target state to remain droppable.
+  // Calling preventDefault() in the document dragover keeps drops accepted
+  // anywhere on the page; the document drop then fires _dndPerformDrop using
+  // whatever target state was last set by the most recent lane.dragover.
+  if(!document._dndDocWired){
+    document._dndDocWired = true;
+    document.addEventListener('dragover', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      // Early-snap: if the cursor is above a lane-cards container but within
+      // SNAP_PX of its top edge, treat it as hovering that lane. This means
+      // the ghost snaps into a lane while the cursor is still in the lane header
+      // (the title row), rather than waiting until the cursor clears the header.
+      var SNAP_PX = 80;
+      for(var _si = 0; _si < LANE_KEYS.length; _si++){
+        var _sk = LANE_KEYS[_si];
+        var _sel = document.getElementById('cards' + _sk.charAt(0).toUpperCase() + _sk.slice(1));
+        if(!_sel) continue;
+        var _sr = _sel.getBoundingClientRect();
+        if(e.clientY >= _sr.top - SNAP_PX && e.clientY < _sr.top){
+          _updateIndicator(_sel, _sk, e.clientX);
+          break;
+        }
+      }
+    });
+    document.addEventListener('drop', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      _dndPerformDrop();
+    });
+    document.addEventListener('dragend', function(){ _hideBar(); });
+  }
+}
 
 (function(){
   var t = localStorage.getItem('todoToken');
   if(t) loadDeals();
+
 })();
 </script>
 
