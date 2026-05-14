@@ -45,18 +45,18 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .new-btn{display:inline-flex;align-items:center;gap:8px;background:var(--brown);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
 .new-btn:hover{background:#654e3b}
 
-/* ───── List ───── */
-.list{margin-bottom:28px}
-.list-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
-.list-title{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink)}
-.list-title[contenteditable]{outline:none;cursor:text;padding:1px 5px;margin:-1px -5px;border-radius:4px;transition:background 0.12s,box-shadow 0.12s;min-width:1em}
-.list-title[contenteditable]:hover{background:rgba(0,0,0,0.045)}
-.list-title[contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,0.12)}
-.list-add{
+/* ───── Lane ───── */
+.lane{margin-bottom:28px}
+.lane-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.lane-title{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink)}
+.lane-title[contenteditable]{outline:none;cursor:text;padding:1px 5px;margin:-1px -5px;border-radius:4px;transition:background 0.12s,box-shadow 0.12s;min-width:1em}
+.lane-title[contenteditable]:hover{background:rgba(0,0,0,0.045)}
+.lane-title[contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,0.12)}
+.lane-add{
   border:none;
   width:18px;height:18px;
   border-radius:3px;
-  background:var(--list-color, var(--mute));
+  background:var(--lane-color, var(--mute));
   color:#fff;
   font-family:'DM Sans',sans-serif;
   font-size:15px;font-weight:400;line-height:1;
@@ -66,11 +66,11 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   flex-shrink:0;
   transition:filter 0.12s, transform 0.08s;
 }
-.list-add:hover{filter:brightness(1.1)}
-.list-add:active{transform:scale(0.92)}
+.lane-add:hover{filter:brightness(1.1)}
+.lane-add:active{transform:scale(0.92)}
 
-/* Schedule/list delete button — small × that appears on header hover */
-.list-delete-btn{
+/* Row/lane delete button — small × that appears on header hover */
+.lane-delete-btn{
   border:none;background:transparent;
   color:var(--mute);
   width:22px;height:22px;
@@ -81,20 +81,20 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   opacity:0;
   transition:opacity 0.12s, background 0.12s, color 0.12s;
 }
-.list-delete-btn svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.list-header:hover .list-delete-btn,
-.v-list-header:hover .list-delete-btn{opacity:1}
-.list-delete-btn:hover{background:#FEF0F0;color:#C0392B;opacity:1}
-.list-accent{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.lane-delete-btn svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.lane-header:hover .lane-delete-btn,
+.v-lane-header:hover .lane-delete-btn{opacity:1}
+.lane-delete-btn:hover{background:#FEF0F0;color:#C0392B;opacity:1}
+.lane-accent{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
-.list-cards{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;scrollbar-width:thin}
-.list-cards::-webkit-scrollbar{height:8px}
-.list-cards::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
-.list-cards.empty-list{min-height:80px;align-items:center;justify-content:flex-start;padding:14px 4px}
-.list-empty{color:var(--mute);font-size:13px;font-style:italic}
+.lane-cards{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;scrollbar-width:thin}
+.lane-cards::-webkit-scrollbar{height:8px}
+.lane-cards::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+.lane-cards.empty-lane{min-height:80px;align-items:center;justify-content:flex-start;padding:14px 4px}
+.lane-empty{color:var(--mute);font-size:13px;font-style:italic}
 
 /* ───── Card (playing-card portrait) ───── */
-.item-card{
+.deal-card{
   flex:0 0 auto;
   width:172px;
   background:var(--card-bg);
@@ -105,13 +105,13 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   flex-direction:column;
   transition:box-shadow 0.15s, transform 0.15s, border-color 0.15s;
 }
-.item-card:hover{
+.deal-card:hover{
   border-color:var(--brown);
   box-shadow:0 4px 12px rgba(0,0,0,0.04);
 }
-.item-card.archived{opacity:0.55;filter:saturate(0.6)}
-.item-card.archived:hover{opacity:0.85}
-.item-card.dnd-dragging{opacity:0.35}
+.deal-card.archived{opacity:0.55;filter:saturate(0.6)}
+.deal-card.archived:hover{opacity:0.85}
+.deal-card.dnd-dragging{opacity:0.35}
 
 /* ─── Note ribbon (top-of-card colour-changeable highlight bar) ─── */
 .card-note-ribbon{
@@ -211,21 +211,21 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .card-icon-btn.affirm:hover{background:#F0F7EB;color:#5E7B3F}
 .card-icon-btn svg{width:12px;height:12px}
 
-/* Archived list — faded */
+/* Archived lane — faded */
 .archived-section{margin-top:40px;padding-top:20px;border-top:1px dashed var(--line-2)}
-.archived-section .list-title{color:var(--c-archived)}
+.archived-section .lane-title{color:var(--c-archived)}
 
-/* ─── Lists section (vertical columns, horizontally scrollable) ─── */
-.lists-section{margin-top:40px;padding-top:20px;border-top:1px dashed var(--line-2)}
-.lists-section-header{
+/* ─── Lanes section (vertical columns, horizontally scrollable) ─── */
+.lanes-section{margin-top:40px;padding-top:20px;border-top:1px dashed var(--line-2)}
+.lanes-section-header{
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:16px;
 }
-.lists-section-title{
+.lanes-section-title{
   font-family:'EB Garamond',Georgia,serif;
   font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink);
 }
-.add-list-btn{
+.add-lane-btn{
   background:#fff;color:var(--ink-2);
   border:1px dashed var(--line-2);
   border-radius:6px;
@@ -234,22 +234,9 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   cursor:pointer;
   transition:background 0.12s, color 0.12s, border-color 0.12s;
 }
-.add-list-btn:hover{background:#F3F0EA;color:var(--ink);border-color:var(--mute)}
+.add-lane-btn:hover{background:#F3F0EA;color:var(--ink);border-color:var(--mute)}
 
-/* "+ Add schedule" — sits below the dynamic schedules container */
-.add-schedule-row{margin:8px 0 28px 0}
-.add-schedule-btn{
-  background:#fff;color:var(--ink-2);
-  border:1px dashed var(--line-2);
-  border-radius:6px;
-  padding:6px 12px;
-  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
-  cursor:pointer;
-  transition:background 0.12s, color 0.12s, border-color 0.12s;
-}
-.add-schedule-btn:hover{background:#F3F0EA;color:var(--ink);border-color:var(--mute)}
-
-.lists-container{
+.lanes-container{
   display:flex;gap:14px;
   overflow-x:auto;
   padding:6px 2px 18px;
@@ -257,24 +244,24 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   align-items:flex-start;
 }
 
-/* Each vertical list: title at top, cards stacking down */
-.v-list{
+/* Each vertical lane: title at top, cards stacking down */
+.v-lane{
   flex:0 0 auto;
   width:200px;
   display:flex;flex-direction:column;
   gap:10px;
 }
-.v-list-header{
+.v-lane-header{
   display:flex;align-items:center;gap:10px;
   padding-bottom:6px;
   border-bottom:1px solid var(--line);
 }
-.v-list-cards{
+.v-lane-cards{
   display:flex;flex-direction:column;gap:10px;
   min-height:80px;
   padding:4px 0;
 }
-.v-list-cards.empty-list{
+.v-lane-cards.empty-lane{
   border:1px dashed var(--line-2);
   border-radius:8px;
   align-items:center;justify-content:center;
@@ -282,23 +269,23 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   color:var(--mute);
   font-size:12px;font-style:italic;
 }
-.v-list-cards.empty-list .list-empty{display:block}
-.v-list.dnd-target .v-list-cards{
+.v-lane-cards.empty-lane .lane-empty{display:block}
+.v-lane.dnd-target .v-lane-cards{
   background:rgba(78,138,135,0.06);
   border-radius:8px;
 }
 
-/* In vertical lists, cards span the full list width (still portrait-ish) */
-.v-list-cards .item-card{width:100%}
+/* In vertical lanes, cards span the full lane width (still portrait-ish) */
+.v-lane-cards .deal-card{width:100%}
 
-/* ─── Card in two places: greyed-out home-list copy ─── */
-.item-card.has-schedule-copy{
+/* ─── Card in two places: greyed-out home-lane copy ─── */
+.deal-card.has-row-copy{
   opacity:0.5;
   filter:saturate(0.5);
 }
-.item-card.has-schedule-copy:hover{opacity:0.8}
+.deal-card.has-row-copy:hover{opacity:0.8}
 
-/* ─── Down-arrow "send home" button on schedule-cards ─── */
+/* ─── Down-arrow "send home" button on row-cards ─── */
 .card-send-home{
   position:absolute;top:6px;right:6px;
   width:22px;height:22px;
@@ -316,7 +303,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .card-send-home svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 @media (max-width:600px){
-  .v-list{width:170px}
+  .v-lane{width:170px}
 }
 
 .trash-link{display:block;text-align:center;margin-top:32px;font-size:13px;color:var(--mute);text-decoration:none}
@@ -325,15 +312,15 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 /* Mobile: make cards a bit narrower */
 @media (max-width:600px){
   .container{padding:0 14px;margin-top:16px}
-  .item-card{width:148px}
+  .deal-card{width:148px}
   .card-name{font-size:13px;min-height:32px}
-  .list-title{font-size:19px}
+  .lane-title{font-size:19px}
 }
 
-.item-card{position:relative}
+.deal-card{position:relative}
 
 /* ───── Just-updated card: subtle glow + scale pulse to draw the eye ───── */
-.item-card.just-updated{
+.deal-card.just-updated{
   animation: dealJustUpdated 1.4s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 @keyframes dealJustUpdated {
@@ -362,58 +349,90 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 <div id="gistWarning" class="gist-warning">
   <div class="gist-warning-text">
     <div class="gist-warning-dot">!</div>
-    <span>You have <strong id="gistWarningCount" style="color:#412402"></strong> in your Gist — approaching the ~300 file limit. Permanently delete old test items to free up space.</span>
+    <span>You have <strong id="gistWarningCount" style="color:#412402"></strong> in your Gist — approaching the ~300 file limit. Permanently delete old test deals to free up space.</span>
   </div>
-  <a href="deleted-todo.html">Go to deleted items →</a>
+  <a href="deleted-todo.html">Go to deleted deals →</a>
 </div>
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">20:35 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">20:14 BST</div>
 
-  <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
-  <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
-  <div id="schedulesContainer">
-    <!-- populated by renderSchedules() -->
-  </div>
-
-  <!-- "+ Add schedule" button — adds a new schedule after the last existing one -->
-  <div class="add-schedule-row">
-    <button class="add-schedule-btn" onclick="addNewSchedule()" title="Add a new schedule">+ Add schedule</button>
-  </div>
-
-  <!-- ─── LISTS (vertical columns, stacking left-to-right, horizontally scrollable) ─── -->
-  <!-- Lists are dynamically rendered into #listsContainer by JS. -->
-  <div class="lists-section">
-    <div class="lists-section-header">
-      <span class="lists-section-title">Lists</span>
-      <button class="add-list-btn" onclick="addNewList()" title="Add a new list">+ Add list</button>
+  <!-- ─── ROWS (horizontal, full-width, stacking down) ─── -->
+  <!-- Row 1 = Inbox. Cards born here, no home lane. Has plus button. -->
+  <div id="laneRow1" class="lane" data-row="row1">
+    <div class="lane-header">
+      <button class="lane-add" style="--lane-color:var(--c-appraise)" onclick="addDealToInbox()" title="Add to Inbox" aria-label="Add to Inbox">+</button>
+      <span class="lane-title" data-lane="row1" contenteditable="plaintext-only" spellcheck="false">Inbox</span>
     </div>
-    <div id="listsContainer" class="lists-container">
+    <div class="lane-cards empty-lane" id="cardsRow1"><div class="lane-empty">Inbox is empty</div></div>
+  </div>
+
+  <!-- Rows 2-5 = working states. No plus buttons. Cards arrive by drag from lanes. -->
+  <div id="laneRow2" class="lane" data-row="row2">
+    <div class="lane-header">
+      <span class="lane-title" data-lane="row2" contenteditable="plaintext-only" spellcheck="false">Row 2</span>
+      <button class="lane-delete-btn" onclick="deleteRow('row2')" title="Delete this row" aria-label="Delete this row"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsRow2"><div class="lane-empty">Drag a card here</div></div>
+  </div>
+
+  <div id="laneRow3" class="lane" data-row="row3">
+    <div class="lane-header">
+      <span class="lane-title" data-lane="row3" contenteditable="plaintext-only" spellcheck="false">Row 3</span>
+      <button class="lane-delete-btn" onclick="deleteRow('row3')" title="Delete this row" aria-label="Delete this row"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsRow3"><div class="lane-empty">Drag a card here</div></div>
+  </div>
+
+  <div id="laneRow4" class="lane" data-row="row4">
+    <div class="lane-header">
+      <span class="lane-title" data-lane="row4" contenteditable="plaintext-only" spellcheck="false">Row 4</span>
+      <button class="lane-delete-btn" onclick="deleteRow('row4')" title="Delete this row" aria-label="Delete this row"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsRow4"><div class="lane-empty">Drag a card here</div></div>
+  </div>
+
+  <div id="laneRow5" class="lane" data-row="row5">
+    <div class="lane-header">
+      <span class="lane-title" data-lane="row5" contenteditable="plaintext-only" spellcheck="false">Row 5</span>
+      <button class="lane-delete-btn" onclick="deleteRow('row5')" title="Delete this row" aria-label="Delete this row"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>
+    </div>
+    <div class="lane-cards empty-lane" id="cardsRow5"><div class="lane-empty">Drag a card here</div></div>
+  </div>
+
+  <!-- ─── LANES (vertical columns, stacking left-to-right, horizontally scrollable) ─── -->
+  <!-- Lanes are dynamically rendered into #lanesContainer by JS. -->
+  <div class="lanes-section">
+    <div class="lanes-section-header">
+      <span class="lanes-section-title">Lanes</span>
+      <button class="add-lane-btn" onclick="addNewLane()" title="Add a new lane">+ Add lane</button>
+    </div>
+    <div id="lanesContainer" class="lanes-container">
       <!-- populated by JS -->
     </div>
   </div>
 
-  <!-- ─── ARCHIVED (kept as a schedule at the bottom, unchanged behaviour) ─── -->
+  <!-- ─── ARCHIVED (kept as a row at the bottom, unchanged behaviour) ─── -->
   <div class="archived-section">
-    <div id="sectionArchived" class="list" style="margin-bottom:0" data-schedule="archived">
-      <div class="list-header">
-        <span class="list-accent" style="background:var(--c-archived)"></span>
-        <span class="list-title" data-list="archived" spellcheck="false">Archived</span>
+    <div id="laneArchived" class="lane" style="margin-bottom:0" data-row="archived">
+      <div class="lane-header">
+        <span class="lane-accent" style="background:var(--c-archived)"></span>
+        <span class="lane-title" data-lane="archived" contenteditable="plaintext-only" spellcheck="false">Archived</span>
       </div>
-      <div class="list-cards empty-list" id="cardsArchived"><div class="list-empty">No archived items</div></div>
+      <div class="lane-cards empty-lane" id="cardsArchived"><div class="lane-empty">No archived deals</div></div>
     </div>
   </div>
 
   <div class="topbar" style="margin-top:24px">
-    <a href="deleted-todo.html" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;text-decoration:none">🗑 Deleted items</a>
+    <a href="deleted-todo.html" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;text-decoration:none">🗑 Deleted deals</a>
   </div>
 </div>
 
 <script>
 var ANALYSER_PAGE = 'todo-v11.html';
 var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
-var itemsIndex = {};
+var dealsIndex = {};
 var gistFilesMeta = null; // cached reference to gist.files from last fetch
 
 // ───── Token / Gist management (unchanged) ─────
@@ -434,7 +453,7 @@ function syncButton(){
   if(!gid){ setStatus('Paste Gist ID', false); return; }
   GIST_ID = gid;
   localStorage.setItem('todoGistId', GIST_ID);
-  loadItems();
+  loadDeals();
 }
 function setStatus(msg, ok){
   var el = document.getElementById('syncStatus');
@@ -471,7 +490,7 @@ async function getGist(){
 async function saveIndex(){
   var token = getToken();
   if(!token) return;
-  var body = { files: { 'deals-index.json': { content: JSON.stringify(itemsIndex, null, 2) } } };
+  var body = { files: { 'deals-index.json': { content: JSON.stringify(dealsIndex, null, 2) } } };
   await fetch('https://api.github.com/gists/' + GIST_ID, {
     method: 'PATCH',
     headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
@@ -479,7 +498,7 @@ async function saveIndex(){
   });
 }
 
-async function loadItems(){
+async function loadDeals(){
   var token = getToken();
   if(!token){ setStatus('No token', false); return; }
   setStatus('Loading…');
@@ -488,7 +507,7 @@ async function loadItems(){
     if(!data) return;
     gistFilesMeta = data.files || {};
 
-    // List labels — load first so any subsequent renderItems() picks them up
+    // Lane labels — load first so any subsequent renderDeals() picks them up
     if(gistFilesMeta['lane-labels.json']){
       try {
         var lf = gistFilesMeta['lane-labels.json'];
@@ -498,51 +517,35 @@ async function loadItems(){
         }
         if(lraw && lraw.trim()){
           var parsedLabels = JSON.parse(lraw);
-          // New shape: { schedules: [{key,label}, ...] | {row1:'...', ...}, lists: [...] }
-          if(Array.isArray(parsedLabels.schedules)){
-            // New format: array of {key, label}
-            SCHEDULES = parsedLabels.schedules.map(function(S){
-              return { key: String(S.key), label: String(S.label) };
-            });
-            // Ensure Inbox is always present at the front
-            if(!SCHEDULES.find(function(S){ return S.key === INBOX_KEY; })){
-              SCHEDULES.unshift({ key: INBOX_KEY, label: 'Inbox' });
-            }
-          } else if(parsedLabels.schedules && typeof parsedLabels.schedules === 'object'){
-            // Old format: map of key -> label. Convert.
-            Object.keys(parsedLabels.schedules).forEach(function(k){
-              if(k === '_deleted') return;
-              var s = findSchedule(k);
-              if(s && typeof parsedLabels.schedules[k] === 'string'){
-                s.label = parsedLabels.schedules[k];
+          // New shape: { rows: {...}, lanes: [{key,label}, ...] }
+          if(parsedLabels.rows){
+            Object.keys(parsedLabels.rows).forEach(function(k){
+              if(typeof parsedLabels.rows[k] === 'string'){
+                ROW_LABELS[k] = parsedLabels.rows[k];
               }
             });
-            // Apply the old _deleted map by removing deleted schedules from SCHEDULES
-            var del = parsedLabels.schedules._deleted || {};
-            SCHEDULES = SCHEDULES.filter(function(S){
-              return S.key === INBOX_KEY || !del[S.key];
-            });
           }
-          if(Array.isArray(parsedLabels.lists) && parsedLabels.lists.length){
-            LISTS = parsedLabels.lists.map(function(L){
+          if(Array.isArray(parsedLabels.lanes) && parsedLabels.lanes.length){
+            LANES = parsedLabels.lanes.map(function(L){
               return { key:String(L.key), label:String(L.label) };
             });
           }
-          // Legacy back-compat: old flat {appraise:'Inbox',...}
-          var legacyMap = {appraise: INBOX_KEY};
+          // Legacy back-compat: old flat {appraise:'Inbox', view:'X',...}
+          // becomes row labels mapped to row1..row4
+          var legacyMap = {appraise:'row1'};
           Object.keys(legacyMap).forEach(function(oldK){
             if(typeof parsedLabels[oldK] === 'string'){
-              var s = findSchedule(legacyMap[oldK]);
-              if(s) s.label = parsedLabels[oldK];
+              ROW_LABELS[legacyMap[oldK]] = parsedLabels[oldK];
             }
           });
-          try { localStorage.setItem('mirror-laneLabels', JSON.stringify({schedules:SCHEDULES, lists:LISTS})); } catch(e){}
-          applySectionLabels();
+          if(typeof parsedLabels.archived === 'string') ROW_LABELS.archived = parsedLabels.archived;
+          try { localStorage.setItem('mirror-laneLabels', JSON.stringify({rows:ROW_LABELS, lanes:LANES})); } catch(e){}
+          applyLaneLabels();
         }
       } catch(e){ /* labels file malformed — keep defaults */ }
     }
 
-    itemsIndex = {};
+    dealsIndex = {};
     if(gistFilesMeta['deals-index.json']){
       var fileObj = gistFilesMeta['deals-index.json'];
       var raw = fileObj.content;
@@ -551,13 +554,13 @@ async function loadItems(){
         raw = await rawRes.text();
       }
       if(raw && raw.trim() && raw !== '{}'){
-        itemsIndex = JSON.parse(raw);
+        dealsIndex = JSON.parse(raw);
       }
     }
-    // Migrate every entry to the new model (status mapping, list field default)
-    Object.keys(itemsIndex).forEach(function(id){ migrateItemEntry(itemsIndex[id]); });
-    renderItems();
-    setStatus('Loaded — ' + Object.keys(itemsIndex).length + ' items', true);
+    // Migrate every entry to the new model (status mapping, lane field default)
+    Object.keys(dealsIndex).forEach(function(id){ migrateDealEntry(dealsIndex[id]); });
+    renderDeals();
+    setStatus('Loaded — ' + Object.keys(dealsIndex).length + ' deals', true);
     var inp = document.getElementById('syncToken');
     if(inp) inp.value = '';
   } catch(e){
@@ -566,64 +569,44 @@ async function loadItems(){
 }
 
 // ───── Rendering ─────
-// Inbox is always present (special schedule). Other schedules are dynamic.
-var INBOX_KEY = 'row1';
+// Rows (horizontal, fixed): inbox + 4 working states + archived
+var ROW_KEYS = ['row1','row2','row3','row4','row5'];
+var ROW_KEYS_INCL_ARCHIVED = ROW_KEYS.concat(['archived']);
 
-// SCHEDULES: array of {key, label}. The first element is always Inbox.
-// Default: Inbox + 4 numbered schedules. Persisted with the labels file.
-var SCHEDULES = [
-  { key: 'row1', label: 'Inbox' },
-  { key: 'row2', label: 'Schedule 2' },
-  { key: 'row3', label: 'Schedule 3' },
-  { key: 'row4', label: 'Schedule 4' },
-  { key: 'row5', label: 'Schedule 5' }
+// Lane definitions: dynamic list of {key, label}. Defaults to 5 lanes.
+// Persisted to lane-labels.json as a `lanes` array; row labels persist as
+// `rows` object on the same file.
+var LANES = [
+  { key:'lane1', label:'Lane 1' },
+  { key:'lane2', label:'Lane 2' },
+  { key:'lane3', label:'Lane 3' },
+  { key:'lane4', label:'Lane 4' },
+  { key:'lane5', label:'Lane 5' }
 ];
 
-// Lists: dynamic list of {key, label}. Defaults to 5 lists.
-var LISTS = [
-  { key:'lane1', label:'List 1' },
-  { key:'lane2', label:'List 2' },
-  { key:'lane3', label:'List 3' },
-  { key:'lane4', label:'List 4' },
-  { key:'lane5', label:'List 5' }
-];
+// Plus button colour cycle for lanes (reused as more lanes are added)
+var LANE_COLOR_CYCLE = ['#3D6E92','#C48831','#6F8F4C','#6D4B6B','#5E8B86','#a85a3f','#8e8b82'];
+function laneColor(idx){ return LANE_COLOR_CYCLE[idx % LANE_COLOR_CYCLE.length]; }
 
-// Plus button colour cycle for lists (reused as more lists are added)
-var LIST_COLOR_CYCLE = ['#3D6E92','#C48831','#6F8F4C','#6D4B6B','#5E8B86','#a85a3f','#8e8b82'];
-function listColor(idx){ return LIST_COLOR_CYCLE[idx % LIST_COLOR_CYCLE.length]; }
+// Row labels (defaults) — editable inline
+var ROW_LABELS_DEFAULT = {row1:'Inbox',row2:'Row 2',row3:'Row 3',row4:'Row 4',row5:'Row 5',archived:'Archived'};
+var ROW_LABELS = Object.assign({}, ROW_LABELS_DEFAULT);
 
-// Lowest unused positive integer in labels matching "<prefix> N"
-function nextUnusedNumber(items, prefix){
-  var used = {};
-  var pat = new RegExp('^' + prefix + '\\s+(\\d+)$');
-  items.forEach(function(it){
-    var m = pat.exec(it.label || '');
-    if(m) used[parseInt(m[1], 10)] = true;
-  });
-  var n = 1;
-  while(used[n]) n++;
-  return n;
-}
-
-// Helper: find a schedule object by key
-function findSchedule(key){
-  for(var i = 0; i < SCHEDULES.length; i++){
-    if(SCHEDULES[i].key === key) return SCHEDULES[i];
-  }
-  return null;
-}
-
-// Legacy compatibility: when loading old gists, map old status values to Inbox
-// so existing cards land somewhere sensible. Users sort from there.
+// Legacy compatibility: when loading old gists, map old status values to row1
+// so existing cards in the old `appraise/view/offer/followup` lanes all land
+// in the Inbox row of the new model. Users can sort them from there.
 var LEGACY_STATUS_MAP = {appraise:'row1', view:'row1', offer:'row1', followup:'row1'};
 
-function migrateItemEntry(d){
+function migrateDealEntry(d){
   if(!d) return;
+  // Status migration: old single-bucket model → row1
   if(d.status && LEGACY_STATUS_MAP[d.status]){
     d.status = LEGACY_STATUS_MAP[d.status];
   }
+  // If no status at all (lane-only card), leave status null
   if(d.status === undefined) d.status = null;
-  if(d.list === undefined) d.list = null;
+  // lane defaults to null (Inbox cards have no home lane)
+  if(d.lane === undefined) d.lane = null;
 }
 
 // Hydrate from localStorage mirror immediately so the page renders correctly
@@ -633,42 +616,41 @@ function migrateItemEntry(d){
     var raw = localStorage.getItem('mirror-laneLabels');
     if(!raw) return;
     var parsed = JSON.parse(raw);
-    if(Array.isArray(parsed.schedules)){
-      SCHEDULES = parsed.schedules.map(function(S){
-        return { key:String(S.key), label:String(S.label) };
+    if(parsed.rows){
+      Object.keys(parsed.rows).forEach(function(k){
+        if(typeof parsed.rows[k] === 'string') ROW_LABELS[k] = parsed.rows[k];
       });
-      if(!SCHEDULES.find(function(S){ return S.key === INBOX_KEY; })){
-        SCHEDULES.unshift({ key: INBOX_KEY, label: 'Inbox' });
-      }
     }
-    if(Array.isArray(parsed.lists) && parsed.lists.length){
-      LISTS = parsed.lists.map(function(L){
+    if(Array.isArray(parsed.lanes) && parsed.lanes.length){
+      LANES = parsed.lanes.map(function(L){
         return { key:String(L.key), label:String(L.label) };
       });
     }
   } catch(e){}
 })();
 
-function applySectionLabels(){
-  // Update title text on every schedule + Inbox + archived
-  document.querySelectorAll('.list-title[data-list]').forEach(function(el){
-    var key = el.getAttribute('data-list');
-    var label;
-    if(key === 'archived'){ label = 'Archived'; }
-    else {
-      var sch = findSchedule(key);
-      label = sch ? sch.label : null;
-    }
-    if(label == null) return; // v-list title (handled by renderLists)
+function applyLaneLabels(){
+  // Row title spans
+  document.querySelectorAll('.lane-title[data-lane]').forEach(function(el){
+    var key = el.getAttribute('data-lane');
+    var label = ROW_LABELS[key] || ROW_LABELS_DEFAULT[key];
+    if(label === undefined) return; // a v-lane title; handled by renderLanes
     if(document.activeElement !== el && el.textContent !== label){
       el.textContent = label;
     }
   });
+  // Hide rows the user has deleted
+  var deletedRows = (ROW_LABELS && ROW_LABELS._deleted) || {};
+  ['row2','row3','row4','row5'].forEach(function(rk){
+    var laneEl = document.getElementById('lane' + rk.charAt(0).toUpperCase() + rk.slice(1));
+    if(!laneEl) return;
+    laneEl.style.display = deletedRows[rk] ? 'none' : '';
+  });
 }
 
-async function saveSectionLabels(){
-  // Persist both schedules + lists to the labels file
-  var payload = { schedules: SCHEDULES, lists: LISTS };
+async function saveLaneLabels(){
+  // Persist both rows + lanes to the same file
+  var payload = { rows: ROW_LABELS, lanes: LANES };
   try { localStorage.setItem('mirror-laneLabels', JSON.stringify(payload)); } catch(e){}
   var token = getToken();
   if(!token || !GIST_ID) return;
@@ -686,243 +668,199 @@ async function saveSectionLabels(){
   }
 }
 
-// Schedule title editing is now wired by renderSchedules (since the titles are
-// dynamically rendered). Archived stays static and has no editing.
-function wireSectionLabelEditing(){
-  // No-op now; kept for compat with existing call sites.
+function wireLaneLabelEditing(){
+  document.querySelectorAll('.lane-title[data-lane]').forEach(function(el){
+    var key = el.getAttribute('data-lane');
+    if(!ROW_LABELS.hasOwnProperty(key)) return; // skip v-lane titles (handled separately)
+    el.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
+      else if(e.key === 'Escape'){
+        e.preventDefault();
+        el.textContent = ROW_LABELS[key] || ROW_LABELS_DEFAULT[key];
+        el.blur();
+      }
+    });
+    el.addEventListener('blur', function(){
+      var val = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if(!val) val = ROW_LABELS_DEFAULT[key];
+      el.textContent = val;
+      if(val !== ROW_LABELS[key]){
+        ROW_LABELS[key] = val;
+        applyLaneLabels();
+        saveLaneLabels();
+      }
+    });
+  });
 }
 
 if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', function(){ wireSectionLabelEditing(); applySectionLabels(); });
+  document.addEventListener('DOMContentLoaded', function(){ wireLaneLabelEditing(); applyLaneLabels(); });
 } else {
-  wireSectionLabelEditing();
-  applySectionLabels();
+  wireLaneLabelEditing();
+  applyLaneLabels();
 }
 
-function renderItems(){
-  // Buckets: every schedule key + archived + every list key
-  var scheduleBuckets = { archived: [] };
-  SCHEDULES.forEach(function(S){ scheduleBuckets[S.key] = []; });
-  var listBuckets = {};
-  LISTS.forEach(function(L){ listBuckets[L.key] = []; });
+function renderDeals(){
+  // Buckets: rows (5 + archived) + one per lane
+  var rowBuckets = {row1:[], row2:[], row3:[], row4:[], row5:[], archived:[]};
+  var laneBuckets = {}; // keyed by lane key
+  LANES.forEach(function(L){ laneBuckets[L.key] = []; });
 
-  Object.keys(itemsIndex).forEach(function(id){
-    var d = itemsIndex[id];
+  Object.keys(dealsIndex).forEach(function(id){
+    var d = dealsIndex[id];
     if(d.deleted) return;
-    if(d.archived){ scheduleBuckets.archived.push(id); return; }
+    if(d.archived){ rowBuckets.archived.push(id); return; }
 
-    // A card may appear in BOTH a schedule and a list (when pulled up to work).
-    if(d.status && scheduleBuckets[d.status]){
-      scheduleBuckets[d.status].push(id);
+    // A card may appear in BOTH a row and a lane (when pulled up to work).
+    // Row placement:
+    if(d.status && rowBuckets[d.status]){
+      rowBuckets[d.status].push(id);
     }
-    if(d.list && listBuckets[d.list]){
-      listBuckets[d.list].push(id);
+    // Lane placement (home lane), if it has one:
+    if(d.lane && laneBuckets[d.lane]){
+      laneBuckets[d.lane].push(id);
     }
   });
 
-  // Sort: manual _order takes precedence, else most-recent first
+  // Sort: manual _order (set by drag-and-drop) takes precedence, else most-recent first
   var sortByOrder = function(a,b){
-    var da = itemsIndex[a], db = itemsIndex[b];
+    var da = dealsIndex[a], db = dealsIndex[b];
     if(da._order != null && db._order != null) return da._order - db._order;
     if(da._order != null) return -1;
     if(db._order != null) return  1;
     return new Date(db.updated || 0) - new Date(da.updated || 0);
   };
-  Object.keys(scheduleBuckets).forEach(function(k){ scheduleBuckets[k].sort(sortByOrder); });
-  Object.keys(listBuckets).forEach(function(k){ listBuckets[k].sort(sortByOrder); });
+  Object.keys(rowBuckets).forEach(function(k){ rowBuckets[k].sort(sortByOrder); });
+  Object.keys(laneBuckets).forEach(function(k){ laneBuckets[k].sort(sortByOrder); });
 
   // Gist warning
-  var totalItems = Object.keys(itemsIndex).length;
+  var totalDeals = Object.keys(dealsIndex).length;
   var warn = document.getElementById('gistWarning');
   if(warn){
-    if(totalItems >= 60){
-      document.getElementById('gistWarningCount').textContent = totalItems + ' items';
+    if(totalDeals >= 60){
+      document.getElementById('gistWarningCount').textContent = totalDeals + ' deals';
       warn.classList.add('show');
     } else {
       warn.classList.remove('show');
     }
   }
 
-  // Render schedules (dynamic) + archived (also dynamic now, lives in same container if you like, but kept separate)
-  renderSchedules(scheduleBuckets);
-  renderSection('cardsArchived', scheduleBuckets.archived, {context:'archived'});
+  // Render rows
+  renderLane('cardsRow1', rowBuckets.row1, {context:'row', row:'row1'});
+  renderLane('cardsRow2', rowBuckets.row2, {context:'row', row:'row2'});
+  renderLane('cardsRow3', rowBuckets.row3, {context:'row', row:'row3'});
+  renderLane('cardsRow4', rowBuckets.row4, {context:'row', row:'row4'});
+  renderLane('cardsRow5', rowBuckets.row5, {context:'row', row:'row5'});
+  renderLane('cardsArchived', rowBuckets.archived, {context:'archived'});
 
-  // Render lists
-  renderLists(listBuckets);
+  // Render lanes (build container DOM each render — simplest, layout settled)
+  renderLanes(laneBuckets);
 
   if(typeof _wireDrag === 'function') _wireDrag();
 }
 
-// Build the schedules section dynamically. Inbox is the first schedule and
-// is special: it has a plus button and can't be deleted.
-function renderSchedules(scheduleBuckets){
-  var container = document.getElementById('schedulesContainer');
-  if(!container) return;
-
-  var html = SCHEDULES.map(function(S, idx){
-    var isInbox = (S.key === INBOX_KEY);
-    var labelEsc = escapeHtml(S.label);
-    var ids = scheduleBuckets[S.key] || [];
-    var emptyMsg = isInbox ? 'Inbox is empty' : 'Drag a card here';
-    var cardsHtml;
-    if(!ids.length){
-      cardsHtml = '<div class="list-cards empty-list" id="cardsSched_' + S.key + '"><div class="list-empty">' + emptyMsg + '</div></div>';
-    } else {
-      var inner = ids.map(function(id){ return cardHTML(id, {context:'schedule', schedule:S.key}); }).join('');
-      cardsHtml = '<div class="list-cards" id="cardsSched_' + S.key + '">' + inner + '</div>';
-    }
-
-    var addBtn = isInbox
-      ? '<button class="list-add" style="--list-color:var(--c-appraise)" onclick="addItemToInbox()" title="Add to Inbox" aria-label="Add to Inbox">+</button>'
-      : '';
-    var delBtn = isInbox
-      ? ''
-      : '<button class="list-delete-btn" onclick="deleteSchedule(\'' + S.key + '\')" title="Delete this schedule" aria-label="Delete this schedule"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>';
-
-    return '<div class="list" data-schedule="' + S.key + '">' +
-      '<div class="list-header">' +
-        addBtn +
-        '<span class="list-title schedule-title" data-sched-key="' + S.key + '" contenteditable="' + (isInbox ? 'false' : 'plaintext-only') + '" spellcheck="false">' + labelEsc + '</span>' +
-        delBtn +
-      '</div>' +
-      cardsHtml +
-    '</div>';
-  }).join('');
-  container.innerHTML = html;
-  wireScheduleTitleEditing();
-}
-
-// Wire dynamically-rendered schedule titles for inline editing.
-// Inbox is skipped (not editable here — it's the special "Inbox" name and we
-// keep it fixed for clarity).
-function wireScheduleTitleEditing(){
-  document.querySelectorAll('.schedule-title[data-sched-key]').forEach(function(el){
-    var key = el.getAttribute('data-sched-key');
-    if(key === INBOX_KEY) return;
-    var sched = findSchedule(key);
-    if(!sched) return;
-    el.addEventListener('keydown', function(e){
-      if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
-      else if(e.key === 'Escape'){
-        e.preventDefault();
-        el.textContent = sched.label;
-        el.blur();
-      }
-    });
-    el.addEventListener('blur', function(){
-      var val = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      if(!val) val = sched.label;
-      el.textContent = val;
-      if(val !== sched.label){
-        sched.label = val;
-        saveSectionLabels();
-      }
-    });
-  });
-}
-
-function renderSection(cardsId, ids, ctx){
-  ctx = ctx || {context:'schedule'};
+function renderLane(cardsId, ids, ctx){
+  ctx = ctx || {context:'row'};
   var el = document.getElementById(cardsId);
   if(!el) return;
   if(!ids.length){
-    el.classList.add('empty-list');
-    var msg = 'No items here yet';
-    if(ctx.context === 'archived') msg = 'No archived items';
-    else if(ctx.schedule === INBOX_KEY) msg = 'Inbox is empty';
-    else if(ctx.context === 'schedule') msg = 'Drag a card here';
-    else if(ctx.context === 'list') msg = 'Empty';
-    el.innerHTML = '<div class="list-empty">' + msg + '</div>';
+    el.classList.add('empty-lane');
+    var msg = 'No deals here yet';
+    if(ctx.context === 'archived') msg = 'No archived deals';
+    else if(ctx.row === 'row1') msg = 'Inbox is empty';
+    else if(ctx.context === 'row') msg = 'Drag a card here';
+    else if(ctx.context === 'lane') msg = 'Empty';
+    el.innerHTML = '<div class="lane-empty">' + msg + '</div>';
     return;
   }
-  el.classList.remove('empty-list');
+  el.classList.remove('empty-lane');
   el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = '';
   el.innerHTML = ids.map(function(id){ return cardHTML(id, ctx); }).join('');
 }
 
-// Build the vertical-lists section. Replaces #listsContainer entirely each
-// render — cheap given list counts will be in the tens, not thousands.
-function renderLists(listBuckets){
-  var container = document.getElementById('listsContainer');
+// Build the vertical-lanes section. Replaces #lanesContainer entirely each
+// render — cheap given lane counts will be in the tens, not thousands.
+function renderLanes(laneBuckets){
+  var container = document.getElementById('lanesContainer');
   if(!container) return;
-  var html = LISTS.map(function(L, i){
-    var color = listColor(i);
-    var ids = listBuckets[L.key] || [];
+  var html = LANES.map(function(L, i){
+    var color = laneColor(i);
+    var ids = laneBuckets[L.key] || [];
     var cardsHtml;
     if(!ids.length){
-      cardsHtml = '<div class="v-list-cards empty-list" id="cardsList_' + L.key + '"><div class="list-empty">Empty</div></div>';
+      cardsHtml = '<div class="v-lane-cards empty-lane" id="cardsLane_' + L.key + '"><div class="lane-empty">Empty</div></div>';
     } else {
-      var inner = ids.map(function(id){ return cardHTML(id, {context:'list', list:L.key}); }).join('');
-      cardsHtml = '<div class="v-list-cards" id="cardsList_' + L.key + '">' + inner + '</div>';
+      var inner = ids.map(function(id){ return cardHTML(id, {context:'lane', lane:L.key}); }).join('');
+      cardsHtml = '<div class="v-lane-cards" id="cardsLane_' + L.key + '">' + inner + '</div>';
     }
     var labelEsc = escapeHtml(L.label);
-    return '<div class="v-list" data-list="' + L.key + '">' +
-      '<div class="v-list-header">' +
-        '<button class="list-add" style="--list-color:' + color + '" onclick="addItemToList(\'' + L.key + '\')" title="Add to ' + labelEsc + '" aria-label="Add to ' + labelEsc + '">+</button>' +
-        '<span class="list-title v-list-title" data-vlist-key="' + L.key + '" contenteditable="plaintext-only" spellcheck="false">' + labelEsc + '</span>' +
-        '<button class="list-delete-btn" onclick="deleteList(\'' + L.key + '\')" title="Delete this list" aria-label="Delete this list"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>' +
+    return '<div class="v-lane" data-lane="' + L.key + '">' +
+      '<div class="v-lane-header">' +
+        '<button class="lane-add" style="--lane-color:' + color + '" onclick="addDealToLane(\'' + L.key + '\')" title="Add to ' + labelEsc + '" aria-label="Add to ' + labelEsc + '">+</button>' +
+        '<span class="lane-title v-lane-title" data-vlane-key="' + L.key + '" contenteditable="plaintext-only" spellcheck="false">' + labelEsc + '</span>' +
+        '<button class="lane-delete-btn" onclick="deleteLane(\'' + L.key + '\')" title="Delete this lane" aria-label="Delete this lane"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>' +
       '</div>' +
       cardsHtml +
     '</div>';
   }).join('');
   container.innerHTML = html;
-  wireVListTitleEditing();
+  wireVLaneTitleEditing();
 }
 
-// Wire the dynamically-rendered v-list titles for inline editing
-function wireVListTitleEditing(){
-  document.querySelectorAll('.v-list-title[data-vlist-key]').forEach(function(el){
-    var key = el.getAttribute('data-vlist-key');
-    var listObj = LISTS.find(function(L){ return L.key === key; });
-    if(!listObj) return;
+// Wire the dynamically-rendered v-lane titles for inline editing
+function wireVLaneTitleEditing(){
+  document.querySelectorAll('.v-lane-title[data-vlane-key]').forEach(function(el){
+    var key = el.getAttribute('data-vlane-key');
+    var laneObj = LANES.find(function(L){ return L.key === key; });
+    if(!laneObj) return;
     el.addEventListener('keydown', function(e){
       if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
       else if(e.key === 'Escape'){
         e.preventDefault();
-        el.textContent = listObj.label;
+        el.textContent = laneObj.label;
         el.blur();
       }
     });
     el.addEventListener('blur', function(){
       var val = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      if(!val) val = listObj.label;
+      if(!val) val = laneObj.label;
       el.textContent = val;
-      if(val !== listObj.label){
-        listObj.label = val;
-        saveSectionLabels();
+      if(val !== laneObj.label){
+        laneObj.label = val;
+        saveLaneLabels();
       }
     });
   });
 }
 
 function cardHTML(id, ctx){
-  ctx = ctx || {context:'schedule'};
-  var d = itemsIndex[id];
+  ctx = ctx || {context:'row'};
+  var d = dealsIndex[id];
   var isArchived = (ctx.context === 'archived');
-  var inList = (ctx.context === 'list');
-  var inSchedule = (ctx.context === 'schedule');
-  // Greyed home-list copy when this same card is also showing in a schedule right now.
-  var hasScheduleCopy = inList && !!d.status;
+  var inLane = (ctx.context === 'lane');
+  var inRow = (ctx.context === 'row');
+  // Greyed home-lane copy when this same card is also showing in a row right now.
+  var hasRowCopy = inLane && !!d.status;
 
-  var link = ANALYSER_PAGE + '?item=' + encodeURIComponent(id);
+  var link = ANALYSER_PAGE + '?deal=' + encodeURIComponent(id);
   var name = (d.name || id).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; });
 
   var footer = '';
   if(isArchived){
     footer = '<div class="card-footer">' +
-      '<button class="card-icon-btn" onclick="unarchiveItem(this)" title="Restore to pipeline">' +
+      '<button class="card-icon-btn" onclick="unarchiveDeal(this)" title="Restore to pipeline">' +
         iconSvg('restore') + ' Restore' +
       '</button>' +
-      '<button class="card-icon-btn danger" onclick="deleteItem(this)" title="Move to deleted">' +
+      '<button class="card-icon-btn danger" onclick="deleteDeal(this)" title="Move to deleted">' +
         iconSvg('trash') + '' +
       '</button>' +
     '</div>';
   } else {
     footer = '<div class="card-footer">' +
-      '<button class="card-icon-btn danger" onclick="deleteItem(this)" title="Move to deleted">' +
+      '<button class="card-icon-btn danger" onclick="deleteDeal(this)" title="Move to deleted">' +
         iconSvg('trash') +
       '</button>' +
-      '<button class="card-icon-btn affirm" onclick="archiveItem(this)" title="Archive">' +
+      '<button class="card-icon-btn affirm" onclick="archiveDeal(this)" title="Archive">' +
         iconSvg('archive') +
       '</button>' +
     '</div>';
@@ -932,28 +870,28 @@ function cardHTML(id, ctx){
   var noteColor = d.noteColor || '#C0392B';
   var ribbonClass = 'card-note-ribbon' + (noteText ? ' visible' : ' empty');
   var ribbonStyle = noteText ? 'background:'+noteColor : '';
-  var ribbonHtml = '<div class="'+ribbonClass+'" data-item-id="'+id+'" style="'+ribbonStyle+'" title="Click to edit note">' + (noteText ? escapeHtml(noteText) : 'Add note') + '</div>';
+  var ribbonHtml = '<div class="'+ribbonClass+'" data-deal-id="'+id+'" style="'+ribbonStyle+'" title="Click to edit note">' + (noteText ? escapeHtml(noteText) : 'Add note') + '</div>';
 
   var nameHtml = isArchived
     ? '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>'
-    : '<span class="card-name" data-item-id="' + id + '" contenteditable="plaintext-only" spellcheck="false" title="Click to edit · double-click to open">' + name + '</span>';
+    : '<span class="card-name" data-deal-id="' + id + '" contenteditable="plaintext-only" spellcheck="false" title="Click to edit · double-click to open">' + name + '</span>';
 
-  // Send-home button: only on schedule-cards that have a home list (schedules 2-5; not Inbox; not archived)
+  // Send-home button: only on row-cards that have a home lane (rows 2-5; not Inbox; not archived)
   var sendHomeBtn = '';
-  if(inSchedule && d.list && d.status && d.status !== INBOX_KEY){
-    sendHomeBtn = '<button class="card-send-home" onclick="sendCardHome(this)" title="Send back to home list" aria-label="Send back to home list">' +
+  if(inRow && d.lane && d.status && d.status !== 'row1'){
+    sendHomeBtn = '<button class="card-send-home" onclick="sendCardHome(this)" title="Send back to home lane" aria-label="Send back to home lane">' +
       '<svg viewBox="0 0 20 20"><polyline points="5,8 10,13 15,8"/></svg>' +
     '</button>';
   }
 
   // data-ctx tells the drag layer where this card visually lives right now
   var ctxAttr = ' data-ctx="' + ctx.context + '"';
-  if(ctx.schedule) ctxAttr += ' data-ctx-schedule="' + ctx.schedule + '"';
-  if(ctx.list) ctxAttr += ' data-ctx-list="' + ctx.list + '"';
+  if(ctx.row) ctxAttr += ' data-ctx-row="' + ctx.row + '"';
+  if(ctx.lane) ctxAttr += ' data-ctx-lane="' + ctx.lane + '"';
 
-  var classes = 'item-card';
+  var classes = 'deal-card';
   if(isArchived) classes += ' archived';
-  if(hasScheduleCopy) classes += ' has-schedule-copy';
+  if(hasRowCopy) classes += ' has-row-copy';
 
   return '<div class="' + classes + '" data-id="' + id + '"' + ctxAttr + '>' +
     ribbonHtml +
@@ -974,7 +912,7 @@ function iconSvg(kind){
   return defs[kind] || '';
 }
 
-function getId(btn){ return btn.closest('.item-card').dataset.id; }
+function getId(btn){ return btn.closest('.deal-card').dataset.id; }
 
 function escapeHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -991,14 +929,14 @@ function _closeRibbon(commit){
   var id = r.dataset.dealId;
   var rawText = (r.innerText || '').trim();
   if(commit !== false){
-    if(!itemsIndex[id]) itemsIndex[id] = {};
-    var prevText = itemsIndex[id].note || '';
-    var prevColor = itemsIndex[id].noteColor || '';
+    if(!dealsIndex[id]) dealsIndex[id] = {};
+    var prevText = dealsIndex[id].note || '';
+    var prevColor = dealsIndex[id].noteColor || '';
     var newColor = r.dataset.color || '#C0392B';
     if(rawText !== prevText || newColor !== prevColor){
-      itemsIndex[id].note = rawText;
-      itemsIndex[id].noteColor = newColor;
-      itemsIndex[id].updated = new Date().toISOString();
+      dealsIndex[id].note = rawText;
+      dealsIndex[id].noteColor = newColor;
+      dealsIndex[id].updated = new Date().toISOString();
       saveIndex();
     }
   }
@@ -1023,7 +961,7 @@ function _openRibbon(r){
   if(_activeRibbon === r) return;
   if(_activeRibbon) _closeRibbon(true);
   var id = r.dataset.dealId;
-  var d = itemsIndex[id] || {};
+  var d = dealsIndex[id] || {};
   var color = d.noteColor || '#C0392B';
   r.dataset.color = color;
   r.classList.add('editing');
@@ -1134,13 +1072,13 @@ var _activeName = null;
 var _activeNameOriginal = '';
 
 function _openTodoPage(id){
-  var dest = ANALYSER_PAGE + '?item=' + encodeURIComponent(id);
+  var dest = ANALYSER_PAGE + '?deal=' + encodeURIComponent(id);
   window.location.href = dest;
 }
 
 function _commitName(span, save){
   if(!span) return;
-  var id = span.getAttribute('data-item-id');
+  var id = span.getAttribute('data-deal-id');
   if(!id) return;
   var raw = (span.textContent || '').replace(/\s+/g, ' ').trim();
   if(save){
@@ -1148,12 +1086,12 @@ function _commitName(span, save){
       // Empty name: revert to original (avoid blank cards)
       span.textContent = _activeNameOriginal || id;
     } else if(raw !== _activeNameOriginal){
-      if(itemsIndex[id]){
-        itemsIndex[id].name = raw;
-        itemsIndex[id].updated = new Date().toISOString();
+      if(dealsIndex[id]){
+        dealsIndex[id].name = raw;
+        dealsIndex[id].updated = new Date().toISOString();
         saveIndex();
-        // Sync any other DOM copy of this card (e.g. greyed list copy)
-        document.querySelectorAll('.card-name[data-item-id="' + id + '"]').forEach(function(el){
+        // Sync any other DOM copy of this card (e.g. greyed lane copy)
+        document.querySelectorAll('.card-name[data-deal-id="' + id + '"]').forEach(function(el){
           if(el !== span && el.textContent !== raw) el.textContent = raw;
         });
       }
@@ -1168,7 +1106,7 @@ function _commitName(span, save){
 document.addEventListener('dblclick', function(e){
   var span = e.target.closest('.card-name[contenteditable]');
   if(!span) return;
-  var id = span.getAttribute('data-item-id');
+  var id = span.getAttribute('data-deal-id');
   if(!id) return;
   e.preventDefault();
   // Commit anything in-flight first
@@ -1208,7 +1146,7 @@ function focusNewCardName(id){
   // Wait for FLIP animation to settle so the card is in its final position
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
-      var span = document.querySelector('.card-name[data-item-id="' + id + '"]');
+      var span = document.querySelector('.card-name[data-deal-id="' + id + '"]');
       if(!span) return;
       span.focus();
       // Select all text so typing replaces the placeholder name
@@ -1223,10 +1161,10 @@ function focusNewCardName(id){
 
 // ───── FLIP animation helpers ─────
 // Capture {left, top, width, height} for every card currently in the DOM,
-// keyed by item id. Used as the "First" snapshot for FLIP.
+// keyed by deal id. Used as the "First" snapshot for FLIP.
 function captureRects(){
   var rects = {};
-  document.querySelectorAll('.item-card').forEach(function(el){
+  document.querySelectorAll('.deal-card').forEach(function(el){
     var id = el.dataset.id;
     if(!id) return;
     rects[id] = el.getBoundingClientRect();
@@ -1252,7 +1190,7 @@ function animateFlip(oldRects, opts){
   var EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
 
   // Existing + new cards
-  document.querySelectorAll('.item-card').forEach(function(el){
+  document.querySelectorAll('.deal-card').forEach(function(el){
     var id = el.dataset.id;
     if(!id) return;
 
@@ -1319,40 +1257,40 @@ function animateFlip(oldRects, opts){
 }
 
 // ───── Actions ─────
-async function archiveItem(btn){
+async function archiveDeal(btn){
   var id = getId(btn);
   await new Promise(function(r){ setTimeout(r, 800); });
   var oldRects = captureRects();
-  itemsIndex[id].archived = true;
-  itemsIndex[id].updated = new Date().toISOString();
-  saveIndex(); renderItems();
+  dealsIndex[id].archived = true;
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderDeals();
   animateFlip(oldRects);
 }
 
-async function unarchiveItem(btn){
+async function unarchiveDeal(btn){
   var id = getId(btn);
   await new Promise(function(r){ setTimeout(r, 800); });
   var oldRects = captureRects();
-  itemsIndex[id].archived = false;
-  if(!itemsIndex[id].status) itemsIndex[id].status = 'appraise';
-  itemsIndex[id].updated = new Date().toISOString();
-  saveIndex(); renderItems();
+  dealsIndex[id].archived = false;
+  if(!dealsIndex[id].status) dealsIndex[id].status = 'appraise';
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderDeals();
   animateFlip(oldRects);
 }
 
-async function deleteItem(btn){
+async function deleteDeal(btn){
   var id = getId(btn);
-  var name = itemsIndex[id].name;
-  if(!confirm('Move "' + name + '" to Deleted Items?')) return;
+  var name = dealsIndex[id].name;
+  if(!confirm('Move "' + name + '" to Deleted Deals?')) return;
   await new Promise(function(r){ setTimeout(r, 800); });
   // Capture BEFORE mutation so remaining cards can FLIP to fill the gap,
   // and clone the outgoing card so it can fade out as a ghost.
   var oldRects = captureRects();
   var ghost = prepareRemovalGhost(id);
-  itemsIndex[id].deleted = true;
-  itemsIndex[id].archived = false;
-  itemsIndex[id].updated = new Date().toISOString();
-  saveIndex(); renderItems();
+  dealsIndex[id].deleted = true;
+  dealsIndex[id].archived = false;
+  dealsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderDeals();
   animateFlip(oldRects, { removedGhosts: ghost ? [ghost] : [] });
 }
 
@@ -1360,59 +1298,59 @@ async function deleteItem(btn){
 // existing siblings shift down. `predicate(otherId)` returns true if that
 // other card belongs in the same group.
 function _placeAtFront(id, predicate){
-  var siblings = Object.keys(itemsIndex).filter(function(otherId){
+  var siblings = Object.keys(dealsIndex).filter(function(otherId){
     if(otherId === id) return false;
-    var od = itemsIndex[otherId];
+    var od = dealsIndex[otherId];
     if(!od || od.deleted || od.archived) return false;
     return predicate(otherId, od);
   });
   siblings.sort(function(a, b){
-    var da = itemsIndex[a], db = itemsIndex[b];
+    var da = dealsIndex[a], db = dealsIndex[b];
     if(da._order != null && db._order != null) return da._order - db._order;
     if(da._order != null) return -1;
     if(db._order != null) return  1;
     return new Date(db.updated || 0) - new Date(da.updated || 0);
   });
-  itemsIndex[id]._order = 0;
-  siblings.forEach(function(sid, i){ itemsIndex[sid]._order = i + 1; });
+  dealsIndex[id]._order = 0;
+  siblings.forEach(function(sid, i){ dealsIndex[sid]._order = i + 1; });
 }
 
-// Add a card to the Inbox (row1). No home list.
-function addItemToInbox(){
+// Add a card to the Inbox (row1). No home lane.
+function addDealToInbox(){
   var ts = Date.now();
-  var num = Object.keys(itemsIndex).filter(function(k){ return !itemsIndex[k].archived && !itemsIndex[k].deleted; }).length + 1;
-  var name = 'Item-' + num;
+  var num = Object.keys(dealsIndex).filter(function(k){ return !dealsIndex[k].archived && !dealsIndex[k].deleted; }).length + 1;
+  var name = 'Deal-' + num;
   var id = 'deal-' + ts;
   var oldRects = captureRects();
-  itemsIndex[id] = { name: name, updated: new Date().toISOString(), status: INBOX_KEY, list: null };
-  _placeAtFront(id, function(otherId, od){ return od.status === INBOX_KEY && !od.list; });
-  renderItems();
+  dealsIndex[id] = { name: name, updated: new Date().toISOString(), status: 'row1', lane: null };
+  _placeAtFront(id, function(otherId, od){ return od.status === 'row1' && !od.lane; });
+  renderDeals();
   animateFlip(oldRects, { newIds: [id] });
   focusNewCardName(id);
-  _pushIndexAndItemToGist(id);
+  _pushIndexAndDealToGist(id);
 }
 
-// Add a card directly to a list (skips Inbox).
-function addItemToList(listKey){
+// Add a card directly to a lane (skips Inbox).
+function addDealToLane(laneKey){
   var ts = Date.now();
-  var num = Object.keys(itemsIndex).filter(function(k){ return !itemsIndex[k].archived && !itemsIndex[k].deleted; }).length + 1;
-  var name = 'Item-' + num;
+  var num = Object.keys(dealsIndex).filter(function(k){ return !dealsIndex[k].archived && !dealsIndex[k].deleted; }).length + 1;
+  var name = 'Deal-' + num;
   var id = 'deal-' + ts;
   var oldRects = captureRects();
-  itemsIndex[id] = { name: name, updated: new Date().toISOString(), status: null, list: listKey };
-  _placeAtFront(id, function(otherId, od){ return od.list === listKey; });
-  renderItems();
+  dealsIndex[id] = { name: name, updated: new Date().toISOString(), status: null, lane: laneKey };
+  _placeAtFront(id, function(otherId, od){ return od.lane === laneKey; });
+  renderDeals();
   animateFlip(oldRects, { newIds: [id] });
   focusNewCardName(id);
-  _pushIndexAndItemToGist(id);
+  _pushIndexAndDealToGist(id);
 }
 
-function _pushIndexAndItemToGist(id){
+function _pushIndexAndDealToGist(id){
   var token = getToken();
   if(token && GIST_ID){
     var body = { files: {} };
     body.files['deal-' + id + '.json'] = { content: JSON.stringify({ _new: true }) };
-    body.files['deals-index.json'] = { content: JSON.stringify(itemsIndex, null, 2) };
+    body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
     fetch('https://api.github.com/gists/' + GIST_ID, {
       method: 'PATCH',
       headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
@@ -1421,16 +1359,16 @@ function _pushIndexAndItemToGist(id){
   }
 }
 
-// Add a brand-new list. Numbered with the lowest unused integer.
-function addNewList(){
-  var n = nextUnusedNumber(LISTS, 'List');
-  var key = 'list-' + Date.now();
-  LISTS.push({ key: key, label: 'List ' + n });
-  saveSectionLabels();
-  renderItems();
-  // Focus the new list's title for immediate rename
+// Add a brand-new lane to the end of LANES; immediately editable.
+function addNewLane(){
+  var n = LANES.length + 1;
+  var key = 'lane-' + Date.now();
+  LANES.push({ key: key, label: 'Lane ' + n });
+  saveLaneLabels();
+  renderDeals();
+  // Focus the new lane's title for immediate rename
   requestAnimationFrame(function(){
-    var el = document.querySelector('.v-list-title[data-vlist-key="' + key + '"]');
+    var el = document.querySelector('.v-lane-title[data-vlane-key="' + key + '"]');
     if(el){
       el.focus();
       var r = document.createRange();
@@ -1442,156 +1380,141 @@ function addNewList(){
   });
 }
 
-// Add a brand-new schedule. Numbered with the lowest unused integer
-// (Inbox doesn't count). Schedule keys are timestamp-based for uniqueness.
-function addNewSchedule(){
-  // Compute lowest unused number from labels matching "Schedule N",
-  // EXCLUDING Inbox.
-  var nonInbox = SCHEDULES.filter(function(S){ return S.key !== INBOX_KEY; });
-  var n = nextUnusedNumber(nonInbox, 'Schedule');
-  var key = 'sched-' + Date.now();
-  SCHEDULES.push({ key: key, label: 'Schedule ' + n });
-  saveSectionLabels();
-  renderItems();
-  // Focus the new schedule's title for immediate rename
-  requestAnimationFrame(function(){
-    var el = document.querySelector('.schedule-title[data-sched-key="' + key + '"]');
-    if(el){
-      el.focus();
-      var r = document.createRange();
-      r.selectNodeContents(el);
-      var s = window.getSelection();
-      s.removeAllRanges();
-      s.addRange(r);
-    }
-  });
-}
-
-// Delete a schedule (cannot delete Inbox). Cards in this schedule go home to
-// their list (clear status). No confirmation — easy to recreate.
-function deleteSchedule(scheduleKey){
-  if(scheduleKey === INBOX_KEY || scheduleKey === 'archived') return;
+// Delete a row (rows 2-5). Cards living in this row go home to their lane
+// (i.e. clear their status). Inbox can't be deleted, archived can't be deleted.
+function deleteRow(rowKey){
+  if(rowKey === 'row1' || rowKey === 'archived') return;
+  // Send all cards currently in this row back to their lanes
   var affected = 0;
-  Object.keys(itemsIndex).forEach(function(id){
-    var d = itemsIndex[id];
-    if(d && d.status === scheduleKey && !d.archived && !d.deleted){
+  Object.keys(dealsIndex).forEach(function(id){
+    var d = dealsIndex[id];
+    if(d && d.status === rowKey && !d.archived && !d.deleted){
       d.status = null;
       d.updated = new Date().toISOString();
       affected++;
     }
   });
-  // Remove from SCHEDULES
-  SCHEDULES = SCHEDULES.filter(function(S){ return S.key !== scheduleKey; });
-  saveSectionLabels();
+  // Hide the row from the DOM (we keep the underlying ID slot reserved so we
+  // don't have to renumber, but mark it deleted in the labels payload).
+  var laneEl = document.getElementById('lane' + rowKey.charAt(0).toUpperCase() + rowKey.slice(1));
+  if(laneEl) laneEl.style.display = 'none';
+  // Persist: store a "deleted rows" list in the same lane-labels file
+  if(!ROW_LABELS._deleted) ROW_LABELS._deleted = {};
+  ROW_LABELS._deleted[rowKey] = true;
+  saveLaneLabels();
   if(affected) saveIndex();
-  renderItems();
+  renderDeals();
 }
 
-// Delete a list. Cards homed here lose their home (go to Inbox). Confirm first.
-function deleteList(listKey){
-  var listObj = LISTS.find(function(L){ return L.key === listKey; });
-  if(!listObj) return;
+// Delete a lane (any lane). Cards homed here lose their home lane (go to
+// Inbox), per the user-confirmed rule. Confirm before destructive action.
+function deleteLane(laneKey){
+  var laneObj = LANES.find(function(L){ return L.key === laneKey; });
+  if(!laneObj) return;
+  // Count affected cards
   var affected = 0;
-  Object.keys(itemsIndex).forEach(function(id){
-    var d = itemsIndex[id];
-    if(d && d.list === listKey && !d.archived && !d.deleted) affected++;
+  Object.keys(dealsIndex).forEach(function(id){
+    var d = dealsIndex[id];
+    if(d && d.lane === laneKey && !d.archived && !d.deleted) affected++;
   });
-  var msg = 'Delete list "' + listObj.label + '"?';
+  var msg = 'Delete lane "' + laneObj.label + '"?';
   if(affected > 0){
     msg += '\n\n' + affected + (affected === 1 ? ' card' : ' cards') + ' will be moved to the Inbox.';
   }
   if(!confirm(msg)) return;
-  Object.keys(itemsIndex).forEach(function(id){
-    var d = itemsIndex[id];
-    if(d && d.list === listKey && !d.archived && !d.deleted){
-      d.list = null;
-      d.status = INBOX_KEY;
+  // Move affected cards to Inbox (clear lane, set status to row1)
+  Object.keys(dealsIndex).forEach(function(id){
+    var d = dealsIndex[id];
+    if(d && d.lane === laneKey && !d.archived && !d.deleted){
+      d.lane = null;
+      d.status = 'row1';
       d.updated = new Date().toISOString();
     }
   });
-  LISTS = LISTS.filter(function(L){ return L.key !== listKey; });
-  saveSectionLabels();
+  // Remove the lane from LANES
+  LANES = LANES.filter(function(L){ return L.key !== laneKey; });
+  saveLaneLabels();
   if(affected) saveIndex();
-  renderItems();
+  renderDeals();
 }
 
 
-// "Send back to home list" button on a schedule-card. Clears its schedule placement.
+// "Send back to home lane" button on a row-card. Clears its row placement.
 function sendCardHome(btn){
-  var id = btn.closest('.item-card').dataset.id;
-  var d = itemsIndex[id];
-  if(!d || !d.list) return;
+  var id = btn.closest('.deal-card').dataset.id;
+  var d = dealsIndex[id];
+  if(!d || !d.lane) return;
   var oldRects = captureRects();
   d.status = null;
   d.updated = new Date().toISOString();
   saveIndex();
-  renderItems();
+  renderDeals();
   animateFlip(oldRects);
 }
 
 // Legacy alias (still referenced from a couple of legacy paths)
-function showNewItem(){ addItemToInbox(); }
+function showNewDeal(){ addDealToInbox(); }
 
-// ── ?addItem= handler ────────────────────────────────────────────────
-// Triggered when ?addItem=<freeform name>&source=siri (or similar) is in the
+// ── ?addDeal= handler ────────────────────────────────────────────────
+// Triggered when ?addDeal=<freeform name>&source=siri (or similar) is in the
 // URL. Used by the iOS Shortcut "Add to pipeline" → Siri voice trigger.
-// Creates a placeholder card with the given name in the appraise list.
-// Must wait for itemsIndex to load before writing or it would overwrite the
+// Creates a placeholder card with the given name in the appraise lane.
+// Must wait for dealsIndex to load before writing or it would overwrite the
 // live index with an empty one.
-async function _addItemHandlerIfNeeded(){
+async function _addDealHandlerIfNeeded(){
   var params = new URLSearchParams(window.location.search);
-  var rawName = params.get('addItem');
+  var rawName = params.get('addDeal');
   if(!rawName) return;
   var source = params.get('source') || '';
   // Strip params immediately so reloads don't re-trigger
   try {
     var u = new URL(window.location);
-    u.searchParams.delete('addItem');
+    u.searchParams.delete('addDeal');
     u.searchParams.delete('source');
     window.history.replaceState({}, '', u);
   } catch(e){}
   var name = String(rawName).trim();
   if(!name){
-    _rmToast('Empty item name', 'error');
+    _rmToast('Empty deal name', 'error');
     return;
   }
   // Defensive cap on name length
   if(name.length > 200) name = name.slice(0, 200);
-  // Wait for itemsIndex to populate from Gist before writing
+  // Wait for dealsIndex to populate from Gist before writing
   var token = getToken();
   if(token && GIST_ID){
     var waitedMs = 0;
-    while(Object.keys(itemsIndex).length === 0 && waitedMs < 10000){
+    while(Object.keys(dealsIndex).length === 0 && waitedMs < 10000){
       await new Promise(function(r){ setTimeout(r, 200); });
       waitedMs += 200;
     }
-    if(Object.keys(itemsIndex).length === 0){
-      _rmToast('Could not load existing items — aborting to protect your data', 'error');
+    if(Object.keys(dealsIndex).length === 0){
+      _rmToast('Could not load existing deals — aborting to protect your data', 'error');
       return;
     }
   }
   try {
-    var id = 'item-' + Date.now();
+    var id = 'deal-' + Date.now();
     var notesText = (source === 'siri' ? 'From Siri: ' : 'Added: ') + name;
     var state = {
       _new: false,
       _placeholder: true,
-      _source: source || 'addItem',
+      _source: source || 'addDeal',
       dealName: name,
       _dealNotes: notesText
     };
-    itemsIndex[id] = {
+    dealsIndex[id] = {
       name: name,
       updated: new Date().toISOString(),
       status: 'appraise',
       placeholder: true,
-      source: source || 'addItem'
+      source: source || 'addDeal'
     };
     _placeAtFront(id, 'appraise');
     if(token && GIST_ID){
       var body = { files: {} };
       body.files['deal-' + id + '.json'] = { content: JSON.stringify(state, null, 2) };
-      body.files['deals-index.json'] = { content: JSON.stringify(itemsIndex, null, 2) };
+      body.files['deals-index.json'] = { content: JSON.stringify(dealsIndex, null, 2) };
       var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
         method: 'PATCH',
         headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
@@ -1599,7 +1522,7 @@ async function _addItemHandlerIfNeeded(){
       });
       if(!res.ok) throw new Error('Gist save failed: ' + res.status);
     }
-    renderItems();
+    renderDeals();
     _rmToast(name + ' added ✓', 'ok');
   } catch(err){
     _rmToast('Save failed: ' + (err && err.message ? err.message : err), 'error');
@@ -1608,9 +1531,9 @@ async function _addItemHandlerIfNeeded(){
 
 // Run on DOM ready
 if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', _addItemHandlerIfNeeded);
+  document.addEventListener('DOMContentLoaded', _addDealHandlerIfNeeded);
 } else {
-  _addItemHandlerIfNeeded();
+  _addDealHandlerIfNeeded();
 }
 
 function _rmToast(msg, type) {
@@ -1640,10 +1563,10 @@ function _rmToast(msg, type) {
 
 
 // ═══════════════════════════════════════════════════════════════════════
-// Drag and drop — simplified for the schedule + list geometry
+// Drag and drop — simplified for the row + lane geometry
 //
-// Cards are draggable. List containers (#cardsSched_*, #cardsArchived,
-// and each v-list's #cardsList_*) are drop targets. The data-action is
+// Cards are draggable. Lane containers (#cardsRow1..#cardsRow5, #cardsArchived,
+// and each v-lane's #cardsLane_*) are drop targets. The data-action is
 // computed from the source card's context AND the destination container, then
 // applied to the data model. We re-render after every drop.
 // ═══════════════════════════════════════════════════════════════════════
@@ -1652,28 +1575,28 @@ var _dnd = { id:null, sourceCtx:null };
 
 function _ctxFromCard(card){
   return {
-    context: card.getAttribute('data-ctx') || 'schedule',
-    schedule:     card.getAttribute('data-ctx-schedule') || null,
-    list:    card.getAttribute('data-ctx-list') || null
+    context: card.getAttribute('data-ctx') || 'row',
+    row:     card.getAttribute('data-ctx-row') || null,
+    lane:    card.getAttribute('data-ctx-lane') || null
   };
 }
 
 function _ctxFromTarget(targetEl){
-  // targetEl is a .list-cards (schedule) or .v-list-cards (list)
-  // ID conventions: cardsSched_<key>, cardsArchived, cardsList_<key>
+  // targetEl is a .lane-cards (row) or .v-lane-cards (lane)
+  // ID conventions: cardsRow1..5, cardsArchived, cardsLane_<key>
   var id = targetEl.id || '';
   if(id === 'cardsArchived') return { context:'archived' };
-  if(id.indexOf('cardsSched_') === 0){
-    return { context:'schedule', schedule: id.slice('cardsSched_'.length) };
+  if(id.indexOf('cardsRow') === 0){
+    return { context:'row', row: 'row' + id.slice(8) };
   }
-  if(id.indexOf('cardsList_') === 0){
-    return { context:'list', list: id.slice('cardsList_'.length) };
+  if(id.indexOf('cardsLane_') === 0){
+    return { context:'lane', lane: id.slice('cardsLane_'.length) };
   }
   return null;
 }
 
 function _performDrop(dragId, srcCtx, dstCtx){
-  var d = itemsIndex[dragId];
+  var d = dealsIndex[dragId];
   if(!d) return;
   // Archive drop: same as clicking archive button
   if(dstCtx.context === 'archived'){
@@ -1681,72 +1604,72 @@ function _performDrop(dragId, srcCtx, dstCtx){
     d.status = null;
     d.updated = new Date().toISOString();
     saveIndex();
-    renderItems();
+    renderDeals();
     return;
   }
 
-  // Dropping into a SCHEDULE
-  if(dstCtx.context === 'schedule'){
-    if(dstCtx.schedule === INBOX_KEY){
-      // Dropping into Inbox: card loses its home list and becomes Inbox-only
-      d.status = INBOX_KEY;
-      d.list = null;
+  // Dropping into a ROW
+  if(dstCtx.context === 'row'){
+    if(dstCtx.row === 'row1'){
+      // Dropping into Inbox: card loses its home lane and becomes Inbox-only
+      d.status = 'row1';
+      d.lane = null;
     } else {
-      // Dropping into schedules 2-5
-      if(srcCtx.context === 'list'){
-        // Coming up from a list to be worked on — keep home list, set schedule
-        d.list = srcCtx.list;
-        d.status = dstCtx.schedule;
-      } else if(srcCtx.context === 'schedule' && srcCtx.schedule === INBOX_KEY){
-        // Inbox card dragged into a working schedule — illegal (needs a home).
+      // Dropping into rows 2-5
+      if(srcCtx.context === 'lane'){
+        // Coming up from a lane to be worked on — keep home lane, set row
+        d.lane = srcCtx.lane;
+        d.status = dstCtx.row;
+      } else if(srcCtx.context === 'row' && srcCtx.row === 'row1'){
+        // Inbox card dragged into a working row — illegal (needs a home).
         // Treat as a no-op; surface a hint.
-        setStatus('Drag Inbox cards into a list first to give them a home', false);
+        setStatus('Drag Inbox cards into a lane first to give them a home', false);
         return;
       } else {
-        // Already in a schedule; just switch schedule
-        d.status = dstCtx.schedule;
+        // Already in a row; just switch row
+        d.status = dstCtx.row;
       }
     }
   }
 
-  // Dropping into a LIST
-  if(dstCtx.context === 'list'){
-    if(srcCtx.context === 'schedule' && srcCtx.schedule !== INBOX_KEY){
-      // Card going home (from a working schedule) — also changes home list to destination
-      d.list = dstCtx.list;
+  // Dropping into a LANE
+  if(dstCtx.context === 'lane'){
+    if(srcCtx.context === 'row' && srcCtx.row !== 'row1'){
+      // Card going home (from a working row) — also changes home lane to destination
+      d.lane = dstCtx.lane;
       d.status = null;
-    } else if(srcCtx.context === 'schedule' && srcCtx.schedule === INBOX_KEY){
-      // Inbox card → list: leaves Inbox, gets home list
-      d.list = dstCtx.list;
+    } else if(srcCtx.context === 'row' && srcCtx.row === 'row1'){
+      // Inbox card → lane: leaves Inbox, gets home lane
+      d.lane = dstCtx.lane;
       d.status = null;
-    } else if(srcCtx.context === 'list'){
-      // List → list: change home
-      d.list = dstCtx.list;
+    } else if(srcCtx.context === 'lane'){
+      // Lane → lane: change home
+      d.lane = dstCtx.lane;
       d.status = null;
     } else if(srcCtx.context === 'archived'){
-      // Unarchive into a list
+      // Unarchive into a lane
       d.archived = false;
-      d.list = dstCtx.list;
+      d.lane = dstCtx.lane;
       d.status = null;
     }
   }
 
   d.updated = new Date().toISOString();
   // Place at front of new context
-  if(dstCtx.context === 'schedule'){
+  if(dstCtx.context === 'row'){
     _placeAtFront(dragId, function(otherId, od){
-      return od.status === dstCtx.schedule && (dstCtx.schedule === INBOX_KEY ? !od.list : true);
+      return od.status === dstCtx.row && (dstCtx.row === 'row1' ? !od.lane : true);
     });
-  } else if(dstCtx.context === 'list'){
-    _placeAtFront(dragId, function(otherId, od){ return od.list === dstCtx.list; });
+  } else if(dstCtx.context === 'lane'){
+    _placeAtFront(dragId, function(otherId, od){ return od.lane === dstCtx.lane; });
   }
   saveIndex();
-  renderItems();
+  renderDeals();
 }
 
 function _wireDrag(){
   // Cards: dragstart / dragend
-  document.querySelectorAll('.item-card').forEach(function(card){
+  document.querySelectorAll('.deal-card').forEach(function(card){
     if(card._dndWired) return;
     card._dndWired = true;
     card.setAttribute('draggable', 'true');
@@ -1771,8 +1694,8 @@ function _wireDrag(){
     });
   });
 
-  // Drop targets: all .list-cards (schedules + archived) and .v-list-cards (lists)
-  document.querySelectorAll('.list-cards, .v-list-cards').forEach(function(el){
+  // Drop targets: all .lane-cards (rows + archived) and .v-lane-cards (lanes)
+  document.querySelectorAll('.lane-cards, .v-lane-cards').forEach(function(el){
     if(el._dndDropWired) return;
     el._dndDropWired = true;
 
@@ -1780,13 +1703,13 @@ function _wireDrag(){
       if(!_dnd.id) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      // Highlight parent v-list if applicable
-      var parent = el.closest('.v-list');
+      // Highlight parent v-lane if applicable
+      var parent = el.closest('.v-lane');
       if(parent) parent.classList.add('dnd-target');
     });
 
     el.addEventListener('dragleave', function(){
-      var parent = el.closest('.v-list');
+      var parent = el.closest('.v-lane');
       if(parent) parent.classList.remove('dnd-target');
     });
 
@@ -1803,7 +1726,7 @@ function _wireDrag(){
 
 (function(){
   var t = localStorage.getItem('todoToken');
-  if(t) loadItems();
+  if(t) loadDeals();
 })();
 </script>
 
