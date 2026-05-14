@@ -209,6 +209,16 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   .lane-title{font-size:19px}
 }
 
+/* ───── Placeholder deal cards (added via Siri voice trigger) ───── */
+.deal-card.placeholder .card-body{opacity:0.85}
+.deal-card.placeholder::after{
+  content:'From Siri';
+  position:absolute;top:6px;right:6px;
+  background:rgba(200, 60, 130, 0.95);color:#fff;
+  font-size:9px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;
+  padding:2px 6px;border-radius:3px;
+  z-index:2;pointer-events:none;
+}
 .deal-card{position:relative}
 
 /* ───── Just-updated card: subtle glow + scale pulse to draw the eye ───── */
@@ -248,7 +258,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:01 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">16:37 BST</div>
 
   <div id="laneAppraise" class="lane">
     <div class="lane-header">
@@ -596,7 +606,7 @@ function cardHTML(id, isArchived){
     ? '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>'
     : '<span class="card-name" data-deal-id="' + id + '" contenteditable="plaintext-only" spellcheck="false" title="Click to edit · double-click to open">' + name + '</span>';
 
-  return '<div class="deal-card' + (isArchived ? ' archived' : '') + '" data-id="' + id + '">' +
+  return '<div class="deal-card' + (isArchived ? ' archived' : '') + (d.placeholder ? ' placeholder' : '') + (d.placeholder && d.source === 'siri' ? ' from-siri' : '') + '" data-id="' + id + '">' +
     ribbonHtml +
     '<div class="card-body">' +
       nameHtml +
