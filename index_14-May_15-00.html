@@ -164,7 +164,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .card-icon-btn:last-child{border-right:none}
 .card-icon-btn:hover{background:#F3F0EA;color:var(--ink-2)}
 .card-icon-btn.danger:hover{background:#FEF0F0;color:#C0392B}
-.card-icon-btn svg{width:12px;height:12px}
+.card-icon-btn svg{width:13px;height:13px}
 
 /* Archived lane — faded */
 .archived-section{margin-top:40px;padding-top:20px;border-top:1px dashed var(--line-2)}
@@ -230,7 +230,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:00 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:36 BST</div>
 
   <div id="laneAppraise" class="lane">
     <div class="lane-header">
@@ -288,7 +288,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 </div>
 
 <script>
-var ANALYSER_PAGE = 'todo-v10.html';
+var ANALYSER_PAGE = 'todo-v9.html';
 var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
 var dealsIndex = {};
 var gistFilesMeta = null; // cached reference to gist.files from last fetch
@@ -590,8 +590,8 @@ function cardHTML(id, isArchived){
 
 function iconSvg(kind){
   var defs = {
-    archive:   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,11 8,15 16,6"/></svg>',
-    trash:     '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5 L15 15"/><path d="M15 5 L5 15"/></svg>',
+    archive:   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="14" height="3" rx="0.5"/><path d="M4 8 v8 h12 v-8"/><path d="M8 11 h4"/></svg>',
+    trash:     '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 6 h10 v10 a1 1 0 0 1 -1 1 h-8 a1 1 0 0 1 -1 -1 z"/><path d="M3 6 h14"/><path d="M8 4 h4 v2"/><path d="M9 9 v5 M11 9 v5"/></svg>',
     restore:   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10 a6 6 0 1 1 2 4.2"/><polyline points="4,5 4,10 9,10"/></svg>'
   };
   return defs[kind] || '';

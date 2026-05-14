@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>To Do</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&family=EB+Garamond:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#fafaf8;
+    --ink:#1a1a1a;
+    --ink-2:#444;
+    --ink-3:#888;
+    --line:#e5e5e0;
+    --accent:#1a1a1a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;display:flex;flex-direction:column}
+
+  .topbar{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:16px 24px;border-bottom:1px solid var(--line);
+    font-size:13px;color:var(--ink-3);
+    background:var(--bg);
+  }
+  .topbar a{color:var(--ink-3);text-decoration:none;letter-spacing:0.01em}
+  .topbar a:hover{color:var(--ink)}
+  #syncStatus{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.04em}
+  #syncStatus.saving{color:#b87b00}
+  #syncStatus.saved{color:#3a8a3a}
+  #syncStatus.error{color:#8B0000}
+  #syncStatus.idle{color:var(--ink-3)}
+
+  .container{
+    flex:1;display:flex;flex-direction:column;
+    max-width:760px;width:100%;margin:0 auto;
+    padding:48px 32px 32px 32px;
+  }
+
+  #nameField{
+    font-family:'EB Garamond',Georgia,serif;
+    font-size:42px;line-height:1.15;font-weight:500;
+    color:var(--ink);
+    border:none;outline:none;background:transparent;
+    width:100%;padding:0;margin:0 0 24px 0;
+    resize:none;overflow:hidden;
+  }
+  #nameField::placeholder{color:#c8c8c0;font-style:italic}
+
+  #notesField{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:16px;line-height:1.6;
+    color:var(--ink-2);
+    border:none;outline:none;background:transparent;
+    width:100%;flex:1;min-height:60vh;
+    padding:0;margin:0;
+    resize:none;
+  }
+  #notesField::placeholder{color:#c8c8c0;font-style:italic}
+
+  .warning{
+    background:#fff4dc;border:1px solid #e8c97a;
+    padding:10px 14px;border-radius:4px;
+    font-size:13px;color:#7a5a00;
+    margin-bottom:24px;
+  }
+  .warning a{color:#7a5a00;text-decoration:underline}
+
+  .error-state{
+    text-align:center;padding:60px 20px;color:var(--ink-3);
+  }
+  .error-state a{color:var(--ink);text-decoration:underline}
+
+  ::selection{background:rgba(0,0,0,0.08)}
+
+  /* hide scrollbars on textareas */
+  textarea::-webkit-scrollbar{width:0;height:0}
+  textarea{scrollbar-width:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" id="backLink">← pipeline</a>
+  <span id="syncStatus" class="idle">—</span>
+</div>
+
+<div class="container" id="container">
+  <div id="tokenWarning" class="warning" style="display:none">
+    No GitHub token configured — changes won't sync.
+    <a href="index.html">Set token on pipeline page →</a>
+  </div>
+
+  <textarea id="nameField" placeholder="Untitled" rows="1" autocomplete="off" spellcheck="false"></textarea>
+  <textarea id="notesField" placeholder="Write your notes…" autocomplete="off" spellcheck="true"></textarea>
+</div>
+
+<div class="error-state" id="errorState" style="display:none">
+  <p id="errorMsg">Deal not found.</p>
+  <p><a href="index.html">← back to pipeline</a></p>
+</div>
+
+<script>
+/* ── config ───────────────────────────────────────────────────── */
+var GIST_ID_DEFAULT = 'acb18997fb5494fd10b3696c038a0fd7';
+var SAVE_DEBOUNCE_MS = 800;
+
+/* ── read deal id ─────────────────────────────────────────────── */
+function qsParam(name){
+  var m = new RegExp('[?&]'+name+'=([^&]*)').exec(window.location.search);
+  return m ? decodeURIComponent(m[1]) : '';
+}
+var DEAL_ID = qsParam('deal');
+
+if(!DEAL_ID){
+  document.getElementById('container').style.display = 'none';
+  document.getElementById('errorMsg').textContent = 'No deal specified in URL.';
+  document.getElementById('errorState').style.display = 'block';
+  throw new Error('no deal id');
+}
+
+var DEAL_FILE = 'deal-' + DEAL_ID + '.json';
+var INDEX_FILE = 'deals-index.json';
+
+/* ── auth / gist id ───────────────────────────────────────────── */
+function getToken(){ return localStorage.getItem('todoToken') || ''; }
+function getGistId(){ return localStorage.getItem('todoGistId') || GIST_ID_DEFAULT; }
+
+/* ── DOM refs ─────────────────────────────────────────────────── */
+var nameEl   = document.getElementById('nameField');
+var notesEl  = document.getElementById('notesField');
+var statusEl = document.getElementById('syncStatus');
+var warnEl   = document.getElementById('tokenWarning');
+
+/* ── status helpers ───────────────────────────────────────────── */
+function setStatus(state, text){
+  statusEl.className = state;
+  statusEl.textContent = text;
+}
+
+if(!getToken()){
+  warnEl.style.display = 'block';
+}
+
+/* ── local mirror keys ────────────────────────────────────────── */
+var MIRROR_NOTES = 'mirror-notes-' + DEAL_ID;
+var MIRROR_NAME  = 'mirror-name-'  + DEAL_ID;
+
+/* ── auto-grow name textarea ──────────────────────────────────── */
+function autoGrowName(){
+  nameEl.style.height = 'auto';
+  nameEl.style.height = nameEl.scrollHeight + 'px';
+}
+
+/* ── load from local mirror immediately ───────────────────────── */
+(function loadFromMirror(){
+  var n = localStorage.getItem(MIRROR_NAME);
+  var notes = localStorage.getItem(MIRROR_NOTES);
+  if(n !== null) nameEl.value = n;
+  if(notes !== null) notesEl.value = notes;
+  autoGrowName();
+})();
+
+/* ── load from gist ───────────────────────────────────────────── */
+var initialName = nameEl.value;
+var initialNotes = notesEl.value;
+var loadedFromGist = false;
+
+async function loadFromGist(){
+  var token = getToken();
+  if(!token){ setStatus('idle','offline'); return; }
+  setStatus('saving','loading…');
+  try{
+    var res = await fetch('https://api.github.com/gists/' + getGistId(), {
+      headers: { Authorization: 'token ' + token }
+    });
+    if(!res.ok) throw new Error('gist fetch failed: ' + res.status);
+    var data = await res.json();
+    var files = data.files || {};
+
+    // Pull name from dealsIndex (canonical for pipeline display)
+    var idxRaw = files[INDEX_FILE] && files[INDEX_FILE].content;
+    var idx = idxRaw ? JSON.parse(idxRaw) : {};
+    var entry = idx[DEAL_ID];
+    if(!entry){
+      // Deal isn't in the index — show error state
+      document.getElementById('container').style.display = 'none';
+      document.getElementById('errorMsg').textContent = 'Deal "' + DEAL_ID + '" not found.';
+      document.getElementById('errorState').style.display = 'block';
+      setStatus('error','not found');
+      return;
+    }
+    var nameFromGist = entry.name || '';
+
+    // Pull notes from per-deal file
+    var dealRaw = files[DEAL_FILE] && files[DEAL_FILE].content;
+    var notesFromGist = '';
+    if(dealRaw){
+      try{
+        var d = JSON.parse(dealRaw);
+        notesFromGist = (typeof d.notes === 'string') ? d.notes : '';
+      }catch(e){ /* malformed file, treat as empty */ }
+    }
+
+    // Update fields only if user hasn't started editing
+    // (i.e. their current value matches what was loaded from mirror)
+    if(nameEl.value === initialName){
+      nameEl.value = nameFromGist;
+      localStorage.setItem(MIRROR_NAME, nameFromGist);
+      autoGrowName();
+    }
+    if(notesEl.value === initialNotes){
+      notesEl.value = notesFromGist;
+      localStorage.setItem(MIRROR_NOTES, notesFromGist);
+    }
+
+    loadedFromGist = true;
+    setStatus('saved','synced');
+  }catch(err){
+    console.error(err);
+    setStatus('error','load failed');
+  }
+}
+
+loadFromGist();
+
+/* ── save (debounced) ─────────────────────────────────────────── */
+var saveTimer = null;
+var pendingSave = false;
+var savingNow = false;
+
+function scheduleSave(){
+  // Mirror immediately so a refresh never loses work
+  localStorage.setItem(MIRROR_NAME, nameEl.value);
+  localStorage.setItem(MIRROR_NOTES, notesEl.value);
+
+  setStatus('saving','editing…');
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(doSave, SAVE_DEBOUNCE_MS);
+}
+
+async function doSave(){
+  if(savingNow){ pendingSave = true; return; }
+  if(!getToken()){
+    setStatus('idle','offline (saved locally)');
+    return;
+  }
+  // Don't push to gist until we've successfully loaded — otherwise we risk
+  // clobbering the canonical dealsIndex with a stale local view.
+  if(!loadedFromGist){
+    setStatus('error','not synced — refresh');
+    return;
+  }
+  savingNow = true;
+  setStatus('saving','saving…');
+  try{
+    var token = getToken();
+    var gistId = getGistId();
+
+    // Re-fetch dealsIndex right before write to minimize race window
+    var res = await fetch('https://api.github.com/gists/' + gistId, {
+      headers: { Authorization: 'token ' + token }
+    });
+    if(!res.ok) throw new Error('pre-save fetch failed: ' + res.status);
+    var data = await res.json();
+    var files = data.files || {};
+
+    var idxRaw = files[INDEX_FILE] && files[INDEX_FILE].content;
+    var idx = idxRaw ? JSON.parse(idxRaw) : {};
+    if(!idx[DEAL_ID]) idx[DEAL_ID] = {};
+
+    var nameNow = nameEl.value;
+    var notesNow = notesEl.value;
+    var nameChanged = idx[DEAL_ID].name !== nameNow;
+    idx[DEAL_ID].name = nameNow;
+
+    var dealBody = {
+      name: nameNow,
+      notes: notesNow,
+      _updated: new Date().toISOString()
+    };
+
+    var patchFiles = {};
+    patchFiles[DEAL_FILE] = { content: JSON.stringify(dealBody, null, 2) };
+    if(nameChanged){
+      patchFiles[INDEX_FILE] = { content: JSON.stringify(idx, null, 2) };
+    }
+
+    var pres = await fetch('https://api.github.com/gists/' + gistId, {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'token ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ files: patchFiles })
+    });
+    if(!pres.ok) throw new Error('PATCH failed: ' + pres.status);
+
+    setStatus('saved','saved');
+  }catch(err){
+    console.error(err);
+    setStatus('error','save failed');
+  }finally{
+    savingNow = false;
+    if(pendingSave){
+      pendingSave = false;
+      saveTimer = setTimeout(doSave, SAVE_DEBOUNCE_MS);
+    }
+  }
+}
+
+/* ── wire up inputs ───────────────────────────────────────────── */
+nameEl.addEventListener('input', function(){
+  autoGrowName();
+  scheduleSave();
+});
+notesEl.addEventListener('input', scheduleSave);
+
+// Stop Enter creating newlines in the name field
+nameEl.addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){ e.preventDefault(); notesEl.focus(); }
+});
+
+// Flush save on page hide
+window.addEventListener('beforeunload', function(){
+  if(saveTimer){
+    clearTimeout(saveTimer);
+    // Best-effort sync save via mirror; gist save can't be awaited here
+    localStorage.setItem(MIRROR_NAME, nameEl.value);
+    localStorage.setItem(MIRROR_NOTES, notesEl.value);
+  }
+});
+</script>
+</body>
+</html>
