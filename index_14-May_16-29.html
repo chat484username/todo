@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>To Do</title>
+<title>Deal Pipeline</title>
 <link rel="icon" type="image/png" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,7 +30,7 @@
 }
 body{font-family:'DM Sans',system-ui,sans-serif;background:var(--paper);min-height:100vh;color:var(--ink);font-size:14px}
 
-header{background:#4E8A87;color:#fff;padding:0 16px;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header{background:#2A4A3E;color:#fff;padding:0 16px;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:#fff;margin:0;flex-shrink:0}
 
 .gist-warning{background:#FFF8EC;border-bottom:1px solid #F5C97A;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;display:none}
@@ -47,28 +47,13 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 /* ───── Lane ───── */
 .lane{margin-bottom:28px}
-.lane-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.lane-header{display:flex;align-items:baseline;gap:12px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .lane-title{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink)}
 .lane-title[contenteditable]{outline:none;cursor:text;padding:1px 5px;margin:-1px -5px;border-radius:4px;transition:background 0.12s,box-shadow 0.12s;min-width:1em}
 .lane-title[contenteditable]:hover{background:rgba(0,0,0,0.045)}
 .lane-title[contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,0.12)}
-.lane-add{
-  border:none;
-  width:18px;height:18px;
-  border-radius:3px;
-  background:var(--lane-color, var(--mute));
-  color:#fff;
-  font-family:'DM Sans',sans-serif;
-  font-size:15px;font-weight:400;line-height:1;
-  display:inline-flex;align-items:center;justify-content:center;
-  cursor:pointer;
-  padding:0;
-  flex-shrink:0;
-  transition:filter 0.12s, transform 0.08s;
-}
-.lane-add:hover{filter:brightness(1.1)}
-.lane-add:active{transform:scale(0.92)}
-.lane-accent{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.lane-count{font-family:'DM Mono',monospace;font-size:13px;color:var(--mute)}
+.lane-accent{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:2px;flex-shrink:0;transform:translateY(-2px)}
 
 .lane-cards{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;scrollbar-width:thin}
 .lane-cards::-webkit-scrollbar{height:8px}
@@ -223,7 +208,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 <body>
 
 <header>
-  <h1>To Do</h1>
+  <h1>Deal Pipeline</h1>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:1;min-width:0">
     <form onsubmit="syncButton(); return false;" style="display:flex;align-items:center;gap:6px;width:100%;justify-content:flex-end">
       <input type="text" id="gistId" placeholder="Gist ID" autocomplete="username"
@@ -246,36 +231,40 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">16:26 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:03 BST</div>
 
   <div id="laneAppraise" class="lane">
     <div class="lane-header">
-      <button class="lane-add" style="--lane-color:var(--c-appraise)" onclick="addDealToLane('appraise')" title="Add to Appraise" aria-label="Add to Appraise">+</button>
+      <span class="lane-accent" style="background:var(--c-appraise)"></span>
       <span class="lane-title" data-lane="appraise" contenteditable="plaintext-only" spellcheck="false">Appraise</span>
+      <span class="lane-count" id="countAppraise">0</span>
     </div>
     <div class="lane-cards empty-lane" id="cardsAppraise"><div class="lane-empty">No deals here yet</div></div>
   </div>
 
   <div id="laneView" class="lane">
     <div class="lane-header">
-      <button class="lane-add" style="--lane-color:var(--c-view)" onclick="addDealToLane('view')" title="Add to View" aria-label="Add to View">+</button>
+      <span class="lane-accent" style="background:var(--c-view)"></span>
       <span class="lane-title" data-lane="view" contenteditable="plaintext-only" spellcheck="false">View</span>
+      <span class="lane-count" id="countView">0</span>
     </div>
     <div class="lane-cards empty-lane" id="cardsView"><div class="lane-empty">No deals here yet</div></div>
   </div>
 
   <div id="laneOffer" class="lane">
     <div class="lane-header">
-      <button class="lane-add" style="--lane-color:var(--c-offer)" onclick="addDealToLane('offer')" title="Add to Offer" aria-label="Add to Offer">+</button>
+      <span class="lane-accent" style="background:var(--c-offer)"></span>
       <span class="lane-title" data-lane="offer" contenteditable="plaintext-only" spellcheck="false">Offer</span>
+      <span class="lane-count" id="countOffer">0</span>
     </div>
     <div class="lane-cards empty-lane" id="cardsOffer"><div class="lane-empty">No deals here yet</div></div>
   </div>
 
   <div id="laneFollowup" class="lane">
     <div class="lane-header">
-      <button class="lane-add" style="--lane-color:var(--c-followup)" onclick="addDealToLane('followup')" title="Add to Follow Up" aria-label="Add to Follow Up">+</button>
+      <span class="lane-accent" style="background:var(--c-followup)"></span>
       <span class="lane-title" data-lane="followup" contenteditable="plaintext-only" spellcheck="false">Follow Up</span>
+      <span class="lane-count" id="countFollowup">0</span>
     </div>
     <div class="lane-cards empty-lane" id="cardsFollowup"><div class="lane-empty">No deals here yet</div></div>
   </div>
@@ -285,6 +274,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
       <div class="lane-header">
         <span class="lane-accent" style="background:var(--c-archived)"></span>
         <span class="lane-title" data-lane="archived" contenteditable="plaintext-only" spellcheck="false">Archived</span>
+        <span class="lane-count" id="countArchived">0</span>
       </div>
       <div class="lane-cards empty-lane" id="cardsArchived"><div class="lane-empty">No archived deals</div></div>
     </div>
@@ -535,16 +525,18 @@ function renderDeals(){
   }
 
   // Render each lane
-  renderLane('cardsAppraise', buckets.appraise, false);
-  renderLane('cardsView',     buckets.view,     false);
-  renderLane('cardsOffer',    buckets.offer,    false);
-  renderLane('cardsFollowup', buckets.followup, false);
-  renderLane('cardsArchived', buckets.archived, true);
+  renderLane('cardsAppraise', 'countAppraise', buckets.appraise, false);
+  renderLane('cardsView',     'countView',     buckets.view,     false);
+  renderLane('cardsOffer',    'countOffer',    buckets.offer,    false);
+  renderLane('cardsFollowup', 'countFollowup', buckets.followup, false);
+  renderLane('cardsArchived', 'countArchived', buckets.archived, true);
   if(typeof _wireDrag === 'function') _wireDrag();
 }
 
-function renderLane(cardsId, ids, isArchived){
+function renderLane(cardsId, countId, ids, isArchived){
   var el = document.getElementById(cardsId);
+  var countEl = document.getElementById(countId);
+  if(countEl) countEl.textContent = ids.length;
   if(!ids.length){
     el.classList.add('empty-lane');
     el.innerHTML = '<div class="lane-empty">' + (isArchived ? 'No archived deals' : 'No deals here yet') + '</div>';
@@ -914,18 +906,15 @@ function _placeAtFront(id, laneKey){
   siblings.forEach(function(sid, i){ dealsIndex[sid]._order = i + 1; });
 }
 
-function addDealToLane(laneKey){
+function showNewDeal(){
   var ts = Date.now();
   var num = Object.keys(dealsIndex).filter(function(k){ return !dealsIndex[k].archived && !dealsIndex[k].deleted; }).length + 1;
   var name = 'Deal-' + num;
   var id = 'deal-' + ts;
-  // Capture positions BEFORE mutating so existing cards FLIP-slide to fill the new layout
-  var oldRects = captureRects();
-  dealsIndex[id] = { name: name, updated: new Date().toISOString(), status: laneKey };
-  _placeAtFront(id, laneKey);
-  renderDeals();
-  animateFlip(oldRects, { newIds: [id] });
-  // Push to gist in the background (best-effort; saveIndex handles its own errors)
+  dealsIndex[id] = { name: name, updated: new Date().toISOString(), status: 'appraise' };
+  _placeAtFront(id, 'appraise');
+  var base = ANALYSER_PAGE;
+  var dest = base + '?deal=' + id + '&name=' + encodeURIComponent(name);
   var token = getToken();
   if(token && GIST_ID){
     var body = { files: {} };
@@ -935,12 +924,11 @@ function addDealToLane(laneKey){
       method: 'PATCH',
       headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
-    }).catch(function(){ /* best-effort */ });
+    }).finally(function(){ window.location.href = dest; });
+  } else {
+    window.location.href = dest;
   }
 }
-
-// Legacy top-of-page "+ New deal" button — drops into the Appraise lane.
-function showNewDeal(){ addDealToLane('appraise'); }
 
 // ── ?addDeal= handler ────────────────────────────────────────────────
 // Triggered when ?addDeal=<freeform name>&source=siri (or similar) is in the
