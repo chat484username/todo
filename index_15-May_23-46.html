@@ -392,7 +392,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">23:43 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">23:38 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1655,91 +1655,6 @@ function _ensureDndBar(){
 function _hideDndBar(){
   if(_dnd.bar) _dnd.bar.style.display = 'none';
 }
-
-// ── Live shifting: visually slide siblings to open a gap at insertIndex ──
-//
-// While dragging within a container, each non-dragging sibling card gets
-// translated by the size of one card slot if its position is ≥ insertIndex,
-// opening a visible gap where the dragged card will land. On dragleave or
-// dragend or move-to-different-container, we clear the transforms.
-//
-// We store the "shifted" container reference so the next call knows whether
-// to clear stale shifts before applying new ones.
-var _liveShiftContainer = null;
-var _liveShiftIndex = null;
-
-function _measureShiftAmount(containerEl){
-  // Returns the pixel pitch to shift siblings by — the distance from one card's
-  // start to the next card's start (card width/height + gap). Falls back to a
-  // reasonable default for empty/sparse containers.
-  var children = Array.prototype.filter.call(
-    containerEl.children,
-    function(c){ return c.classList && c.classList.contains('item-card'); }
-  );
-  var isVertical = containerEl.classList.contains('v-list-cards');
-  if(children.length >= 2){
-    var a = children[0].getBoundingClientRect();
-    var b = children[1].getBoundingClientRect();
-    return isVertical ? (b.top - a.top) : (b.left - a.left);
-  }
-  if(children.length === 1){
-    var r = children[0].getBoundingClientRect();
-    return isVertical ? (r.height + 14) : (r.width + 14);
-  }
-  // Default fallback
-  return isVertical ? 70 : 186;
-}
-
-function _clearLiveShifts(){
-  if(!_liveShiftContainer) return;
-  var cards = _liveShiftContainer.querySelectorAll('.item-card');
-  cards.forEach(function(card){
-    if(card.style.transform){
-      card.style.transition = 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)';
-      card.style.transform = '';
-      // Strip the transition once it's done so it doesn't interfere with drag visuals
-      setTimeout(function(){ card.style.transition = ''; }, 240);
-    }
-  });
-  _liveShiftContainer = null;
-  _liveShiftIndex = null;
-}
-
-function _applyLiveShift(containerEl, insertIndex, dragId){
-  // If we're now in a different container than last time, clear old shifts first
-  if(_liveShiftContainer && _liveShiftContainer !== containerEl){
-    _clearLiveShifts();
-  }
-  // If the insertion index hasn't changed since last call, skip — avoids transition stutter
-  if(_liveShiftContainer === containerEl && _liveShiftIndex === insertIndex) return;
-
-  var isVertical = containerEl.classList.contains('v-list-cards');
-  var shiftAmount = _measureShiftAmount(containerEl);
-  var children = Array.prototype.filter.call(
-    containerEl.children,
-    function(c){ return c.classList && c.classList.contains('item-card'); }
-  );
-  // Filter out the dragging card from the "siblings" we shift (it's invisible
-  // in the layout anyway during drag, but we still don't want to transform it).
-  var siblings = children.filter(function(c){ return c.dataset.id !== dragId; });
-
-  siblings.forEach(function(card, sibIdx){
-    // sibIdx is the card's position among non-dragging siblings — the same
-    // index used by _computeInsertIndex.
-    var shouldShift = (sibIdx >= insertIndex);
-    var target = shouldShift ? shiftAmount : 0;
-    var newTransform = target ? (isVertical
-      ? 'translateY(' + target + 'px)'
-      : 'translateX(' + target + 'px)') : '';
-    if(card.style.transform === newTransform) return;
-    // Ensure a smooth transition is in place
-    card.style.transition = 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)';
-    card.style.transform = newTransform;
-  });
-  _liveShiftContainer = containerEl;
-  _liveShiftIndex = insertIndex;
-}
-
 function _showDndBar(containerEl, insertIndex){
   var children = Array.prototype.filter.call(
     containerEl.children,
@@ -1875,7 +1790,6 @@ function _wireDrag(){
       _dnd.targetCtx = null;
       _dnd.targetIndex = null;
       _hideDndBar();
-      _clearLiveShifts();
       document.querySelectorAll('.dnd-target').forEach(function(el){
         el.classList.remove('dnd-target');
       });
@@ -1895,10 +1809,9 @@ function _wireDrag(){
       if(parent) parent.classList.add('dnd-target');
       var dstCtx = _ctxFromTarget(el);
       if(!dstCtx) return;
-      // Archived doesn't get an indicator bar or shift (no reorder)
+      // Archived doesn't get an indicator bar (no reorder)
       if(dstCtx.context === 'archived'){
         _hideDndBar();
-        _clearLiveShifts();
         _dnd.targetCtx = dstCtx;
         _dnd.targetIndex = null;
         return;
@@ -1907,18 +1820,16 @@ function _wireDrag(){
       _dnd.targetCtx = dstCtx;
       _dnd.targetIndex = idx;
       _showDndBar(el, idx);
-      _applyLiveShift(el, idx, _dnd.id);
     });
 
     el.addEventListener('dragleave', function(e){
       var parent = el.closest('.v-list');
       if(parent) parent.classList.remove('dnd-target');
-      // Only hide / clear if we left the container entirely (not just moved over a child)
+      // Only hide if we left the container entirely (not just moved over a child)
       var rect = el.getBoundingClientRect();
       if(e.clientX < rect.left || e.clientX > rect.right ||
          e.clientY < rect.top  || e.clientY > rect.bottom){
         _hideDndBar();
-        if(_liveShiftContainer === el) _clearLiveShifts();
       }
     });
 
