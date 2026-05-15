@@ -113,17 +113,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .item-card.archived:hover{opacity:0.85}
 .item-card.dnd-dragging{opacity:0.35}
 
-/* Drop indicator bar — single floating div, repositioned by JS during drag */
-.dnd-bar{
-  position:fixed;
-  z-index:1000;
-  background:var(--brown);
-  border-radius:2px;
-  pointer-events:none;
-  display:none;
-  box-shadow:0 0 4px rgba(126,80,40,0.4);
-}
-
 /* ─── Inbox card overrides: wider, with chip strip ─── */
 .item-card.inbox-card{
   flex:0 0 auto;
@@ -392,7 +381,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">23:38 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">16:34 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1576,17 +1565,19 @@ function _rmToast(msg, type) {
 // applied to the data model. We re-render after every drop.
 // ═══════════════════════════════════════════════════════════════════════
 
-var _dnd = { id:null, sourceCtx:null, targetCtx:null, targetIndex:null, bar:null };
+var _dnd = { id:null, sourceCtx:null };
 
 function _ctxFromCard(card){
   return {
     context: card.getAttribute('data-ctx') || 'schedule',
-    schedule: card.getAttribute('data-ctx-schedule') || null,
+    schedule:     card.getAttribute('data-ctx-schedule') || null,
     list:    card.getAttribute('data-ctx-list') || null
   };
 }
 
 function _ctxFromTarget(targetEl){
+  // targetEl is a .list-cards (schedule) or .v-list-cards (list)
+  // ID conventions: cardsSched_<key>, cardsArchived, cardsList_<key>
   var id = targetEl.id || '';
   if(id === 'cardsArchived') return { context:'archived' };
   if(id.indexOf('cardsSched_') === 0){
@@ -1598,151 +1589,59 @@ function _ctxFromTarget(targetEl){
   return null;
 }
 
-// Re-index a sibling group so `id` sits at position `index` (0-based) within
-// items matching `predicate`. Shifts other cards to make room.
-function _placeAtIndex(id, predicate, index){
-  var siblings = Object.keys(itemsIndex).filter(function(otherId){
-    if(otherId === id) return false;
-    var od = itemsIndex[otherId];
-    if(!od || od.deleted || od.archived) return false;
-    return predicate(otherId, od);
-  });
-  siblings.sort(function(a, b){
-    var da = itemsIndex[a], db = itemsIndex[b];
-    if(da._order != null && db._order != null) return da._order - db._order;
-    if(da._order != null) return -1;
-    if(db._order != null) return  1;
-    return new Date(db.updated || 0) - new Date(da.updated || 0);
-  });
-  index = Math.max(0, Math.min(index, siblings.length));
-  // Place `id` at `index`, shift the rest into 0..N excluding that slot.
-  itemsIndex[id]._order = index;
-  var pos = 0;
-  siblings.forEach(function(sid){
-    if(pos === index) pos++;
-    itemsIndex[sid]._order = pos;
-    pos++;
-  });
-}
-
-// Compute the insertion index by comparing cursor position to each card's centre.
-// axis: 'x' for horizontal rows, 'y' for vertical lists.
-function _computeInsertIndex(containerEl, clientX, clientY, dragId){
-  var children = Array.prototype.filter.call(
-    containerEl.children,
-    function(c){ return c.classList && c.classList.contains('item-card') && c.dataset.id !== dragId; }
-  );
-  if(!children.length) return 0;
-  var isVertical = containerEl.classList.contains('v-list-cards');
-  for(var i = 0; i < children.length; i++){
-    var rect = children[i].getBoundingClientRect();
-    var mid = isVertical ? (rect.top + rect.height/2) : (rect.left + rect.width/2);
-    var cursor = isVertical ? clientY : clientX;
-    if(cursor < mid) return i;
-  }
-  return children.length;
-}
-
-// Drop indicator bar — a single floating div that snaps to the gap.
-function _ensureDndBar(){
-  if(_dnd.bar) return _dnd.bar;
-  var bar = document.createElement('div');
-  bar.className = 'dnd-bar';
-  document.body.appendChild(bar);
-  _dnd.bar = bar;
-  return bar;
-}
-function _hideDndBar(){
-  if(_dnd.bar) _dnd.bar.style.display = 'none';
-}
-function _showDndBar(containerEl, insertIndex){
-  var children = Array.prototype.filter.call(
-    containerEl.children,
-    function(c){ return c.classList && c.classList.contains('item-card'); }
-  );
-  var isVertical = containerEl.classList.contains('v-list-cards');
-  var bar = _ensureDndBar();
-  var BAR_THICKNESS = 3;
-  var containerRect = containerEl.getBoundingClientRect();
-  if(isVertical){
-    var top;
-    if(!children.length){
-      top = containerRect.top + 8;
-    } else if(insertIndex >= children.length){
-      var last = children[children.length-1].getBoundingClientRect();
-      top = last.bottom + 4;
-    } else {
-      var atRect = children[insertIndex].getBoundingClientRect();
-      top = atRect.top - 6;
-    }
-    bar.style.left = (containerRect.left + 4) + 'px';
-    bar.style.top = top + 'px';
-    bar.style.width = (containerRect.width - 8) + 'px';
-    bar.style.height = BAR_THICKNESS + 'px';
-  } else {
-    var left;
-    if(!children.length){
-      left = containerRect.left + 8;
-    } else if(insertIndex >= children.length){
-      var last = children[children.length-1].getBoundingClientRect();
-      left = last.right + 5;
-    } else {
-      var atRect = children[insertIndex].getBoundingClientRect();
-      left = atRect.left - 7;
-    }
-    bar.style.left = left + 'px';
-    bar.style.top = (containerRect.top + 4) + 'px';
-    bar.style.height = (containerRect.height - 16) + 'px';
-    bar.style.width = BAR_THICKNESS + 'px';
-  }
-  bar.style.display = 'block';
-}
-
-function _performDrop(dragId, srcCtx, dstCtx, dstIndex){
+function _performDrop(dragId, srcCtx, dstCtx){
   var d = itemsIndex[dragId];
   if(!d) return;
-  var oldRects = captureRects();
-
-  // Archive drop
+  // Archive drop: same as clicking archive button
   if(dstCtx.context === 'archived'){
     d.archived = true;
     d.status = null;
     d.updated = new Date().toISOString();
     saveIndex();
     renderItems();
-    animateFlip(oldRects);
     return;
   }
 
-  // Apply data-model changes
+  // Dropping into a SCHEDULE
   if(dstCtx.context === 'schedule'){
     if(dstCtx.schedule === INBOX_KEY){
+      // Dropping into Inbox: card loses its home list and becomes Inbox-only
       d.status = INBOX_KEY;
       d.list = null;
     } else {
+      // Dropping into schedules 2-5
       if(srcCtx.context === 'list'){
+        // Coming up from a list to be worked on — keep home list, set schedule
         d.list = srcCtx.list;
         d.status = dstCtx.schedule;
       } else if(srcCtx.context === 'schedule' && srcCtx.schedule === INBOX_KEY){
+        // Inbox card dragged into a working schedule — illegal (needs a home).
+        // Treat as a no-op; surface a hint.
         setStatus('Drag Inbox cards into a list first to give them a home', false);
         return;
       } else {
+        // Already in a schedule; just switch schedule
         d.status = dstCtx.schedule;
       }
     }
   }
 
+  // Dropping into a LIST
   if(dstCtx.context === 'list'){
     if(srcCtx.context === 'schedule' && srcCtx.schedule !== INBOX_KEY){
+      // Card going home (from a working schedule) — also changes home list to destination
       d.list = dstCtx.list;
       d.status = null;
     } else if(srcCtx.context === 'schedule' && srcCtx.schedule === INBOX_KEY){
+      // Inbox card → list: leaves Inbox, gets home list
       d.list = dstCtx.list;
       d.status = null;
     } else if(srcCtx.context === 'list'){
+      // List → list: change home
       d.list = dstCtx.list;
       d.status = null;
     } else if(srcCtx.context === 'archived'){
+      // Unarchive into a list
       d.archived = false;
       d.list = dstCtx.list;
       d.status = null;
@@ -1750,23 +1649,20 @@ function _performDrop(dragId, srcCtx, dstCtx, dstIndex){
   }
 
   d.updated = new Date().toISOString();
-  // Place at the precise index within the destination bucket
+  // Place at front of new context
   if(dstCtx.context === 'schedule'){
-    _placeAtIndex(dragId, function(otherId, od){
+    _placeAtFront(dragId, function(otherId, od){
       return od.status === dstCtx.schedule && (dstCtx.schedule === INBOX_KEY ? !od.list : true);
-    }, dstIndex == null ? 0 : dstIndex);
+    });
   } else if(dstCtx.context === 'list'){
-    _placeAtIndex(dragId, function(otherId, od){
-      return od.list === dstCtx.list;
-    }, dstIndex == null ? 0 : dstIndex);
+    _placeAtFront(dragId, function(otherId, od){ return od.list === dstCtx.list; });
   }
   saveIndex();
   renderItems();
-  animateFlip(oldRects);
 }
 
 function _wireDrag(){
-  // Cards
+  // Cards: dragstart / dragend
   document.querySelectorAll('.item-card').forEach(function(card){
     if(card._dndWired) return;
     card._dndWired = true;
@@ -1776,8 +1672,6 @@ function _wireDrag(){
       if(_activeName){ _activeName.blur(); }
       _dnd.id = card.dataset.id;
       _dnd.sourceCtx = _ctxFromCard(card);
-      _dnd.targetCtx = null;
-      _dnd.targetIndex = null;
       e.dataTransfer.effectAllowed = 'move';
       try { e.dataTransfer.setData('text/plain', card.dataset.id); } catch(_){}
       setTimeout(function(){ card.classList.add('dnd-dragging'); }, 0);
@@ -1787,16 +1681,14 @@ function _wireDrag(){
       card.classList.remove('dnd-dragging');
       _dnd.id = null;
       _dnd.sourceCtx = null;
-      _dnd.targetCtx = null;
-      _dnd.targetIndex = null;
-      _hideDndBar();
+      // Clear all target highlights
       document.querySelectorAll('.dnd-target').forEach(function(el){
         el.classList.remove('dnd-target');
       });
     });
   });
 
-  // Drop targets
+  // Drop targets: all .list-cards (schedules + archived) and .v-list-cards (lists)
   document.querySelectorAll('.list-cards, .v-list-cards').forEach(function(el){
     if(el._dndDropWired) return;
     el._dndDropWired = true;
@@ -1805,43 +1697,22 @@ function _wireDrag(){
       if(!_dnd.id) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
+      // Highlight parent v-list if applicable
       var parent = el.closest('.v-list');
       if(parent) parent.classList.add('dnd-target');
-      var dstCtx = _ctxFromTarget(el);
-      if(!dstCtx) return;
-      // Archived doesn't get an indicator bar (no reorder)
-      if(dstCtx.context === 'archived'){
-        _hideDndBar();
-        _dnd.targetCtx = dstCtx;
-        _dnd.targetIndex = null;
-        return;
-      }
-      var idx = _computeInsertIndex(el, e.clientX, e.clientY, _dnd.id);
-      _dnd.targetCtx = dstCtx;
-      _dnd.targetIndex = idx;
-      _showDndBar(el, idx);
     });
 
-    el.addEventListener('dragleave', function(e){
+    el.addEventListener('dragleave', function(){
       var parent = el.closest('.v-list');
       if(parent) parent.classList.remove('dnd-target');
-      // Only hide if we left the container entirely (not just moved over a child)
-      var rect = el.getBoundingClientRect();
-      if(e.clientX < rect.left || e.clientX > rect.right ||
-         e.clientY < rect.top  || e.clientY > rect.bottom){
-        _hideDndBar();
-      }
     });
 
     el.addEventListener('drop', function(e){
       if(!_dnd.id) return;
       e.preventDefault();
-      var dstCtx = _dnd.targetCtx || _ctxFromTarget(el);
+      var dstCtx = _ctxFromTarget(el);
       if(!dstCtx) return;
-      var idx = _dnd.targetIndex;
-      if(idx == null) idx = _computeInsertIndex(el, e.clientX, e.clientY, _dnd.id);
-      _hideDndBar();
-      _performDrop(_dnd.id, _dnd.sourceCtx, dstCtx, idx);
+      _performDrop(_dnd.id, _dnd.sourceCtx, dstCtx);
     });
   });
 }
