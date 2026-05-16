@@ -381,7 +381,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">13:06 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:55 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1141,23 +1141,12 @@ function focusNewCardName(id){
 // ───── FLIP animation helpers ─────
 // Capture {left, top, width, height} for every card currently in the DOM,
 // keyed by item id. Used as the "First" snapshot for FLIP.
-// FLIP rect key: a card may render in two places (a schedule and a list) so
-// a plain id isn't unique. Combine with data-ctx attrs to form a stable key.
-function _flipKey(el){
-  var id = el.dataset.id;
-  if(!id) return null;
-  var ctx = el.getAttribute('data-ctx') || '';
-  var sch = el.getAttribute('data-ctx-schedule') || '';
-  var lst = el.getAttribute('data-ctx-list') || '';
-  return id + '|' + ctx + '|' + sch + '|' + lst;
-}
-
 function captureRects(){
   var rects = {};
   document.querySelectorAll('.item-card').forEach(function(el){
-    var k = _flipKey(el);
-    if(!k) return;
-    rects[k] = el.getBoundingClientRect();
+    var id = el.dataset.id;
+    if(!id) return;
+    rects[id] = el.getBoundingClientRect();
   });
   return rects;
 }
@@ -1183,7 +1172,6 @@ function animateFlip(oldRects, opts){
   document.querySelectorAll('.item-card').forEach(function(el){
     var id = el.dataset.id;
     if(!id) return;
-    var k = _flipKey(el);
 
     if(newIds.indexOf(id) >= 0){
       // New card: scale up from 0.85 with a fade-in
@@ -1201,9 +1189,9 @@ function animateFlip(oldRects, opts){
       return;
     }
 
-    if(!oldRects[k]) return; // card is neither old nor flagged new; leave it
+    if(!oldRects[id]) return; // card is neither old nor flagged new; leave it
 
-    var oldRect = oldRects[k];
+    var oldRect = oldRects[id];
     var newRect = el.getBoundingClientRect();
     var dx = oldRect.left - newRect.left;
     var dy = oldRect.top - newRect.top;
