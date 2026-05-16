@@ -425,7 +425,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">19:28 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">19:19 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1839,9 +1839,37 @@ function _hideBar(){}
 // ── Ghost outline ──
 // A dashed-outline rectangle positioned `fixed` on <body>, mirroring the
 // dragged card's dimensions. Travels between contexts without being clipped.
-// Ghost outline disabled — the drag preview itself is the visual indicator
-function _createGhost(){}
+function _createGhost(){
+  if(_dnd.ghost || !_dnd.id) return;
+  var card = document.querySelector('.item-card[data-id="' + _dnd.id + '"]');
+  if(!card) return;
+  var rect = card.getBoundingClientRect();
+  var ghost = document.createElement('div');
+  ghost.id = '_dndGhost';
+  ghost.style.cssText = [
+    'position:fixed',
+    'left:' + rect.left + 'px',
+    'top:'  + rect.top  + 'px',
+    'width:'  + rect.width  + 'px',
+    'height:' + rect.height + 'px',
+    'margin:0',
+    'box-sizing:border-box',
+    'border:2px dashed rgba(0,0,0,0.22)',
+    'border-radius:10px',
+    'background:transparent',
+    'z-index:100',
+    'pointer-events:none',
+    'transition:left 0.15s ease-out, top 0.15s ease-out, width 0.15s ease-out, height 0.15s ease-out'
+  ].join(';');
+  document.body.appendChild(ghost);
+  _dnd.ghost = ghost;
+  card.style.visibility = 'hidden';
+}
 function _destroyGhost(){
+  if(_dnd.ghost){
+    _dnd.ghost.remove();
+    _dnd.ghost = null;
+  }
   if(_dnd.id){
     var card = document.querySelector('.item-card[data-id="' + _dnd.id + '"]');
     if(card) card.style.visibility = '';
@@ -2118,6 +2146,13 @@ function _updateLiveLayout(){
       }
     }
   }
+
+  // Ghost goes to visual slot targetIdx
+  var ghostTop  = naturalSlotYs[targetIdx];
+  var ghostLeft = naturalSlotXs[targetIdx];
+  var ghostW = allTgtRects.length ? allTgtRects[0].width  : 172;
+  var ghostH = allTgtRects.length ? allTgtRects[0].height : 64;
+  _ghostTo(ghostLeft, ghostTop, ghostW, ghostH);
 
   // Clear stale transforms on other containers
   document.querySelectorAll('.list-cards, .v-list-cards').forEach(function(el){
