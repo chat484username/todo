@@ -183,8 +183,8 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   -webkit-box-orient:vertical;
   word-break:break-word;
   min-height:0;
-  /* State A — default: open-hand cursor to signal "draggable", no text selection */
-  cursor:grab;
+  /* State A — default: arrow cursor, no text selection */
+  cursor:default;
   user-select:none;
   -webkit-user-select:none;
   outline:none;
@@ -193,12 +193,10 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   margin:-1px -3px;
   transition:background 0.12s, box-shadow 0.12s;
 }
-/* While the mouse is held down (about to drag), show the closed-fist cursor */
-.card-name:active{cursor:grabbing}
-/* State B — primed (clicked once, ready for second click to edit). Show
-   the default arrow so it's clear that single-click hasn't activated edit. */
+.card-name:hover{background:rgba(0,0,0,0.04)}
+/* State B — primed (clicked once, awaiting second click to edit) */
 .card-name.primed{
-  cursor:default;
+  cursor:text;
 }
 /* State C — editing: contenteditable, selectable, expand to show full text */
 .card-name.editing{
@@ -416,7 +414,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:43 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:29 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1123,10 +1121,11 @@ function _enterStateC(span){
   var card = span.closest('.item-card');
   if(card) card.setAttribute('draggable', 'false');
   span.focus();
-  // Select all text by default so typing replaces it. Right-arrow / click
-  // moves to the end / a specific position.
+  // Place caret at end (don't auto-select-all on second click — the user
+  // can use Cmd/Ctrl+A or select with the cursor)
   var range = document.createRange();
   range.selectNodeContents(span);
+  range.collapse(false);
   var sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(range);
@@ -1242,13 +1241,19 @@ document.addEventListener('dragstart', function(e){
   _mousedownName = null;
 }, true);
 
-// Focus a brand-new card's name in edit mode (state C) with text selected.
+// Focus a brand-new card's name in edit mode (state C), with all text selected
 function focusNewCardName(id){
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
       var span = document.querySelector('.card-name[data-item-id="' + id + '"]');
       if(!span) return;
       _enterStateC(span);
+      // Override the caret-at-end with select-all so typing replaces the placeholder
+      var range = document.createRange();
+      range.selectNodeContents(span);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
     });
   });
 }
