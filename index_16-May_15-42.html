@@ -425,7 +425,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:42 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:22 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -776,25 +776,16 @@ function renderItems(){
     }
   });
 
-  // Sort: manual order takes precedence, else most-recent first.
-  // Items use SEPARATE order fields per context — _schedOrder for their position
-  // in a schedule, _listOrder for their position in their home list — so that
-  // reordering in one context doesn't disturb the other. Older items that only
-  // have _order are read with that as the fallback.
-  function _sortByOrder(getOrder){
-    return function(a, b){
-      var oa = getOrder(itemsIndex[a]);
-      var ob = getOrder(itemsIndex[b]);
-      if(oa != null && ob != null) return oa - ob;
-      if(oa != null) return -1;
-      if(ob != null) return  1;
-      return new Date(itemsIndex[b].updated || 0) - new Date(itemsIndex[a].updated || 0);
-    };
-  }
-  var schedOrderOf = function(d){ return d._schedOrder != null ? d._schedOrder : d._order; };
-  var listOrderOf  = function(d){ return d._listOrder  != null ? d._listOrder  : d._order; };
-  Object.keys(scheduleBuckets).forEach(function(k){ scheduleBuckets[k].sort(_sortByOrder(schedOrderOf)); });
-  Object.keys(listBuckets).forEach(function(k){ listBuckets[k].sort(_sortByOrder(listOrderOf)); });
+  // Sort: manual _order takes precedence, else most-recent first
+  var sortByOrder = function(a,b){
+    var da = itemsIndex[a], db = itemsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  };
+  Object.keys(scheduleBuckets).forEach(function(k){ scheduleBuckets[k].sort(sortByOrder); });
+  Object.keys(listBuckets).forEach(function(k){ listBuckets[k].sort(sortByOrder); });
 
   // Gist warning
   var totalItems = Object.keys(itemsIndex).length;
@@ -1089,7 +1080,7 @@ function sendItemToList(btn, listKey){
   d.list = listKey;
   d.status = null;
   d.updated = new Date().toISOString();
-  _placeAtFront(id, function(otherId, od){ return od.list === listKey; }, '_listOrder');
+  _placeAtFront(id, function(otherId, od){ return od.list === listKey; });
   saveIndex();
   renderItems();
 }
@@ -1409,12 +1400,10 @@ async function deleteItem(btn){
   animateFlip(oldRects, { removedGhosts: ghost ? [ghost] : [] });
 }
 
-// Re-index a sibling group so `id` sits at the front (position 0) and
+// Re-index a sibling group so `id` sits at _order:0 (leftmost/topmost) and
 // existing siblings shift down. `predicate(otherId)` returns true if that
-// other card belongs in the same group. `orderField` is '_schedOrder' or
-// '_listOrder' depending on the bucket context.
-function _placeAtFront(id, predicate, orderField){
-  orderField = orderField || '_order';
+// other card belongs in the same group.
+function _placeAtFront(id, predicate){
   var siblings = Object.keys(itemsIndex).filter(function(otherId){
     if(otherId === id) return false;
     var od = itemsIndex[otherId];
@@ -1423,15 +1412,13 @@ function _placeAtFront(id, predicate, orderField){
   });
   siblings.sort(function(a, b){
     var da = itemsIndex[a], db = itemsIndex[b];
-    var oa = da[orderField] != null ? da[orderField] : da._order;
-    var ob = db[orderField] != null ? db[orderField] : db._order;
-    if(oa != null && ob != null) return oa - ob;
-    if(oa != null) return -1;
-    if(ob != null) return  1;
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
     return new Date(db.updated || 0) - new Date(da.updated || 0);
   });
-  itemsIndex[id][orderField] = 0;
-  siblings.forEach(function(sid, i){ itemsIndex[sid][orderField] = i + 1; });
+  itemsIndex[id]._order = 0;
+  siblings.forEach(function(sid, i){ itemsIndex[sid]._order = i + 1; });
 }
 
 // Add a card to the Inbox (row1). No home list.
@@ -1442,7 +1429,7 @@ function addItemToInbox(){
   var id = 'deal-' + ts;
   var oldRects = captureRects();
   itemsIndex[id] = { name: name, updated: new Date().toISOString(), status: INBOX_KEY, list: null };
-  _placeAtFront(id, function(otherId, od){ return od.status === INBOX_KEY && !od.list; }, '_schedOrder');
+  _placeAtFront(id, function(otherId, od){ return od.status === INBOX_KEY && !od.list; });
   renderItems();
   animateFlip(oldRects, { newIds: [id] });
   focusNewCardName(id);
@@ -1457,7 +1444,7 @@ function addItemToList(listKey){
   var id = 'deal-' + ts;
   var oldRects = captureRects();
   itemsIndex[id] = { name: name, updated: new Date().toISOString(), status: null, list: listKey };
-  _placeAtFront(id, function(otherId, od){ return od.list === listKey; }, '_listOrder');
+  _placeAtFront(id, function(otherId, od){ return od.list === listKey; });
   renderItems();
   animateFlip(oldRects, { newIds: [id] });
   focusNewCardName(id);
@@ -1759,21 +1746,13 @@ function _isVerticalContainer(el){
 // Return the ordered card IDs for a given context, used during DnD to compute
 // indices. Mirrors _orderedLaneIds in the property tool but for the schedule/
 // list axes.
-function _orderFieldForCtx(ctx){
-  if(!ctx) return '_order';
-  if(ctx.context === 'list') return '_listOrder';
-  return '_schedOrder'; // schedule or archived
-}
-
 function _orderedIdsForCtx(ctx){
   if(!ctx) return [];
-  var orderField = _orderFieldForCtx(ctx);
-  var sorter = _makeDndSort(orderField);
   if(ctx.context === 'archived'){
     return Object.keys(itemsIndex).filter(function(id){
       var d = itemsIndex[id];
       return d && !d.deleted && d.archived;
-    }).sort(sorter);
+    }).sort(_dndIdSort);
   }
   if(ctx.context === 'schedule'){
     var sk = ctx.schedule;
@@ -1782,7 +1761,7 @@ function _orderedIdsForCtx(ctx){
       if(!d || d.deleted || d.archived) return false;
       if(sk === INBOX_KEY) return d.status === INBOX_KEY && !d.list;
       return d.status === sk;
-    }).sort(sorter);
+    }).sort(_dndIdSort);
   }
   if(ctx.context === 'list'){
     var lk = ctx.list;
@@ -1790,43 +1769,34 @@ function _orderedIdsForCtx(ctx){
       var d = itemsIndex[id];
       if(!d || d.deleted || d.archived) return false;
       return d.list === lk;
-    }).sort(sorter);
+    }).sort(_dndIdSort);
   }
   return [];
 }
-
-function _makeDndSort(orderField){
-  return function(a, b){
-    var da = itemsIndex[a], db = itemsIndex[b];
-    var oa = da[orderField] != null ? da[orderField] : da._order;
-    var ob = db[orderField] != null ? db[orderField] : db._order;
-    if(oa != null && ob != null) return oa - ob;
-    if(oa != null) return -1;
-    if(ob != null) return  1;
-    return new Date(db.updated || 0) - new Date(da.updated || 0);
-  };
+function _dndIdSort(a, b){
+  var da = itemsIndex[a], db = itemsIndex[b];
+  if(da._order != null && db._order != null) return da._order - db._order;
+  if(da._order != null) return -1;
+  if(db._order != null) return  1;
+  return new Date(db.updated || 0) - new Date(da.updated || 0);
 }
 
 // Re-index a sibling group so `id` sits at position `index`. Shifts other
-// cards to make room. Writes into the per-context order field (`_schedOrder`
-// for schedules/archived, `_listOrder` for lists) so reordering in one
-// context doesn't disturb other contexts where this card also appears.
-function _placeAtIndex(id, predicate, index, ctx){
-  var orderField = _orderFieldForCtx(ctx);
-  var sorter = _makeDndSort(orderField);
+// cards to make room.
+function _placeAtIndex(id, predicate, index){
   var siblings = Object.keys(itemsIndex).filter(function(otherId){
     if(otherId === id) return false;
     var od = itemsIndex[otherId];
     if(!od || od.deleted || od.archived) return false;
     return predicate(otherId, od);
   });
-  siblings.sort(sorter);
+  siblings.sort(_dndIdSort);
   index = Math.max(0, Math.min(index, siblings.length));
-  itemsIndex[id][orderField] = index;
+  itemsIndex[id]._order = index;
   var pos = 0;
   siblings.forEach(function(sid){
     if(pos === index) pos++;
-    itemsIndex[sid][orderField] = pos;
+    itemsIndex[sid]._order = pos;
     pos++;
   });
 }
@@ -2151,11 +2121,11 @@ async function _dndPerformDrop(){
   if(dstCtx.context === 'schedule'){
     _placeAtIndex(dragId, function(otherId, od){
       return od.status === dstCtx.schedule && (dstCtx.schedule === INBOX_KEY ? !od.list : true);
-    }, dstIdx == null ? 0 : dstIdx, dstCtx);
+    }, dstIdx == null ? 0 : dstIdx);
   } else if(dstCtx.context === 'list'){
     _placeAtIndex(dragId, function(otherId, od){
       return od.list === dstCtx.list;
-    }, dstIdx == null ? 0 : dstIdx, dstCtx);
+    }, dstIdx == null ? 0 : dstIdx);
   }
 
   saveIndex();
@@ -2250,8 +2220,7 @@ function _createDragPreview(){
   clone.style.zIndex = '200';
   clone.style.opacity = '0.88';
   clone.style.boxShadow = '0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)';
-  clone.style.outline = '2px dashed rgba(0,0,0,0.22)';
-  clone.style.outlineOffset = '0px';
+  clone.style.transform = 'rotate(1.5deg)';
   clone.style.transition = 'none';
   // Strip the dragging class from the clone — it shouldn't be dimmed
   clone.classList.remove('dnd-dragging');
