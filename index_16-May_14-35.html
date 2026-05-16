@@ -183,10 +183,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   -webkit-box-orient:vertical;
   word-break:break-word;
   min-height:0;
-  /* State A — default: arrow cursor, no text selection */
-  cursor:default;
-  user-select:none;
-  -webkit-user-select:none;
+  cursor:text;
   outline:none;
   border-radius:3px;
   padding:1px 3px;
@@ -194,42 +191,12 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   transition:background 0.12s, box-shadow 0.12s;
 }
 .card-name:hover{background:rgba(0,0,0,0.04)}
-/* State B — primed (clicked once, awaiting second click to edit) */
-.card-name.primed{
-  cursor:text;
-}
-/* State C — editing: contenteditable, selectable, expand to show full text */
-.card-name.editing{
-  cursor:text;
-  user-select:text;
-  -webkit-user-select:text;
+.card-name:focus{
   background:#fff;
   -webkit-line-clamp:unset;
   overflow:visible;
 }
 .card-name.placeholder-name{color:var(--mute);font-style:italic}
-
-/* Note icon — top-right, only visible if item has a note */
-.card-note-btn{
-  position:absolute;
-  top:6px;
-  right:6px;
-  width:22px;
-  height:22px;
-  display:flex;align-items:center;justify-content:center;
-  color:var(--mute);
-  background:transparent;
-  border-radius:4px;
-  text-decoration:none;
-  z-index:2;
-  transition:background 0.12s, color 0.12s;
-}
-.card-note-btn:hover{background:rgba(0,0,0,0.08);color:var(--ink)}
-.card-note-btn svg{width:13px;height:13px}
-/* On Inbox cards the top-right is taken by the tick/cross corner buttons, so
-   the note icon sits on the LEFT edge instead */
-.item-card.inbox-card .card-note-btn{right:auto;left:6px}
-.item-card.inbox-card .card-body{padding-left:32px}
 
 /* Footer icons (archive / delete) */
 .card-footer{
@@ -414,7 +381,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:29 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">13:06 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -456,7 +423,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 </div>
 
 <script>
-var ANALYSER_PAGE = 'todo-v12.html';
+var ANALYSER_PAGE = 'todo-v11.html';
 var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
 var itemsIndex = {};
 var gistFilesMeta = null; // cached reference to gist.files from last fetch
@@ -1007,18 +974,7 @@ function cardHTML(id, ctx){
 
   var nameHtml = isArchived
     ? '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>'
-    : '<span class="card-name" data-item-id="' + id + '" spellcheck="false">' + name + '</span>';
-
-  // Note icon: shown only when this item has a non-empty note. Clicking opens
-  // the detail page to edit the note.
-  var noteBtn = '';
-  if(!isArchived && d.note){
-    noteBtn = '<a class="card-note-btn" href="' + link + '" title="Open note" aria-label="Open note" draggable="false">' +
-      '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-      '<rect x="4.5" y="3.5" width="11" height="13" rx="1.5"/>' +
-      '<path d="M7 7 h6 M7 10 h6 M7 13 h4"/>' +
-      '</svg></a>';
-  }
+    : '<span class="card-name" data-item-id="' + id + '" contenteditable="plaintext-only" spellcheck="false" title="Click to edit · double-click to open">' + name + '</span>';
 
   // Send-home button: only on schedule-cards that have a home list (schedules 2-5; not Inbox; not archived)
   var sendHomeBtn = '';
@@ -1040,7 +996,6 @@ function cardHTML(id, ctx){
   return '<div class="' + classes + '" data-id="' + id + '"' + ctxAttr + '>' +
     sendHomeBtn +
     cornerBtns +
-    noteBtn +
     '<div class="card-body">' +
       nameHtml +
     '</div>' +
@@ -1089,59 +1044,15 @@ function escapeHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// ───── Card name state machine ─────
-//
-// Three states:
-//   A — Default. Arrow cursor. mousedown + drag → drags card. mousedown + release
-//       (no drag) → transitions to B.
-//   B — Primed. I-beam cursor (only while over the name). mousedown + drag →
-//       still drags card. mousedown + release (no drag) → transitions to C.
-//   C — Editing. Contenteditable, text selectable, full editor.
-//
-// Implemented via .card-name CSS classes ('', 'primed', 'editing') plus a
-// mousedown/mouseup pair that detects whether a drag happened.
+// ───── Card name inline editing ─────
+// Click on a card name → cursor lands there for inline rename.
+// Enter or blur saves. Escape reverts. Double-click opens the to-do page.
+var _activeName = null;
+var _activeNameOriginal = '';
 
-var _activeName = null;          // span currently in state C
-var _activeNameOriginal = '';    // its original text, for Escape revert
-var _primedName = null;          // span currently in state B
-var _mousedownName = null;       // span the user pressed mouse-button down on
-var _mousedownX = 0;
-var _mousedownY = 0;
-var DRAG_THRESHOLD_PX = 4;        // mouse movement beyond this = drag, not click
-
-function _enterStateC(span){
-  if(!span) return;
-  if(_primedName && _primedName !== span) _exitPrimed(_primedName);
-  _activeName = span;
-  _activeNameOriginal = (span.textContent || '').trim();
-  span.classList.remove('primed');
-  span.classList.add('editing');
-  span.setAttribute('contenteditable', 'plaintext-only');
-  // The card itself shouldn't accept drags while we're editing the name
-  var card = span.closest('.item-card');
-  if(card) card.setAttribute('draggable', 'false');
-  span.focus();
-  // Place caret at end (don't auto-select-all on second click — the user
-  // can use Cmd/Ctrl+A or select with the cursor)
-  var range = document.createRange();
-  range.selectNodeContents(span);
-  range.collapse(false);
-  var sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-}
-
-function _enterStatePrimed(span){
-  if(!span) return;
-  if(_primedName && _primedName !== span) _exitPrimed(_primedName);
-  _primedName = span;
-  span.classList.add('primed');
-}
-
-function _exitPrimed(span){
-  if(!span) return;
-  span.classList.remove('primed');
-  if(_primedName === span) _primedName = null;
+function _openTodoPage(id){
+  var dest = ANALYSER_PAGE + '?item=' + encodeURIComponent(id);
+  window.location.href = dest;
 }
 
 function _commitName(span, save){
@@ -1151,12 +1062,14 @@ function _commitName(span, save){
   var raw = (span.textContent || '').replace(/\s+/g, ' ').trim();
   if(save){
     if(!raw){
+      // Empty name: revert to original (avoid blank cards)
       span.textContent = _activeNameOriginal || id;
     } else if(raw !== _activeNameOriginal){
       if(itemsIndex[id]){
         itemsIndex[id].name = raw;
         itemsIndex[id].updated = new Date().toISOString();
         saveIndex();
+        // Sync any other DOM copy of this card (e.g. greyed list copy)
         document.querySelectorAll('.card-name[data-item-id="' + id + '"]').forEach(function(el){
           if(el !== span && el.textContent !== raw) el.textContent = raw;
         });
@@ -1165,57 +1078,31 @@ function _commitName(span, save){
   } else {
     span.textContent = _activeNameOriginal;
   }
-  span.classList.remove('editing');
-  span.removeAttribute('contenteditable');
-  var card = span.closest('.item-card');
-  if(card) card.setAttribute('draggable', 'true');
   _activeName = null;
   _activeNameOriginal = '';
 }
 
-document.addEventListener('mousedown', function(e){
-  // Click outside any card-name: clear primed + commit any active edit
-  var span = e.target.closest('.card-name');
-  if(!span || !span.hasAttribute('data-item-id')){
-    if(_primedName) _exitPrimed(_primedName);
-    if(_activeName && !e.target.closest('.card-name.editing')){
-      _commitName(_activeName, true);
-    }
-    return;
-  }
-  // Already editing this span — let normal text-editing behaviour happen
-  if(span === _activeName) return;
-  // If clicking a different primed/active card-name, exit those states first
-  if(_activeName && _activeName !== span) _commitName(_activeName, true);
-  if(_primedName && _primedName !== span) _exitPrimed(_primedName);
+document.addEventListener('dblclick', function(e){
+  var span = e.target.closest('.card-name[contenteditable]');
+  if(!span) return;
+  var id = span.getAttribute('data-item-id');
+  if(!id) return;
+  e.preventDefault();
+  // Commit anything in-flight first
+  if(_activeName === span) _commitName(span, true);
+  span.blur();
+  _openTodoPage(id);
+});
 
-  _mousedownName = span;
-  _mousedownX = e.clientX;
-  _mousedownY = e.clientY;
-}, true);
-
-document.addEventListener('mouseup', function(e){
-  if(!_mousedownName) return;
-  var span = _mousedownName;
-  _mousedownName = null;
-  // Did the user drag? If so, mouseup might fire over the same card after a
-  // drop, but during the drag dragstart fired and we treat that as a drag-not-click.
-  var dx = Math.abs(e.clientX - _mousedownX);
-  var dy = Math.abs(e.clientY - _mousedownY);
-  if(dx > DRAG_THRESHOLD_PX || dy > DRAG_THRESHOLD_PX) return; // was a drag, ignore
-  // Did the mouseup happen over the same name span?
-  var upSpan = e.target.closest('.card-name');
-  if(upSpan !== span) return;
-  // Transition: A → B, or B → C
-  if(span.classList.contains('primed')){
-    _enterStateC(span);
-  } else if(!span.classList.contains('editing')){
-    _enterStatePrimed(span);
-  }
+document.addEventListener('focusin', function(e){
+  var span = e.target.closest('.card-name[contenteditable]');
+  if(!span) return;
+  _activeName = span;
+  _activeNameOriginal = (span.textContent || '').trim();
 });
 
 document.addEventListener('focusout', function(e){
-  var span = e.target.closest('.card-name.editing');
+  var span = e.target.closest('.card-name[contenteditable]');
   if(!span || span !== _activeName) return;
   _commitName(span, true);
 });
@@ -1224,7 +1111,7 @@ document.addEventListener('keydown', function(e){
   if(!_activeName || e.target !== _activeName) return;
   if(e.key === 'Enter'){
     e.preventDefault();
-    _activeName.blur();
+    _activeName.blur(); // triggers focusout → commit
   } else if(e.key === 'Escape'){
     e.preventDefault();
     _commitName(_activeName, false);
@@ -1232,23 +1119,16 @@ document.addEventListener('keydown', function(e){
   }
 });
 
-// Drag start on a card → exit any primed/editing state so the drag wins
-document.addEventListener('dragstart', function(e){
-  var card = e.target.closest('.item-card');
-  if(!card) return;
-  if(_primedName) _exitPrimed(_primedName);
-  if(_activeName) _commitName(_activeName, true);
-  _mousedownName = null;
-}, true);
-
-// Focus a brand-new card's name in edit mode (state C), with all text selected
+// Focus the name field of a freshly-created card with an autoselect of any
+// placeholder name, so the user can immediately start typing to replace it.
 function focusNewCardName(id){
+  // Wait for FLIP animation to settle so the card is in its final position
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
       var span = document.querySelector('.card-name[data-item-id="' + id + '"]');
       if(!span) return;
-      _enterStateC(span);
-      // Override the caret-at-end with select-all so typing replaces the placeholder
+      span.focus();
+      // Select all text so typing replaces the placeholder name
       var range = document.createRange();
       range.selectNodeContents(span);
       var sel = window.getSelection();
