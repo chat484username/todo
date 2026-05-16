@@ -433,7 +433,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:37 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:28 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -2042,73 +2042,57 @@ function _updateLiveLayout(){
 
   if(!_dnd.ghost) _createGhost();
 
+  var sameCtx = (srcKey === tgtKey);
   var dragId = _dnd.id;
   var targetIdx = _dnd.targetIndex;
-  var sameCtx = (srcKey === tgtKey);
-  var srcEl = _containerElForCtx(_dnd.sourceCtx);
-  var tgtEl = _containerElForCtx(_dnd.targetCtx);
 
-  // ── SOURCE-SIDE LAYOUT ──
-  // Cards in the source container shift to close the gap left by the dragged
-  // card (unless source is a list, in which case we leave it occupying its slot).
-  // For same-context drags, source IS the target, so we skip this step here.
-  if(srcEl && !sameCtx){
-    var srcCards = Array.prototype.slice.call(srcEl.querySelectorAll('.item-card'));
-    var srcPitch = _getPitch(srcEl);
-    if(_dnd.sourceIsList){
-      // No source-side shifts — source-shadow holds the slot in place
-      srcCards.forEach(function(c){ _applyShift(c, 0, srcPitch); });
-    } else {
-      // Find the dragged card's DOM position and shift everything after it by -1
-      var srcDomIdx = -1;
-      for(var si = 0; si < srcCards.length; si++){
-        if(srcCards[si].dataset.id === dragId){ srcDomIdx = si; break; }
+  // Compute shifts for each card in source + target contexts.
+  var shifts = {}; // id -> shift count (typically -1, 0, +1)
+
+  if(sameCtx){
+    var ids = _orderedIdsForCtx(_dnd.sourceCtx);
+    var D = ids.indexOf(dragId);
+    if(D < 0){ _moveGhostAndBar(); return; }
+    ids.forEach(function(id, i){
+      if(i === D){
+        shifts[id] = 0; // dragged card stays put (visibility:hidden)
+      } else if(i < D){
+        shifts[id] = (i >= targetIdx) ? 1 : 0;
+      } else {
+        shifts[id] = (i - 1 < targetIdx) ? -1 : 0;
       }
-      srcCards.forEach(function(c, i){
-        if(i === srcDomIdx){ _applyShift(c, 0, srcPitch); return; }
-        if(srcDomIdx >= 0 && i > srcDomIdx) _applyShift(c, -1, srcPitch);
-        else _applyShift(c, 0, srcPitch);
+    });
+  } else {
+    var srcIds = _orderedIdsForCtx(_dnd.sourceCtx);
+    var srcD = srcIds.indexOf(dragId);
+    // When the source is a list, the card stays visible in its slot (greyed
+    // via dnd-source-shadow). Don't close the source gap — the slot is
+    // "reserved" for the original placement.
+    if(srcD >= 0 && !_dnd.sourceIsList){
+      srcIds.forEach(function(id, i){
+        if(id === dragId) return;
+        shifts[id] = (i > srcD) ? -1 : 0;
       });
     }
+    var tgtIds = _orderedIdsForCtx(_dnd.targetCtx);
+    tgtIds.forEach(function(id, i){
+      shifts[id] = (i >= targetIdx) ? 1 : 0;
+    });
   }
 
-  // ── TARGET-SIDE LAYOUT ──
-  // Compute each card's target VISUAL slot index based on the final order
-  // after the drop. The dragged card's visual slot is targetIdx.
-  if(tgtEl){
-    var tgtCards = Array.prototype.slice.call(tgtEl.querySelectorAll('.item-card'));
+  // Apply shifts in source + target containers
+  var srcEl = _containerElForCtx(_dnd.sourceCtx);
+  var tgtEl = _containerElForCtx(_dnd.targetCtx);
+  if(srcEl){
+    var srcPitch = _getPitch(srcEl);
+    srcEl.querySelectorAll('.item-card').forEach(function(card){
+      _applyShift(card, shifts[card.dataset.id] || 0, srcPitch);
+    });
+  }
+  if(tgtEl && tgtEl !== srcEl){
     var tgtPitch = _getPitch(tgtEl);
-    var srcDomIdxTgt = -1;
-    if(sameCtx){
-      for(var ti = 0; ti < tgtCards.length; ti++){
-        if(tgtCards[ti].dataset.id === dragId){ srcDomIdxTgt = ti; break; }
-      }
-    }
-    tgtCards.forEach(function(c, domIdx){
-      if(c.dataset.id === dragId){
-        // Source card stays put visually (it's hidden anyway)
-        _applyShift(c, 0, tgtPitch);
-        return;
-      }
-      // Compute filtered index (excluding the source if same-context)
-      var filteredIdx = (sameCtx && srcDomIdxTgt >= 0 && domIdx > srcDomIdxTgt)
-        ? domIdx - 1
-        : domIdx;
-      // Where this card sits in the FINAL order after dropping at targetIdx:
-      //   if filteredIdx < targetIdx → final position = filteredIdx
-      //   if filteredIdx >= targetIdx → final position = filteredIdx + 1
-      var finalVisualSlot = (filteredIdx < targetIdx) ? filteredIdx : filteredIdx + 1;
-      // Map final visual slot back to DOM slot space.
-      // For same-context: DOM slots = [c0, c1, ..., src, ..., cN]. Without the
-      // source, the "visual slots" are 0..N-1 but they map to DOM slots
-      // skipping srcDomIdxTgt. So visual slot V maps to DOM slot:
-      //   V if V < srcDomIdxTgt, V+1 if V >= srcDomIdxTgt
-      var finalDomSlot = finalVisualSlot;
-      if(sameCtx && srcDomIdxTgt >= 0){
-        finalDomSlot = (finalVisualSlot < srcDomIdxTgt) ? finalVisualSlot : finalVisualSlot + 1;
-      }
-      var shift = finalDomSlot - domIdx;
-      _applyShift(c, shift, tgtPitch);
+    tgtEl.querySelectorAll('.item-card').forEach(function(card){
+      _applyShift(card, shifts[card.dataset.id] || 0, tgtPitch);
     });
   }
 
@@ -2120,80 +2104,7 @@ function _updateLiveLayout(){
     });
   });
 
-  // ── GHOST POSITION ──
-  // The dragged card's final position is finalDomSlot computed for the source
-  // card. Compute it explicitly here for the ghost.
-  if(tgtEl){
-    var tgtCards2 = Array.prototype.slice.call(tgtEl.querySelectorAll('.item-card'));
-    var srcDomInTgt = -1;
-    if(sameCtx){
-      for(var ki = 0; ki < tgtCards2.length; ki++){
-        if(tgtCards2[ki].dataset.id === dragId){ srcDomInTgt = ki; break; }
-      }
-    }
-    // The dragged card sits at visual slot = targetIdx in the final order.
-    // Map to DOM slot:
-    var ghostDomSlot = targetIdx;
-    if(sameCtx && srcDomInTgt >= 0){
-      ghostDomSlot = (targetIdx < srcDomInTgt) ? targetIdx : targetIdx + 1;
-    }
-    _positionGhostAtDomSlot(tgtEl, ghostDomSlot);
-  }
-}
-
-// Position the ghost at a specific DOM slot index in a container, regardless
-// of any live-shift transforms on the cards themselves.
-function _positionGhostAtDomSlot(containerEl, domSlot){
-  if(!_dnd.ghost) return;
-  var cards = Array.prototype.slice.call(containerEl.querySelectorAll('.item-card'));
-  var isVert = _isVerticalContainer(containerEl);
-  if(!cards.length){
-    var rect = containerEl.getBoundingClientRect();
-    var st = window.getComputedStyle(containerEl);
-    _dnd.ghost.style.left = (rect.left + (parseFloat(st.paddingLeft) || 0)) + 'px';
-    _dnd.ghost.style.top  = (rect.top  + (parseFloat(st.paddingTop)  || 0)) + 'px';
-    return;
-  }
-  function untransformedTop(card){
-    var r = card.getBoundingClientRect();
-    var t = card.style.transform || '';
-    var ty = 0;
-    var my = t.match(/translateY\((-?\d+(?:\.\d+)?)px\)/);
-    if(my) ty = parseFloat(my[1]);
-    return r.top - ty;
-  }
-  function untransformedLeft(card){
-    var r = card.getBoundingClientRect();
-    var t = card.style.transform || '';
-    var tx = 0;
-    var mx = t.match(/translateX\((-?\d+(?:\.\d+)?)px\)/);
-    if(mx) tx = parseFloat(mx[1]);
-    return r.left - tx;
-  }
-  // Compute pitch between two adjacent DOM cards (using their untransformed positions)
-  var pitch;
-  if(cards.length >= 2){
-    if(isVert){
-      pitch = untransformedTop(cards[1]) - untransformedTop(cards[0]);
-    } else {
-      pitch = untransformedLeft(cards[1]) - untransformedLeft(cards[0]);
-    }
-  } else {
-    var r = cards[0].getBoundingClientRect();
-    var gap = parseFloat(window.getComputedStyle(containerEl).gap) || 14;
-    pitch = isVert ? (r.height + gap) : (r.width + gap);
-  }
-  if(isVert){
-    var x0 = untransformedLeft(cards[0]);
-    var y0 = untransformedTop(cards[0]);
-    _dnd.ghost.style.left = x0 + 'px';
-    _dnd.ghost.style.top  = (y0 + domSlot * pitch) + 'px';
-  } else {
-    var xL0 = untransformedLeft(cards[0]);
-    var yT0 = untransformedTop(cards[0]);
-    _dnd.ghost.style.left = (xL0 + domSlot * pitch) + 'px';
-    _dnd.ghost.style.top  = yT0 + 'px';
-  }
+  _moveGhostAndBar();
 }
 
 function _moveGhostAndBar(){
