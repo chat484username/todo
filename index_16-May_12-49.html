@@ -381,7 +381,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:49 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:43 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1674,10 +1674,33 @@ function _placeAtIndex(id, predicate, index){
   });
 }
 
-// ── Drop bar — disabled (ghost outline is the sole visual indicator) ──
-function _ensureDnDBar(){ return null; }
-function _showBar(){}
-function _hideBar(){}
+// ── Drop bar ──
+// Thin coloured bar at the precise drop gap. Used alongside the ghost outline.
+function _ensureDnDBar(){
+  if(_dnd.bar) return _dnd.bar;
+  var b = document.createElement('div');
+  b.id = '_dndBar';
+  b.style.cssText =
+    'position:fixed;background:var(--brown);border-radius:2px;' +
+    'pointer-events:none;z-index:1000;opacity:0;' +
+    'transition:opacity 0.12s ease-out, left 0.16s cubic-bezier(0.2,0.8,0.2,1),' +
+    ' top 0.16s cubic-bezier(0.2,0.8,0.2,1), width 0.16s cubic-bezier(0.2,0.8,0.2,1),' +
+    ' height 0.16s cubic-bezier(0.2,0.8,0.2,1);';
+  document.body.appendChild(b);
+  _dnd.bar = b;
+  return b;
+}
+function _showBar(x, y, w, h){
+  var b = _ensureDnDBar();
+  b.style.left = x + 'px';
+  b.style.top  = y + 'px';
+  b.style.width  = w + 'px';
+  b.style.height = h + 'px';
+  b.style.opacity = '1';
+}
+function _hideBar(){
+  if(_dnd.bar) _dnd.bar.style.opacity = '0';
+}
 
 // ── Ghost outline ──
 // A dashed-outline rectangle positioned `fixed` on <body>, mirroring the
@@ -1761,7 +1784,50 @@ function _getTargetSlotViewportPos(ctx, targetIdx){
 }
 
 // ── Drop bar position for current target ──
-function _showBarForTarget(){}
+function _showBarForTarget(ctx, targetIdx){
+  var el = _containerElForCtx(ctx);
+  if(!el || ctx.context === 'archived'){ _hideBar(); return; }
+  var rect = el.getBoundingClientRect();
+  var cards = Array.prototype.slice.call(
+    el.querySelectorAll('.item-card:not(.dnd-dragging)')
+  );
+  var isVert = _isVerticalContainer(el);
+  var x, y, w, h;
+  if(isVert){
+    // Horizontal bar across the lane
+    var top;
+    if(cards.length === 0){
+      top = rect.top + 12;
+    } else if(targetIdx >= cards.length){
+      top = cards[cards.length-1].getBoundingClientRect().bottom + 5;
+    } else {
+      top = cards[targetIdx].getBoundingClientRect().top - 7;
+    }
+    x = rect.left + 4; y = top;
+    w = rect.width - 8; h = 3;
+  } else {
+    // Vertical bar inside a row
+    var left;
+    var anyCardH = cards.length > 0 ? cards[0].getBoundingClientRect().height : Math.min(rect.height, 80);
+    if(cards.length === 0){
+      left = rect.left + 14;
+      y = rect.top + 12;
+      h = Math.min(160, rect.height - 24);
+    } else if(targetIdx >= cards.length){
+      var lastR = cards[cards.length-1].getBoundingClientRect();
+      left = lastR.right + 5;
+      y = lastR.top;
+      h = lastR.height;
+    } else {
+      var tr = cards[targetIdx].getBoundingClientRect();
+      left = tr.left - 8;
+      y = tr.top;
+      h = tr.height;
+    }
+    x = left; w = 3;
+  }
+  _showBar(x, y, w, h);
+}
 
 // ── Live shift: translate non-dragging cards in source + target containers
 // to make room for the drop. Source container closes the gap left behind;
@@ -1931,14 +1997,6 @@ async function _dndPerformDrop(){
   if(!dragId || !dstCtx) return;
   var d = itemsIndex[dragId];
   if(!d) return;
-
-  // Clear all live-shift transforms BEFORE capturing rects, so captureRects
-  // sees the natural (post-clear) positions of every card. Without this, every
-  // shifted card animates back to its natural position on the FLIP, producing
-  // an "everything refreshes" feel.
-  document.querySelectorAll('.item-card').forEach(function(card){
-    if(card.style.transform) card.style.transform = '';
-  });
 
   // Snapshot BEFORE mutation. Override the dragged card's old rect with the
   // ghost's rect so FLIP animates from where the user saw it (the target slot)
