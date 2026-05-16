@@ -425,7 +425,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">19:19 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:52 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -2326,14 +2326,7 @@ document.addEventListener('mousemove', function(e){
     _beginDrag();
   }
   _moveDragPreview(e.clientX, e.clientY);
-  // For hit-testing, use the centre of the drag preview rather than the raw
-  // cursor position. The preview hangs off the cursor at the original grab
-  // offset; users intuitively expect the dropped card to land where they see
-  // the preview, not where the cursor pixel is.
-  var rect = _dnd.preview ? _dnd.preview.getBoundingClientRect() : null;
-  var hitX = rect ? (rect.left + rect.width/2)  : e.clientX;
-  var hitY = rect ? (rect.top  + rect.height/2) : e.clientY;
-  _updateDragOver(hitX, hitY);
+  _updateDragOver(e.clientX, e.clientY);
 });
 
 document.addEventListener('mouseup', function(e){
