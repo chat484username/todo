@@ -381,7 +381,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:55 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:49 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1932,16 +1932,21 @@ async function _dndPerformDrop(){
   var d = itemsIndex[dragId];
   if(!d) return;
 
-  // Strip live-shift transforms cleanly with no transition so the cards don't
-  // animate back from their shifted positions. Then drop the ghost — the
-  // ghost itself gave the user the "where it'll land" signal, so we don't
-  // need a FLIP animation on top.
+  // Clear all live-shift transforms BEFORE capturing rects, so captureRects
+  // sees the natural (post-clear) positions of every card. Without this, every
+  // shifted card animates back to its natural position on the FLIP, producing
+  // an "everything refreshes" feel.
   document.querySelectorAll('.item-card').forEach(function(card){
-    if(card.style.transform || card.style.transition){
-      card.style.transition = 'none';
-      card.style.transform = '';
-    }
+    if(card.style.transform) card.style.transform = '';
   });
+
+  // Snapshot BEFORE mutation. Override the dragged card's old rect with the
+  // ghost's rect so FLIP animates from where the user saw it (the target slot)
+  // rather than from the hidden source position.
+  var oldRects = captureRects();
+  if(_dnd.ghost){
+    oldRects[dragId] = _dnd.ghost.getBoundingClientRect();
+  }
   _destroyGhost();
 
   // Archive
@@ -1951,6 +1956,7 @@ async function _dndPerformDrop(){
     d.updated = new Date().toISOString();
     saveIndex();
     renderItems();
+    animateFlip(oldRects);
     return;
   }
 
@@ -1966,6 +1972,7 @@ async function _dndPerformDrop(){
       } else if(srcCtx.context === 'schedule' && srcCtx.schedule === INBOX_KEY){
         setStatus('Drag Inbox cards into a list first to give them a home', false);
         renderItems();
+        animateFlip(oldRects);
         return;
       } else {
         d.status = dstCtx.schedule;
@@ -2002,6 +2009,7 @@ async function _dndPerformDrop(){
 
   saveIndex();
   renderItems();
+  animateFlip(oldRects);
 }
 
 function _wireDrag(){
