@@ -433,7 +433,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:28 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:22 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1962,16 +1962,19 @@ function _getTargetSlotViewportPos(ctx, targetIdx){
   } else {
     pitch = isVert ? (firstR.height + gap) : (firstR.width + gap);
   }
-  // The empty visual slot in the container is always at DOM index = targetIdx.
-  // This holds whether or not the source is in this container, because:
-  // - cross-context: source not here, the visible cards at idx >= targetIdx
-  //   shift down by 1, leaving slot targetIdx free.
-  // - same-context source ABOVE target (targetIdx > srcDomIdx): cards between
-  //   source and target shift up by 1 to close the source gap, leaving slot
-  //   targetIdx free.
-  // - same-context source BELOW target (targetIdx <= srcDomIdx): cards between
-  //   target and source shift down by 1, leaving slot targetIdx free.
-  var naturalSlot = targetIdx;
+  // Same-context: the source occupies a DOM slot but is hidden, so visible
+  // slot N maps to natural DOM slot N if before source, or N+1 if at/after.
+  var srcDomIdx = -1;
+  for(var i = 0; i < allCards.length; i++){
+    if(allCards[i].classList.contains('dnd-dragging')){ srcDomIdx = i; break; }
+  }
+  var naturalSlot;
+  if(srcDomIdx >= 0){
+    naturalSlot = (targetIdx <= srcDomIdx) ? targetIdx : (targetIdx + 1);
+  } else {
+    // Cross-context: source isn't in this container; visible idx = natural idx
+    naturalSlot = targetIdx;
+  }
   // For out-of-bounds, clamp by appending
   var cardW = firstR.width;
   var cardH = firstR.height;
