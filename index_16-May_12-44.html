@@ -113,6 +113,21 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .item-card.archived:hover{opacity:0.85}
 .item-card.dnd-dragging{opacity:0.35}
 
+/* Drop indicator — dotted/dashed bar repositioned by JS during drag */
+.dnd-bar{
+  position:fixed;
+  z-index:1000;
+  pointer-events:none;
+  display:none;
+  border-radius:2px;
+}
+.dnd-bar.horizontal{
+  border-top:2px dashed var(--brown);
+}
+.dnd-bar.vertical{
+  border-left:2px dashed var(--brown);
+}
+
 /* ─── Inbox card overrides: wider, with chip strip ─── */
 .item-card.inbox-card{
   flex:0 0 auto;
@@ -381,7 +396,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:43 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">23:52 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1565,97 +1580,30 @@ function _rmToast(msg, type) {
 // applied to the data model. We re-render after every drop.
 // ═══════════════════════════════════════════════════════════════════════
 
-var _dnd = {
-  id: null,
-  sourceCtx: null,
-  targetCtx: null,
-  targetIndex: null,
-  bar: null,
-  ghost: null
-};
+var _dnd = { id:null, sourceCtx:null, targetCtx:null, targetIndex:null, bar:null };
 
 function _ctxFromCard(card){
   return {
     context: card.getAttribute('data-ctx') || 'schedule',
     schedule: card.getAttribute('data-ctx-schedule') || null,
-    list: card.getAttribute('data-ctx-list') || null
+    list:    card.getAttribute('data-ctx-list') || null
   };
 }
 
-function _ctxKey(ctx){
-  if(!ctx) return '';
-  if(ctx.context === 'archived') return 'archived';
-  if(ctx.context === 'schedule') return 'sched:' + ctx.schedule;
-  if(ctx.context === 'list') return 'list:' + ctx.list;
-  return '';
-}
-
-function _ctxFromContainerEl(el){
-  // Container element → context object. Containers are .list-cards (schedule
-  // or archived) and .v-list-cards (list).
-  var id = el.id || '';
-  if(id === 'cardsArchived') return { context: 'archived' };
+function _ctxFromTarget(targetEl){
+  var id = targetEl.id || '';
+  if(id === 'cardsArchived') return { context:'archived' };
   if(id.indexOf('cardsSched_') === 0){
-    return { context: 'schedule', schedule: id.slice('cardsSched_'.length) };
+    return { context:'schedule', schedule: id.slice('cardsSched_'.length) };
   }
   if(id.indexOf('cardsList_') === 0){
-    return { context: 'list', list: id.slice('cardsList_'.length) };
+    return { context:'list', list: id.slice('cardsList_'.length) };
   }
   return null;
 }
 
-function _containerElForCtx(ctx){
-  if(!ctx) return null;
-  if(ctx.context === 'archived') return document.getElementById('cardsArchived');
-  if(ctx.context === 'schedule') return document.getElementById('cardsSched_' + ctx.schedule);
-  if(ctx.context === 'list') return document.getElementById('cardsList_' + ctx.list);
-  return null;
-}
-
-function _isVerticalContainer(el){
-  return el && el.classList && el.classList.contains('v-list-cards');
-}
-
-// Return the ordered card IDs for a given context, used during DnD to compute
-// indices. Mirrors _orderedLaneIds in the property tool but for the schedule/
-// list axes.
-function _orderedIdsForCtx(ctx){
-  if(!ctx) return [];
-  if(ctx.context === 'archived'){
-    return Object.keys(itemsIndex).filter(function(id){
-      var d = itemsIndex[id];
-      return d && !d.deleted && d.archived;
-    }).sort(_dndIdSort);
-  }
-  if(ctx.context === 'schedule'){
-    var sk = ctx.schedule;
-    return Object.keys(itemsIndex).filter(function(id){
-      var d = itemsIndex[id];
-      if(!d || d.deleted || d.archived) return false;
-      if(sk === INBOX_KEY) return d.status === INBOX_KEY && !d.list;
-      return d.status === sk;
-    }).sort(_dndIdSort);
-  }
-  if(ctx.context === 'list'){
-    var lk = ctx.list;
-    return Object.keys(itemsIndex).filter(function(id){
-      var d = itemsIndex[id];
-      if(!d || d.deleted || d.archived) return false;
-      return d.list === lk;
-    }).sort(_dndIdSort);
-  }
-  return [];
-}
-function _dndIdSort(a, b){
-  var da = itemsIndex[a], db = itemsIndex[b];
-  if(da._order != null && db._order != null) return da._order - db._order;
-  if(da._order != null) return -1;
-  if(db._order != null) return  1;
-  return new Date(db.updated || 0) - new Date(da.updated || 0);
-}
-
-// Re-index a sibling group so `id` sits at position `index`. Shifts other
-// cards to make room.
+// Re-index a sibling group so `id` sits at position `index` (0-based) within
+// items matching `predicate`. Shifts other cards to make room.
 function _placeAtIndex(id, predicate, index){
   var siblings = Object.keys(itemsIndex).filter(function(otherId){
     if(otherId === id) return false;
@@ -1663,8 +1611,15 @@ function _placeAtIndex(id, predicate, index){
     if(!od || od.deleted || od.archived) return false;
     return predicate(otherId, od);
   });
-  siblings.sort(_dndIdSort);
+  siblings.sort(function(a, b){
+    var da = itemsIndex[a], db = itemsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  });
   index = Math.max(0, Math.min(index, siblings.length));
+  // Place `id` at `index`, shift the rest into 0..N excluding that slot.
   itemsIndex[id]._order = index;
   var pos = 0;
   siblings.forEach(function(sid){
@@ -1674,340 +1629,86 @@ function _placeAtIndex(id, predicate, index){
   });
 }
 
-// ── Drop bar ──
-// Thin coloured bar at the precise drop gap. Used alongside the ghost outline.
-function _ensureDnDBar(){
+// Compute the insertion index by comparing cursor position to each card's centre.
+// axis: 'x' for horizontal rows, 'y' for vertical lists.
+function _computeInsertIndex(containerEl, clientX, clientY, dragId){
+  var children = Array.prototype.filter.call(
+    containerEl.children,
+    function(c){ return c.classList && c.classList.contains('item-card') && c.dataset.id !== dragId; }
+  );
+  if(!children.length) return 0;
+  var isVertical = containerEl.classList.contains('v-list-cards');
+  for(var i = 0; i < children.length; i++){
+    var rect = children[i].getBoundingClientRect();
+    var mid = isVertical ? (rect.top + rect.height/2) : (rect.left + rect.width/2);
+    var cursor = isVertical ? clientY : clientX;
+    if(cursor < mid) return i;
+  }
+  return children.length;
+}
+
+// Drop indicator bar — a single floating div that snaps to the gap.
+function _ensureDndBar(){
   if(_dnd.bar) return _dnd.bar;
-  var b = document.createElement('div');
-  b.id = '_dndBar';
-  b.style.cssText =
-    'position:fixed;background:var(--brown);border-radius:2px;' +
-    'pointer-events:none;z-index:1000;opacity:0;' +
-    'transition:opacity 0.12s ease-out, left 0.16s cubic-bezier(0.2,0.8,0.2,1),' +
-    ' top 0.16s cubic-bezier(0.2,0.8,0.2,1), width 0.16s cubic-bezier(0.2,0.8,0.2,1),' +
-    ' height 0.16s cubic-bezier(0.2,0.8,0.2,1);';
-  document.body.appendChild(b);
-  _dnd.bar = b;
-  return b;
+  var bar = document.createElement('div');
+  bar.className = 'dnd-bar';
+  document.body.appendChild(bar);
+  _dnd.bar = bar;
+  return bar;
 }
-function _showBar(x, y, w, h){
-  var b = _ensureDnDBar();
-  b.style.left = x + 'px';
-  b.style.top  = y + 'px';
-  b.style.width  = w + 'px';
-  b.style.height = h + 'px';
-  b.style.opacity = '1';
-}
-function _hideBar(){
-  if(_dnd.bar) _dnd.bar.style.opacity = '0';
+function _hideDndBar(){
+  if(_dnd.bar) _dnd.bar.style.display = 'none';
 }
 
-// ── Ghost outline ──
-// A dashed-outline rectangle positioned `fixed` on <body>, mirroring the
-// dragged card's dimensions. Travels between contexts without being clipped.
-function _createGhost(){
-  if(_dnd.ghost || !_dnd.id) return;
-  var card = document.querySelector('.item-card[data-id="' + _dnd.id + '"]');
-  if(!card) return;
-  var rect = card.getBoundingClientRect();
-  var ghost = document.createElement('div');
-  ghost.id = '_dndGhost';
-  ghost.style.cssText = [
-    'position:fixed',
-    'left:' + rect.left + 'px',
-    'top:'  + rect.top  + 'px',
-    'width:'  + rect.width  + 'px',
-    'height:' + rect.height + 'px',
-    'margin:0',
-    'box-sizing:border-box',
-    'border:2px dashed rgba(0,0,0,0.22)',
-    'border-radius:10px',
-    'background:transparent',
-    'z-index:100',
-    'pointer-events:none',
-    'transition:left 0.15s ease-out, top 0.15s ease-out, width 0.15s ease-out, height 0.15s ease-out'
-  ].join(';');
-  document.body.appendChild(ghost);
-  _dnd.ghost = ghost;
-  card.style.visibility = 'hidden';
-}
-function _destroyGhost(){
-  if(_dnd.ghost){
-    _dnd.ghost.remove();
-    _dnd.ghost = null;
-  }
-  if(_dnd.id){
-    var card = document.querySelector('.item-card[data-id="' + _dnd.id + '"]');
-    if(card) card.style.visibility = '';
-  }
-}
-function _moveGhostToTargetSlot(ctx, targetIdx){
-  if(!_dnd.ghost) return;
-  var pos = _getTargetSlotViewportPos(ctx, targetIdx);
-  if(!pos) return;
-  _dnd.ghost.style.left = pos.x + 'px';
-  _dnd.ghost.style.top  = pos.y + 'px';
-  if(pos.w) _dnd.ghost.style.width  = pos.w + 'px';
-  if(pos.h) _dnd.ghost.style.height = pos.h + 'px';
-}
-function _getTargetSlotViewportPos(ctx, targetIdx){
-  var el = _containerElForCtx(ctx);
-  if(!el) return null;
-  var rect = el.getBoundingClientRect();
-  var style = window.getComputedStyle(el);
-  var padL = parseFloat(style.paddingLeft) || 0;
-  var padT = parseFloat(style.paddingTop)  || 0;
-  var gap  = parseFloat(style.gap) || 14;
-  var isVert = _isVerticalContainer(el);
-  var cards = el.querySelectorAll('.item-card:not(.dnd-dragging)');
-  if(isVert){
-    var cardH = cards.length > 0 ? cards[0].offsetHeight : 64;
-    var cardW = cards.length > 0 ? cards[0].offsetWidth  : (el.offsetWidth - padL*2);
-    var pitch = cardH + gap;
-    return {
-      x: rect.left + padL,
-      y: rect.top  + padT + targetIdx * pitch - el.scrollTop,
-      w: cardW,
-      h: cardH
-    };
-  } else {
-    var cardW2 = cards.length > 0 ? cards[0].offsetWidth  : 172;
-    var cardH2 = cards.length > 0 ? cards[0].offsetHeight : 64;
-    var pitchX = cardW2 + gap;
-    return {
-      x: rect.left + padL + targetIdx * pitchX - el.scrollLeft,
-      y: rect.top  + padT,
-      w: cardW2,
-      h: cardH2
-    };
-  }
-}
-
-// ── Drop bar position for current target ──
-function _showBarForTarget(ctx, targetIdx){
-  var el = _containerElForCtx(ctx);
-  if(!el || ctx.context === 'archived'){ _hideBar(); return; }
-  var rect = el.getBoundingClientRect();
-  var cards = Array.prototype.slice.call(
-    el.querySelectorAll('.item-card:not(.dnd-dragging)')
+function _showDndBar(containerEl, insertIndex){
+  var children = Array.prototype.filter.call(
+    containerEl.children,
+    function(c){ return c.classList && c.classList.contains('item-card'); }
   );
-  var isVert = _isVerticalContainer(el);
-  var x, y, w, h;
-  if(isVert){
-    // Horizontal bar across the lane
+  var isVertical = containerEl.classList.contains('v-list-cards');
+  var bar = _ensureDndBar();
+  bar.className = 'dnd-bar ' + (isVertical ? 'horizontal' : 'vertical');
+  var containerRect = containerEl.getBoundingClientRect();
+  if(isVertical){
     var top;
-    if(cards.length === 0){
-      top = rect.top + 12;
-    } else if(targetIdx >= cards.length){
-      top = cards[cards.length-1].getBoundingClientRect().bottom + 5;
+    if(!children.length){
+      top = containerRect.top + 8;
+    } else if(insertIndex >= children.length){
+      var last = children[children.length-1].getBoundingClientRect();
+      top = last.bottom + 4;
     } else {
-      top = cards[targetIdx].getBoundingClientRect().top - 7;
+      var atRect = children[insertIndex].getBoundingClientRect();
+      top = atRect.top - 6;
     }
-    x = rect.left + 4; y = top;
-    w = rect.width - 8; h = 3;
+    bar.style.left = (containerRect.left + 4) + 'px';
+    bar.style.top = top + 'px';
+    bar.style.width = (containerRect.width - 8) + 'px';
+    bar.style.height = '0px';
   } else {
-    // Vertical bar inside a row
     var left;
-    var anyCardH = cards.length > 0 ? cards[0].getBoundingClientRect().height : Math.min(rect.height, 80);
-    if(cards.length === 0){
-      left = rect.left + 14;
-      y = rect.top + 12;
-      h = Math.min(160, rect.height - 24);
-    } else if(targetIdx >= cards.length){
-      var lastR = cards[cards.length-1].getBoundingClientRect();
-      left = lastR.right + 5;
-      y = lastR.top;
-      h = lastR.height;
+    if(!children.length){
+      left = containerRect.left + 8;
+    } else if(insertIndex >= children.length){
+      var last = children[children.length-1].getBoundingClientRect();
+      left = last.right + 5;
     } else {
-      var tr = cards[targetIdx].getBoundingClientRect();
-      left = tr.left - 8;
-      y = tr.top;
-      h = tr.height;
+      var atRect = children[insertIndex].getBoundingClientRect();
+      left = atRect.left - 7;
     }
-    x = left; w = 3;
+    bar.style.left = left + 'px';
+    bar.style.top = (containerRect.top + 4) + 'px';
+    bar.style.height = (containerRect.height - 16) + 'px';
+    bar.style.width = '0px';
   }
-  _showBar(x, y, w, h);
+  bar.style.display = 'block';
 }
 
-// ── Live shift: translate non-dragging cards in source + target containers
-// to make room for the drop. Source container closes the gap left behind;
-// target container opens a gap at the insertion index.
-var _lastLayoutKey = null;
-
-function _getPitch(containerEl){
-  if(!containerEl) return { axis:'x', value:186 };
-  var isVert = _isVerticalContainer(containerEl);
-  var cards = containerEl.querySelectorAll('.item-card');
-  var gap = parseFloat(window.getComputedStyle(containerEl).gap) || 14;
-  if(cards.length >= 2){
-    var a = cards[0].getBoundingClientRect();
-    var b = cards[1].getBoundingClientRect();
-    return isVert
-      ? { axis:'y', value: b.top  - a.top }
-      : { axis:'x', value: b.left - a.left };
-  }
-  if(cards.length === 1){
-    var r = cards[0].getBoundingClientRect();
-    return isVert
-      ? { axis:'y', value: r.height + gap }
-      : { axis:'x', value: r.width  + gap };
-  }
-  return isVert ? { axis:'y', value:74 } : { axis:'x', value:186 };
-}
-
-function _applyShift(card, shift, pitch){
-  if(!shift){
-    if(card.style.transform) card.style.transform = '';
-    return;
-  }
-  var t = pitch.axis === 'y'
-    ? 'translateY(' + (shift * pitch.value) + 'px)'
-    : 'translateX(' + (shift * pitch.value) + 'px)';
-  if(card.style.transform !== t) card.style.transform = t;
-}
-
-function _updateLiveLayout(){
-  var srcKey = _ctxKey(_dnd.sourceCtx);
-  var tgtKey = _ctxKey(_dnd.targetCtx);
-  var key = (_dnd.id || '') + '|' + tgtKey + '|' + (_dnd.targetIndex == null ? '' : _dnd.targetIndex);
-  if(key === _lastLayoutKey) return;
-  _lastLayoutKey = key;
-  if(!_dnd.id || !_dnd.targetCtx || _dnd.targetIndex == null) return;
-
-  if(!_dnd.ghost) _createGhost();
-
-  var sameCtx = (srcKey === tgtKey);
-  var dragId = _dnd.id;
-  var targetIdx = _dnd.targetIndex;
-
-  // Compute shifts for each card in source + target contexts.
-  var shifts = {}; // id -> shift count (typically -1, 0, +1)
-
-  if(sameCtx){
-    var ids = _orderedIdsForCtx(_dnd.sourceCtx);
-    var D = ids.indexOf(dragId);
-    if(D < 0){ _moveGhostAndBar(); return; }
-    ids.forEach(function(id, i){
-      if(i === D){
-        shifts[id] = 0; // dragged card stays put (visibility:hidden)
-      } else if(i < D){
-        shifts[id] = (i >= targetIdx) ? 1 : 0;
-      } else {
-        shifts[id] = (i - 1 < targetIdx) ? -1 : 0;
-      }
-    });
-  } else {
-    var srcIds = _orderedIdsForCtx(_dnd.sourceCtx);
-    var srcD = srcIds.indexOf(dragId);
-    if(srcD >= 0){
-      srcIds.forEach(function(id, i){
-        if(id === dragId) return;
-        shifts[id] = (i > srcD) ? -1 : 0;
-      });
-    }
-    var tgtIds = _orderedIdsForCtx(_dnd.targetCtx);
-    tgtIds.forEach(function(id, i){
-      shifts[id] = (i >= targetIdx) ? 1 : 0;
-    });
-  }
-
-  // Apply shifts in source + target containers
-  var srcEl = _containerElForCtx(_dnd.sourceCtx);
-  var tgtEl = _containerElForCtx(_dnd.targetCtx);
-  if(srcEl){
-    var srcPitch = _getPitch(srcEl);
-    srcEl.querySelectorAll('.item-card').forEach(function(card){
-      _applyShift(card, shifts[card.dataset.id] || 0, srcPitch);
-    });
-  }
-  if(tgtEl && tgtEl !== srcEl){
-    var tgtPitch = _getPitch(tgtEl);
-    tgtEl.querySelectorAll('.item-card').forEach(function(card){
-      _applyShift(card, shifts[card.dataset.id] || 0, tgtPitch);
-    });
-  }
-
-  // Clear stale transforms on any other containers
-  document.querySelectorAll('.list-cards, .v-list-cards').forEach(function(el){
-    if(el === srcEl || el === tgtEl) return;
-    el.querySelectorAll('.item-card').forEach(function(card){
-      if(card.style.transform) card.style.transform = '';
-    });
-  });
-
-  _moveGhostAndBar();
-}
-
-function _moveGhostAndBar(){
-  if(!_dnd.targetCtx || _dnd.targetIndex == null) return;
-  _moveGhostToTargetSlot(_dnd.targetCtx, _dnd.targetIndex);
-  _showBarForTarget(_dnd.targetCtx, _dnd.targetIndex);
-}
-
-function _clearLiveLayout(){
-  _destroyGhost();
-  _hideBar();
-  document.querySelectorAll('.item-card').forEach(function(card){
-    if(card.style.transform){
-      card.style.transition = 'transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)';
-      card.style.transform = '';
-      setTimeout(function(){ card.style.transition = ''; }, 200);
-    }
-  });
-  _lastLayoutKey = null;
-}
-
-// Cursor → insertion index inside a container. Filters out the dragging card.
-function _computeInsertIndex(el, clientX, clientY, dragId){
-  var cards = Array.prototype.slice.call(
-    el.querySelectorAll('.item-card:not(.dnd-dragging)')
-  );
-  if(!cards.length) return 0;
-  var isVert = _isVerticalContainer(el);
-  for(var i = 0; i < cards.length; i++){
-    var r = cards[i].getBoundingClientRect();
-    var mid = isVert ? (r.top + r.height/2) : (r.left + r.width/2);
-    var c = isVert ? clientY : clientX;
-    if(c < mid) return i;
-  }
-  return cards.length;
-}
-
-function _updateIndicator(el, ctx, clientX, clientY){
-  var idx = _computeInsertIndex(el, clientX, clientY, _dnd.id);
-  _dnd.targetCtx = ctx;
-  _dnd.targetIndex = idx;
-  if(ctx.context === 'archived'){
-    _hideBar();
-    // Still want the ghost roughly in the archived strip
-    if(!_dnd.ghost) _createGhost();
-    return;
-  }
-  _updateLiveLayout();
-}
-
-// ── Drop ──
-async function _dndPerformDrop(){
-  var dragId = _dnd.id;
-  var srcCtx = _dnd.sourceCtx;
-  var dstCtx = _dnd.targetCtx;
-  var dstIdx = _dnd.targetIndex;
-  _hideBar();
-  _dnd.id = null;
-  if(!dragId || !dstCtx) return;
+function _performDrop(dragId, srcCtx, dstCtx, dstIndex){
   var d = itemsIndex[dragId];
   if(!d) return;
-
-  // Snapshot BEFORE mutation. Override the dragged card's old rect with the
-  // ghost's rect so FLIP animates from where the user saw it (the target slot)
-  // rather than from the hidden source position.
   var oldRects = captureRects();
-  if(_dnd.ghost){
-    oldRects[dragId] = _dnd.ghost.getBoundingClientRect();
-  }
-  _destroyGhost();
 
-  // Archive
+  // Archive drop
   if(dstCtx.context === 'archived'){
     d.archived = true;
     d.status = null;
@@ -2018,7 +1719,7 @@ async function _dndPerformDrop(){
     return;
   }
 
-  // Data-model updates
+  // Apply data-model changes
   if(dstCtx.context === 'schedule'){
     if(dstCtx.schedule === INBOX_KEY){
       d.status = INBOX_KEY;
@@ -2029,14 +1730,13 @@ async function _dndPerformDrop(){
         d.status = dstCtx.schedule;
       } else if(srcCtx.context === 'schedule' && srcCtx.schedule === INBOX_KEY){
         setStatus('Drag Inbox cards into a list first to give them a home', false);
-        renderItems();
-        animateFlip(oldRects);
         return;
       } else {
         d.status = dstCtx.schedule;
       }
     }
   }
+
   if(dstCtx.context === 'list'){
     if(srcCtx.context === 'schedule' && srcCtx.schedule !== INBOX_KEY){
       d.list = dstCtx.list;
@@ -2053,61 +1753,55 @@ async function _dndPerformDrop(){
       d.status = null;
     }
   }
-  d.updated = new Date().toISOString();
 
+  d.updated = new Date().toISOString();
+  // Place at the precise index within the destination bucket
   if(dstCtx.context === 'schedule'){
     _placeAtIndex(dragId, function(otherId, od){
       return od.status === dstCtx.schedule && (dstCtx.schedule === INBOX_KEY ? !od.list : true);
-    }, dstIdx == null ? 0 : dstIdx);
+    }, dstIndex == null ? 0 : dstIndex);
   } else if(dstCtx.context === 'list'){
     _placeAtIndex(dragId, function(otherId, od){
       return od.list === dstCtx.list;
-    }, dstIdx == null ? 0 : dstIdx);
+    }, dstIndex == null ? 0 : dstIndex);
   }
-
   saveIndex();
   renderItems();
   animateFlip(oldRects);
 }
 
 function _wireDrag(){
+  // Cards
   document.querySelectorAll('.item-card').forEach(function(card){
     if(card._dndWired) return;
     card._dndWired = true;
     card.setAttribute('draggable', 'true');
-    var id = card.dataset.id;
 
     card.addEventListener('dragstart', function(e){
       if(_activeName){ _activeName.blur(); }
-      _dnd.id = id;
+      _dnd.id = card.dataset.id;
       _dnd.sourceCtx = _ctxFromCard(card);
       _dnd.targetCtx = null;
       _dnd.targetIndex = null;
       e.dataTransfer.effectAllowed = 'move';
-      try { e.dataTransfer.setData('text/plain', id); } catch(_){}
+      try { e.dataTransfer.setData('text/plain', card.dataset.id); } catch(_){}
       setTimeout(function(){ card.classList.add('dnd-dragging'); }, 0);
     });
 
     card.addEventListener('dragend', function(){
       card.classList.remove('dnd-dragging');
-      // If the drag was cancelled (no successful drop), _dnd.id is still set.
-      // Smoothly clear shifts. On successful drop, _dndPerformDrop already
-      // nulled _dnd.id and we DO want the FLIP from the ghost rect; transforms
-      // were left in place to feed captureRects, and renderItems clears them.
-      if(_dnd.id) _clearLiveLayout();
-      _hideBar();
       _dnd.id = null;
       _dnd.sourceCtx = null;
       _dnd.targetCtx = null;
       _dnd.targetIndex = null;
-      _lastLayoutKey = null;
+      _hideDndBar();
       document.querySelectorAll('.dnd-target').forEach(function(el){
         el.classList.remove('dnd-target');
       });
     });
   });
 
-  // Wire each drop container for dragover/drop
+  // Drop targets
   document.querySelectorAll('.list-cards, .v-list-cards').forEach(function(el){
     if(el._dndDropWired) return;
     el._dndDropWired = true;
@@ -2116,19 +1810,46 @@ function _wireDrag(){
       if(!_dnd.id) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      var ctx = _ctxFromContainerEl(el);
-      if(!ctx) return;
-      _updateIndicator(el, ctx, e.clientX, e.clientY);
+      var parent = el.closest('.v-list');
+      if(parent) parent.classList.add('dnd-target');
+      var dstCtx = _ctxFromTarget(el);
+      if(!dstCtx) return;
+      // Archived doesn't get an indicator bar (no reorder)
+      if(dstCtx.context === 'archived'){
+        _hideDndBar();
+        _dnd.targetCtx = dstCtx;
+        _dnd.targetIndex = null;
+        return;
+      }
+      var idx = _computeInsertIndex(el, e.clientX, e.clientY, _dnd.id);
+      _dnd.targetCtx = dstCtx;
+      _dnd.targetIndex = idx;
+      _showDndBar(el, idx);
+    });
+
+    el.addEventListener('dragleave', function(e){
+      var parent = el.closest('.v-list');
+      if(parent) parent.classList.remove('dnd-target');
+      // Only hide if we left the container entirely (not just moved over a child)
+      var rect = el.getBoundingClientRect();
+      if(e.clientX < rect.left || e.clientX > rect.right ||
+         e.clientY < rect.top  || e.clientY > rect.bottom){
+        _hideDndBar();
+      }
     });
 
     el.addEventListener('drop', function(e){
       if(!_dnd.id) return;
       e.preventDefault();
-      _dndPerformDrop();
+      var dstCtx = _dnd.targetCtx || _ctxFromTarget(el);
+      if(!dstCtx) return;
+      var idx = _dnd.targetIndex;
+      if(idx == null) idx = _computeInsertIndex(el, e.clientX, e.clientY, _dnd.id);
+      _hideDndBar();
+      _performDrop(_dnd.id, _dnd.sourceCtx, dstCtx, idx);
     });
   });
 }
-
 
 
 (function(){
