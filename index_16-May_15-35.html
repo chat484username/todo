@@ -1,0 +1,2315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>To Do</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="App">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FBFAF9">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=EB+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#F7F6F1;
+  --card-bg:#FFFFFF;
+  --ink:#2C2C2A;
+  --ink-2:#5F5E5A;
+  --mute:#8E8B82;
+  --line:#E8E3D6;
+  --line-2:#DDD8C9;
+  --brown:#7A604A;
+  --c-appraise:#3D6E92;   /* slate blue */
+  --c-view:    #C48831;   /* clear amber */
+  --c-offer:   #6F8F4C;   /* brighter leaf */
+  --c-followup:#6D4B6B;   /* aubergine */
+  --c-archived:#8E8B82;   /* grey */
+}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--paper);min-height:100vh;color:var(--ink);font-size:14px}
+
+header{background:#4E8A87;color:#fff;padding:0 16px;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:#fff;margin:0;flex-shrink:0}
+
+.gist-warning{background:#FFF8EC;border-bottom:1px solid #F5C97A;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;display:none}
+.gist-warning.show{display:flex}
+.gist-warning-text{display:flex;align-items:center;gap:10px;font-size:13px;color:#633806}
+.gist-warning-dot{width:16px;height:16px;border-radius:50%;background:#BA7517;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:10px;font-weight:500}
+.gist-warning a{font-size:12px;color:#854F0B;white-space:nowrap;text-decoration:underline}
+
+.container{max-width:1400px;margin:24px auto 60px;padding:0 24px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+.new-btn{display:inline-flex;align-items:center;gap:8px;background:var(--brown);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+.new-btn:hover{background:#654e3b}
+
+/* ───── List ───── */
+.list{margin-bottom:14px}
+.list-header{display:flex;align-items:center;gap:12px;margin-bottom:6px;padding-bottom:0}
+.list-title{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink)}
+.list-title[contenteditable]{outline:none;cursor:text;padding:1px 5px;margin:-1px -5px;border-radius:4px;transition:background 0.12s,box-shadow 0.12s;min-width:1em}
+.list-title[contenteditable]:hover{background:rgba(0,0,0,0.045)}
+.list-title[contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,0.12)}
+.list-add{
+  border:none;
+  width:18px;height:18px;
+  border-radius:3px;
+  background:var(--list-color, var(--mute));
+  color:#fff;
+  font-family:'DM Sans',sans-serif;
+  font-size:15px;font-weight:400;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  padding:0;
+  flex-shrink:0;
+  transition:filter 0.12s, transform 0.08s;
+}
+.list-add:hover{filter:brightness(1.1)}
+.list-add:active{transform:scale(0.92)}
+
+/* Schedule/list delete button — small × that appears on header hover */
+.list-delete-btn{
+  border:none;background:transparent;
+  color:var(--mute);
+  width:22px;height:22px;
+  border-radius:4px;
+  cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:0;
+  opacity:0;
+  transition:opacity 0.12s, background 0.12s, color 0.12s;
+}
+.list-delete-btn svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.list-header:hover .list-delete-btn,
+.v-list-header:hover .list-delete-btn{opacity:1}
+.list-delete-btn:hover{background:#FEF0F0;color:#C0392B;opacity:1}
+.list-accent{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+.list-cards{display:flex;gap:14px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}
+.list-cards::-webkit-scrollbar{height:8px}
+.list-cards::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+.list-cards.empty-list{min-height:80px;align-items:center;justify-content:flex-start;padding:14px 4px}
+.list-empty{color:var(--mute);font-size:13px;font-style:italic}
+
+/* ───── Card (playing-card portrait) ───── */
+.item-card{
+  flex:0 0 auto;
+  width:172px;
+  background:var(--card-bg);
+  border:1px solid var(--line-2);
+  border-radius:10px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  transition:box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+  /* Hand cursor over the whole card — the entire card is draggable */
+  cursor:grab;
+}
+.item-card:active{cursor:grabbing}
+.item-card:hover{
+  border-color:var(--brown);
+  box-shadow:0 4px 12px rgba(0,0,0,0.04);
+}
+.item-card.archived{opacity:0.55;filter:saturate(0.6)}
+.item-card.archived:hover{opacity:0.85}
+.item-card.dnd-dragging{opacity:0.35}
+
+/* While any drag is active, force the closed-fist cursor everywhere. The
+   browser's native HTML5 drag API normally overrides CSS :active, so we add
+   this class to <body> on dragstart and remove it on dragend. */
+body.dnd-active, body.dnd-active *{cursor:grabbing !important}
+
+/* ─── Inbox card overrides: wider, with chip strip ─── */
+.item-card.inbox-card{
+  flex:0 0 auto;
+  width:auto;
+}
+.item-card.inbox-card .card-body{padding-right:60px} /* room for corner buttons */
+
+/* Two icon buttons in top-right corner — only on Inbox cards */
+.card-corner-btns{
+  position:absolute;
+  top:6px; right:6px;
+  display:flex; gap:2px;
+  z-index:2;
+}
+.card-corner-btn{
+  width:22px; height:22px;
+  border:none; background:transparent;
+  border-radius:4px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  padding:0;
+  color:var(--mute);
+  transition:background 0.12s, color 0.12s;
+}
+.card-corner-btn svg{width:12px;height:12px}
+.card-corner-btn:hover{background:rgba(0,0,0,0.08);color:var(--ink)}
+.card-corner-btn.danger:hover{background:#FEF0F0;color:#C0392B}
+.card-corner-btn.affirm:hover{background:#F0F7EB;color:#5E7B3F}
+
+/* Chip strip across the bottom of Inbox cards — mirrors .card-footer/.card-icon-btn style */
+.card-chips{
+  display:flex;
+  border-top:1px solid var(--line);
+  margin-top:4px;
+}
+.list-chip{
+  flex:0 0 auto;
+  width:38px;
+  background:transparent;
+  border:none;
+  border-right:1px solid var(--line);
+  padding:4px 0;
+  cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+  font-weight:600;
+  font-size:10px;
+  letter-spacing:0.04em;
+  color:var(--chip-color);
+  line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  transition:background 0.1s;
+}
+.list-chip:last-child{border-right:none}
+.list-chip:hover{background:rgba(0,0,0,0.04)}
+
+.card-body{padding:8px 11px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card-name{
+  font-family:'EB Garamond',Georgia,serif;
+  font-weight:500;
+  font-size:14px;
+  line-height:1.2;
+  color:var(--ink);
+  text-decoration:none;
+  display:block;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  word-break:break-word;
+  min-height:0;
+  /* State A — inherit grab from .item-card. Don't allow text selection. */
+  cursor:inherit;
+  user-select:none;
+  -webkit-user-select:none;
+  outline:none;
+  border-radius:3px;
+  padding:1px 3px;
+  margin:-1px -3px;
+  transition:background 0.12s, box-shadow 0.12s;
+}
+/* While the mouse is held down (about to drag), show the closed-fist cursor */
+.card-name:active{cursor:grabbing}
+/* State B — primed (clicked once, ready for second click to edit). Show
+   the default arrow so it's clear that single-click hasn't activated edit. */
+.card-name.primed{
+  cursor:default;
+}
+/* State C — editing: contenteditable, selectable, expand to show full text */
+.card-name.editing{
+  cursor:text;
+  user-select:text;
+  -webkit-user-select:text;
+  background:#fff;
+  -webkit-line-clamp:unset;
+  overflow:visible;
+}
+.card-name.placeholder-name{color:var(--mute);font-style:italic}
+
+/* Note icon — top-right, only visible if item has a note */
+.card-note-btn{
+  position:absolute;
+  top:6px;
+  right:6px;
+  width:22px;
+  height:22px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--mute);
+  background:transparent;
+  border-radius:4px;
+  text-decoration:none;
+  z-index:2;
+  cursor:pointer;
+  transition:background 0.12s, color 0.12s;
+}
+.card-note-btn:hover{background:rgba(0,0,0,0.08);color:var(--ink)}
+.card-note-btn svg{width:13px;height:13px}
+/* On Inbox cards the top-right is taken by the tick/cross corner buttons, so
+   the note icon sits on the LEFT edge instead */
+.item-card.inbox-card .card-note-btn{right:auto;left:6px}
+.item-card.inbox-card .card-body{padding-left:32px}
+
+/* Footer icons (archive / delete) */
+.card-footer{
+  display:flex;
+  border-top:1px solid var(--line);
+  margin-top:4px;
+}
+.card-icon-btn{
+  flex:1;
+  background:transparent;
+  border:none;
+  padding:4px 0;
+  cursor:pointer;
+  color:var(--mute);
+  font-family:inherit;
+  font-size:11px;
+  display:flex;align-items:center;justify-content:center;
+  gap:4px;
+  transition:background 0.1s, color 0.1s;
+  border-right:1px solid var(--line);
+}
+.card-icon-btn:last-child{border-right:none}
+.card-icon-btn:hover{background:#F3F0EA;color:var(--ink-2)}
+.card-icon-btn.danger:hover{background:#FEF0F0;color:#C0392B}
+.card-icon-btn.affirm:hover{background:#F0F7EB;color:#5E7B3F}
+.card-icon-btn svg{width:12px;height:12px}
+
+/* Archived list — faded */
+.archived-section{margin-top:40px;padding-top:20px;border-top:1px dashed var(--line-2)}
+.archived-section .list-title{color:var(--c-archived)}
+
+/* ─── Lists section (vertical columns, horizontally scrollable) ─── */
+.lists-section{margin-top:40px;padding-top:20px;border-top:1px dashed var(--line-2)}
+.lists-section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:16px;
+}
+.lists-section-title{
+  font-family:'EB Garamond',Georgia,serif;
+  font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink);
+}
+.add-list-btn{
+  background:#fff;color:var(--ink-2);
+  border:1px dashed var(--line-2);
+  border-radius:6px;
+  padding:6px 12px;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  cursor:pointer;
+  transition:background 0.12s, color 0.12s, border-color 0.12s;
+}
+.add-list-btn:hover{background:#F3F0EA;color:var(--ink);border-color:var(--mute)}
+
+/* "+ Add schedule" — sits below the dynamic schedules container */
+.add-schedule-row{margin:-2px 0 16px 0}
+.add-schedule-btn{
+  background:#fff;color:var(--ink-2);
+  border:1px dashed var(--line-2);
+  border-radius:6px;
+  padding:6px 12px;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  cursor:pointer;
+  transition:background 0.12s, color 0.12s, border-color 0.12s;
+}
+.add-schedule-btn:hover{background:#F3F0EA;color:var(--ink);border-color:var(--mute)}
+
+.lists-container{
+  display:flex;gap:14px;
+  overflow-x:auto;
+  padding:6px 2px 18px;
+  scrollbar-width:thin;
+  align-items:flex-start;
+}
+
+/* Each vertical list: title at top, cards stacking down */
+.v-list{
+  flex:0 0 auto;
+  width:200px;
+  display:flex;flex-direction:column;
+  gap:10px;
+}
+.v-list-header{
+  display:flex;align-items:center;gap:10px;
+  padding-bottom:0;
+}
+.v-list-cards{
+  display:flex;flex-direction:column;gap:10px;
+  min-height:80px;
+  padding:4px 0;
+}
+.v-list-cards.empty-list{
+  border:1px dashed var(--line-2);
+  border-radius:8px;
+  align-items:center;justify-content:center;
+  padding:18px 8px;
+  color:var(--mute);
+  font-size:12px;font-style:italic;
+}
+.v-list-cards.empty-list .list-empty{display:block}
+.v-list.dnd-target .v-list-cards{
+  background:rgba(78,138,135,0.06);
+  border-radius:8px;
+}
+
+/* In vertical lists, cards span the full list width (still portrait-ish) */
+.v-list-cards .item-card{width:100%}
+
+/* ─── Card in two places: greyed-out home-list copy ─── */
+.item-card.has-schedule-copy{
+  opacity:0.5;
+  filter:saturate(0.5);
+}
+.item-card.has-schedule-copy:hover{opacity:0.8}
+
+/* ─── Down-arrow "send home" button on schedule-cards ─── */
+.card-send-home{
+  position:absolute;top:6px;right:6px;
+  width:22px;height:22px;
+  border:none;background:rgba(0,0,0,0.06);
+  color:var(--ink-2);
+  border-radius:4px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  padding:0;
+  font-size:14px;line-height:1;
+  z-index:2;
+  transition:background 0.12s, color 0.12s;
+}
+.card-send-home:hover{background:rgba(0,0,0,0.12);color:var(--ink)}
+.card-send-home svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+@media (max-width:600px){
+  .v-list{width:170px}
+}
+
+.trash-link{display:block;text-align:center;margin-top:32px;font-size:13px;color:var(--mute);text-decoration:none}
+.trash-link:hover{color:var(--ink-2);text-decoration:underline}
+
+/* Mobile: make cards a bit narrower */
+@media (max-width:600px){
+  .container{padding:0 14px;margin-top:16px}
+  .item-card{width:148px}
+  .card-name{font-size:13px;min-height:32px}
+  .list-title{font-size:19px}
+}
+
+.item-card{position:relative}
+
+/* ───── Just-updated card: subtle glow + scale pulse to draw the eye ───── */
+.item-card.just-updated{
+  animation: dealJustUpdated 1.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes dealJustUpdated {
+  0%   { box-shadow: 0 0 0 0 rgba(42, 74, 62, 0); transform: scale(1); }
+  20%  { box-shadow: 0 0 0 4px rgba(42, 74, 62, 0.35), 0 4px 16px rgba(42, 74, 62, 0.25); transform: scale(1.04); }
+  100% { box-shadow: 0 0 0 0 rgba(42, 74, 62, 0); transform: scale(1); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>To Do</h1>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:1;min-width:0">
+    <form onsubmit="syncButton(); return false;" style="display:flex;align-items:center;gap:6px;width:100%;justify-content:flex-end">
+      <input type="text" id="gistId" placeholder="Gist ID" autocomplete="username"
+        style="flex:1;min-width:0;max-width:120px;padding:4px 8px;font-size:11px;font-family:monospace;border:1px solid rgba(255,255,255,0.25);border-radius:5px;background:rgba(0,0,0,0.2);color:#fff;outline:none" name="gist_id">
+      <input type="password" id="syncToken" placeholder="Token" autocomplete="password"
+        style="flex:1;min-width:0;max-width:120px;padding:4px 8px;font-size:11px;font-family:monospace;border:1px solid rgba(255,255,255,0.25);border-radius:5px;background:rgba(0,0,0,0.2);color:#fff;outline:none" name="github_token">
+      <button type="submit" style="padding:4px 10px;font-size:11px;background:rgba(0,0,0,0.2);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:5px;cursor:pointer;font-family:inherit;flex-shrink:0">↻ Load</button>
+    </form>
+    <span id="syncStatus" style="font-size:10px;color:rgba(255,255,255,0.5)"></span>
+  </div>
+</header>
+
+<div id="gistWarning" class="gist-warning">
+  <div class="gist-warning-text">
+    <div class="gist-warning-dot">!</div>
+    <span>You have <strong id="gistWarningCount" style="color:#412402"></strong> in your Gist — approaching the ~300 file limit. Permanently delete old test items to free up space.</span>
+  </div>
+  <a href="deleted-todo.html">Go to deleted items →</a>
+</div>
+
+<div class="container">
+  <!-- Page-load timestamp — fixed top-right, just below the header -->
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:22 BST</div>
+
+  <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
+  <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
+  <div id="schedulesContainer">
+    <!-- populated by renderSchedules() -->
+  </div>
+
+  <!-- "+ Add schedule" button — adds a new schedule after the last existing one -->
+  <div class="add-schedule-row">
+    <button class="add-schedule-btn" onclick="addNewSchedule()" title="Add a new schedule">+ Add schedule</button>
+  </div>
+
+  <!-- ─── LISTS (vertical columns, stacking left-to-right, horizontally scrollable) ─── -->
+  <!-- Lists are dynamically rendered into #listsContainer by JS. -->
+  <div class="lists-section">
+    <div class="lists-section-header">
+      <span class="lists-section-title">Lists</span>
+      <button class="add-list-btn" onclick="addNewList()" title="Add a new list">+ Add list</button>
+    </div>
+    <div id="listsContainer" class="lists-container">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+  <!-- ─── ARCHIVED (kept as a schedule at the bottom, unchanged behaviour) ─── -->
+  <div class="archived-section">
+    <div id="sectionArchived" class="list" style="margin-bottom:0" data-schedule="archived">
+      <div class="list-header">
+        <span class="list-accent" style="background:var(--c-archived)"></span>
+        <span class="list-title" data-list="archived" spellcheck="false">Archived</span>
+      </div>
+      <div class="list-cards empty-list" id="cardsArchived"><div class="list-empty">No archived items</div></div>
+    </div>
+  </div>
+
+  <div class="topbar" style="margin-top:24px">
+    <a href="deleted-todo.html" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;text-decoration:none">🗑 Deleted items</a>
+  </div>
+</div>
+
+<script>
+var ANALYSER_PAGE = 'todo-v12.html';
+var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
+var itemsIndex = {};
+var gistFilesMeta = null; // cached reference to gist.files from last fetch
+
+// ───── Token / Gist management (unchanged) ─────
+function getToken(){
+  var inp = document.getElementById('syncToken');
+  var t = (inp ? inp.value.trim() : '') || localStorage.getItem('todoToken') || '';
+  if(t) localStorage.setItem('todoToken', t);
+  return t;
+}
+function getSyncGistId(){
+  var inp = document.getElementById('gistId');
+  var g = (inp ? inp.value.trim() : '') || localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
+  if(g) localStorage.setItem('todoGistId', g);
+  return g;
+}
+function syncButton(){
+  var gid = getSyncGistId();
+  if(!gid){ setStatus('Paste Gist ID', false); return; }
+  GIST_ID = gid;
+  localStorage.setItem('todoGistId', GIST_ID);
+  loadItems();
+}
+function setStatus(msg, ok){
+  var el = document.getElementById('syncStatus');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = ok === false ? '#f88' : ok === true ? '#8f8' : 'rgba(255,255,255,0.5)';
+}
+
+async function getGist(){
+  var token = getToken();
+  if(!token){ setStatus('No token', false); return null; }
+  if(!GIST_ID){
+    setStatus('Creating new Gist…');
+    var createRes = await fetch('https://api.github.com/gists', {
+      method: 'POST',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: 'Deal Analyser Data', public: false, files: { 'deals-index.json': { content: '{}' } } })
+    });
+    if(!createRes.ok){ setStatus('Failed to create Gist: ' + createRes.status, false); return null; }
+    var created = await createRes.json();
+    GIST_ID = created.id;
+    localStorage.setItem('todoGistId', GIST_ID);
+    setStatus('New Gist created ✓', true);
+    return created;
+  }
+  var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+    headers: { Authorization: 'token ' + token }
+  });
+  if(!res.ok){ setStatus('GitHub error: ' + res.status, false); return null; }
+  try { return await res.json(); }
+  catch(e){ setStatus('Error reading Gist: ' + e.message, false); return null; }
+}
+
+async function saveIndex(){
+  var token = getToken();
+  if(!token) return;
+  var body = { files: { 'deals-index.json': { content: JSON.stringify(itemsIndex, null, 2) } } };
+  await fetch('https://api.github.com/gists/' + GIST_ID, {
+    method: 'PATCH',
+    headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+async function loadItems(){
+  var token = getToken();
+  if(!token){ setStatus('No token', false); return; }
+  setStatus('Loading…');
+  try {
+    var data = await getGist();
+    if(!data) return;
+    gistFilesMeta = data.files || {};
+
+    // List labels — load first so any subsequent renderItems() picks them up
+    if(gistFilesMeta['lane-labels.json']){
+      try {
+        var lf = gistFilesMeta['lane-labels.json'];
+        var lraw = lf.content;
+        if(!lraw || lf.truncated){
+          lraw = await (await fetch(lf.raw_url)).text();
+        }
+        if(lraw && lraw.trim()){
+          var parsedLabels = JSON.parse(lraw);
+          // New shape: { schedules: [{key,label}, ...] | {row1:'...', ...}, lists: [...] }
+          if(Array.isArray(parsedLabels.schedules)){
+            // New format: array of {key, label}
+            SCHEDULES = parsedLabels.schedules.map(function(S){
+              return { key: String(S.key), label: String(S.label) };
+            });
+            // Ensure Inbox is always present at the front
+            if(!SCHEDULES.find(function(S){ return S.key === INBOX_KEY; })){
+              SCHEDULES.unshift({ key: INBOX_KEY, label: 'Inbox' });
+            }
+          } else if(parsedLabels.schedules && typeof parsedLabels.schedules === 'object'){
+            // Old format: map of key -> label. Convert.
+            Object.keys(parsedLabels.schedules).forEach(function(k){
+              if(k === '_deleted') return;
+              var s = findSchedule(k);
+              if(s && typeof parsedLabels.schedules[k] === 'string'){
+                s.label = parsedLabels.schedules[k];
+              }
+            });
+            // Apply the old _deleted map by removing deleted schedules from SCHEDULES
+            var del = parsedLabels.schedules._deleted || {};
+            SCHEDULES = SCHEDULES.filter(function(S){
+              return S.key === INBOX_KEY || !del[S.key];
+            });
+          }
+          if(Array.isArray(parsedLabels.lists) && parsedLabels.lists.length){
+            LISTS = parsedLabels.lists.map(function(L){
+              return { key:String(L.key), label:String(L.label) };
+            });
+          }
+          // Legacy back-compat: old flat {appraise:'Inbox',...}
+          var legacyMap = {appraise: INBOX_KEY};
+          Object.keys(legacyMap).forEach(function(oldK){
+            if(typeof parsedLabels[oldK] === 'string'){
+              var s = findSchedule(legacyMap[oldK]);
+              if(s) s.label = parsedLabels[oldK];
+            }
+          });
+          try { localStorage.setItem('mirror-laneLabels', JSON.stringify({schedules:SCHEDULES, lists:LISTS})); } catch(e){}
+          applySectionLabels();
+        }
+      } catch(e){ /* labels file malformed — keep defaults */ }
+    }
+
+    itemsIndex = {};
+    if(gistFilesMeta['deals-index.json']){
+      var fileObj = gistFilesMeta['deals-index.json'];
+      var raw = fileObj.content;
+      if(!raw || !raw.trim() || fileObj.truncated){
+        var rawRes = await fetch(fileObj.raw_url);
+        raw = await rawRes.text();
+      }
+      if(raw && raw.trim() && raw !== '{}'){
+        itemsIndex = JSON.parse(raw);
+      }
+    }
+    // Migrate every entry to the new model (status mapping, list field default)
+    Object.keys(itemsIndex).forEach(function(id){ migrateItemEntry(itemsIndex[id]); });
+    renderItems();
+    setStatus('Loaded — ' + Object.keys(itemsIndex).length + ' items', true);
+    var inp = document.getElementById('syncToken');
+    if(inp) inp.value = '';
+  } catch(e){
+    setStatus('Error: ' + e.message, false);
+  }
+}
+
+// ───── Rendering ─────
+// Inbox is always present (special schedule). Other schedules are dynamic.
+var INBOX_KEY = 'row1';
+
+// SCHEDULES: array of {key, label}. The first element is always Inbox.
+// Default: Inbox + 4 numbered schedules. Persisted with the labels file.
+var SCHEDULES = [
+  { key: 'row1', label: 'Inbox' },
+  { key: 'row2', label: 'Schedule 2' },
+  { key: 'row3', label: 'Schedule 3' },
+  { key: 'row4', label: 'Schedule 4' },
+  { key: 'row5', label: 'Schedule 5' }
+];
+
+// Lists: dynamic list of {key, label}. Defaults to 5 lists.
+var LISTS = [
+  { key:'lane1', label:'List 1' },
+  { key:'lane2', label:'List 2' },
+  { key:'lane3', label:'List 3' },
+  { key:'lane4', label:'List 4' },
+  { key:'lane5', label:'List 5' }
+];
+
+// Plus button colour cycle for lists (reused as more lists are added)
+var LIST_COLOR_CYCLE = ['#3D6E92','#C48831','#6F8F4C','#6D4B6B','#5E8B86','#a85a3f','#8e8b82'];
+function listColor(idx){ return LIST_COLOR_CYCLE[idx % LIST_COLOR_CYCLE.length]; }
+
+// Lowest unused positive integer in labels matching "<prefix> N"
+function nextUnusedNumber(items, prefix){
+  var used = {};
+  var pat = new RegExp('^' + prefix + '\\s+(\\d+)$');
+  items.forEach(function(it){
+    var m = pat.exec(it.label || '');
+    if(m) used[parseInt(m[1], 10)] = true;
+  });
+  var n = 1;
+  while(used[n]) n++;
+  return n;
+}
+
+// Helper: find a schedule object by key
+function findSchedule(key){
+  for(var i = 0; i < SCHEDULES.length; i++){
+    if(SCHEDULES[i].key === key) return SCHEDULES[i];
+  }
+  return null;
+}
+
+// Legacy compatibility: when loading old gists, map old status values to Inbox
+// so existing cards land somewhere sensible. Users sort from there.
+var LEGACY_STATUS_MAP = {appraise:'row1', view:'row1', offer:'row1', followup:'row1'};
+
+function migrateItemEntry(d){
+  if(!d) return;
+  if(d.status && LEGACY_STATUS_MAP[d.status]){
+    d.status = LEGACY_STATUS_MAP[d.status];
+  }
+  if(d.status === undefined) d.status = null;
+  if(d.list === undefined) d.list = null;
+}
+
+// Hydrate from localStorage mirror immediately so the page renders correctly
+// before the gist fetch lands.
+(function _hydrateLabels(){
+  try {
+    var raw = localStorage.getItem('mirror-laneLabels');
+    if(!raw) return;
+    var parsed = JSON.parse(raw);
+    if(Array.isArray(parsed.schedules)){
+      SCHEDULES = parsed.schedules.map(function(S){
+        return { key:String(S.key), label:String(S.label) };
+      });
+      if(!SCHEDULES.find(function(S){ return S.key === INBOX_KEY; })){
+        SCHEDULES.unshift({ key: INBOX_KEY, label: 'Inbox' });
+      }
+    }
+    if(Array.isArray(parsed.lists) && parsed.lists.length){
+      LISTS = parsed.lists.map(function(L){
+        return { key:String(L.key), label:String(L.label) };
+      });
+    }
+  } catch(e){}
+})();
+
+function applySectionLabels(){
+  // Update title text on every schedule + Inbox + archived
+  document.querySelectorAll('.list-title[data-list]').forEach(function(el){
+    var key = el.getAttribute('data-list');
+    var label;
+    if(key === 'archived'){ label = 'Archived'; }
+    else {
+      var sch = findSchedule(key);
+      label = sch ? sch.label : null;
+    }
+    if(label == null) return; // v-list title (handled by renderLists)
+    if(document.activeElement !== el && el.textContent !== label){
+      el.textContent = label;
+    }
+  });
+}
+
+async function saveSectionLabels(){
+  // Persist both schedules + lists to the labels file
+  var payload = { schedules: SCHEDULES, lists: LISTS };
+  try { localStorage.setItem('mirror-laneLabels', JSON.stringify(payload)); } catch(e){}
+  var token = getToken();
+  if(!token || !GIST_ID) return;
+  try {
+    setStatus('Saving labels…');
+    var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: { 'lane-labels.json': { content: JSON.stringify(payload, null, 2) } } })
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    setStatus('Saved ✓', true);
+  } catch(e){
+    setStatus('Save failed: ' + e.message, false);
+  }
+}
+
+// Schedule title editing is now wired by renderSchedules (since the titles are
+// dynamically rendered). Archived stays static and has no editing.
+function wireSectionLabelEditing(){
+  // No-op now; kept for compat with existing call sites.
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', function(){ wireSectionLabelEditing(); applySectionLabels(); });
+} else {
+  wireSectionLabelEditing();
+  applySectionLabels();
+}
+
+function renderItems(){
+  // Buckets: every schedule key + archived + every list key
+  var scheduleBuckets = { archived: [] };
+  SCHEDULES.forEach(function(S){ scheduleBuckets[S.key] = []; });
+  var listBuckets = {};
+  LISTS.forEach(function(L){ listBuckets[L.key] = []; });
+
+  Object.keys(itemsIndex).forEach(function(id){
+    var d = itemsIndex[id];
+    if(d.deleted) return;
+    if(d.archived){ scheduleBuckets.archived.push(id); return; }
+
+    // A card may appear in BOTH a schedule and a list (when pulled up to work).
+    if(d.status && scheduleBuckets[d.status]){
+      scheduleBuckets[d.status].push(id);
+    }
+    if(d.list && listBuckets[d.list]){
+      listBuckets[d.list].push(id);
+    }
+  });
+
+  // Sort: manual _order takes precedence, else most-recent first
+  var sortByOrder = function(a,b){
+    var da = itemsIndex[a], db = itemsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  };
+  Object.keys(scheduleBuckets).forEach(function(k){ scheduleBuckets[k].sort(sortByOrder); });
+  Object.keys(listBuckets).forEach(function(k){ listBuckets[k].sort(sortByOrder); });
+
+  // Gist warning
+  var totalItems = Object.keys(itemsIndex).length;
+  var warn = document.getElementById('gistWarning');
+  if(warn){
+    if(totalItems >= 250){
+      document.getElementById('gistWarningCount').textContent = totalItems + ' items';
+      warn.classList.add('show');
+    } else {
+      warn.classList.remove('show');
+    }
+  }
+
+  // Render schedules (dynamic) + archived (also dynamic now, lives in same container if you like, but kept separate)
+  renderSchedules(scheduleBuckets);
+  renderSection('cardsArchived', scheduleBuckets.archived, {context:'archived'});
+
+  // Render lists
+  renderLists(listBuckets);
+
+  if(typeof _wireDrag === 'function') _wireDrag();
+}
+
+// Build the schedules section dynamically. Inbox is the first schedule and
+// is special: it has a plus button and can't be deleted.
+function renderSchedules(scheduleBuckets){
+  var container = document.getElementById('schedulesContainer');
+  if(!container) return;
+
+  var html = SCHEDULES.map(function(S, idx){
+    var isInbox = (S.key === INBOX_KEY);
+    var labelEsc = escapeHtml(S.label);
+    var ids = scheduleBuckets[S.key] || [];
+    var emptyMsg = isInbox ? 'Inbox is empty' : 'Drag a card here';
+    var cardsHtml;
+    if(!ids.length){
+      cardsHtml = '<div class="list-cards empty-list" id="cardsSched_' + S.key + '"><div class="list-empty">' + emptyMsg + '</div></div>';
+    } else {
+      var inner = ids.map(function(id){ return cardHTML(id, {context:'schedule', schedule:S.key}); }).join('');
+      cardsHtml = '<div class="list-cards" id="cardsSched_' + S.key + '">' + inner + '</div>';
+    }
+
+    var addBtn = isInbox
+      ? '<button class="list-add" style="--list-color:var(--c-appraise)" onclick="addItemToInbox()" title="Add to Inbox" aria-label="Add to Inbox">+</button>'
+      : '';
+    var delBtn = isInbox
+      ? ''
+      : '<button class="list-delete-btn" onclick="deleteSchedule(\'' + S.key + '\')" title="Delete this schedule" aria-label="Delete this schedule"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>';
+
+    return '<div class="list" data-schedule="' + S.key + '">' +
+      '<div class="list-header">' +
+        addBtn +
+        '<span class="list-title schedule-title" data-sched-key="' + S.key + '" contenteditable="' + (isInbox ? 'false' : 'plaintext-only') + '" spellcheck="false">' + labelEsc + '</span>' +
+        delBtn +
+      '</div>' +
+      cardsHtml +
+    '</div>';
+  }).join('');
+  container.innerHTML = html;
+  wireScheduleTitleEditing();
+}
+
+// Wire dynamically-rendered schedule titles for inline editing.
+// Inbox is skipped (not editable here — it's the special "Inbox" name and we
+// keep it fixed for clarity).
+function wireScheduleTitleEditing(){
+  document.querySelectorAll('.schedule-title[data-sched-key]').forEach(function(el){
+    var key = el.getAttribute('data-sched-key');
+    if(key === INBOX_KEY) return;
+    var sched = findSchedule(key);
+    if(!sched) return;
+    el.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
+      else if(e.key === 'Escape'){
+        e.preventDefault();
+        el.textContent = sched.label;
+        el.blur();
+      }
+    });
+    el.addEventListener('blur', function(){
+      var val = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if(!val) val = sched.label;
+      el.textContent = val;
+      if(val !== sched.label){
+        sched.label = val;
+        saveSectionLabels();
+      }
+    });
+  });
+}
+
+function renderSection(cardsId, ids, ctx){
+  ctx = ctx || {context:'schedule'};
+  var el = document.getElementById(cardsId);
+  if(!el) return;
+  if(!ids.length){
+    el.classList.add('empty-list');
+    var msg = 'No items here yet';
+    if(ctx.context === 'archived') msg = 'No archived items';
+    else if(ctx.schedule === INBOX_KEY) msg = 'Inbox is empty';
+    else if(ctx.context === 'schedule') msg = 'Drag a card here';
+    else if(ctx.context === 'list') msg = 'Empty';
+    el.innerHTML = '<div class="list-empty">' + msg + '</div>';
+    return;
+  }
+  el.classList.remove('empty-list');
+  el.style.minHeight = ''; el.style.maxHeight = ''; el.style.overflow = '';
+  el.innerHTML = ids.map(function(id){ return cardHTML(id, ctx); }).join('');
+}
+
+// Build the vertical-lists section. Replaces #listsContainer entirely each
+// render — cheap given list counts will be in the tens, not thousands.
+function renderLists(listBuckets){
+  var container = document.getElementById('listsContainer');
+  if(!container) return;
+  var html = LISTS.map(function(L, i){
+    var color = listColor(i);
+    var ids = listBuckets[L.key] || [];
+    var cardsHtml;
+    if(!ids.length){
+      cardsHtml = '<div class="v-list-cards empty-list" id="cardsList_' + L.key + '"><div class="list-empty">Empty</div></div>';
+    } else {
+      var inner = ids.map(function(id){ return cardHTML(id, {context:'list', list:L.key}); }).join('');
+      cardsHtml = '<div class="v-list-cards" id="cardsList_' + L.key + '">' + inner + '</div>';
+    }
+    var labelEsc = escapeHtml(L.label);
+    return '<div class="v-list" data-list="' + L.key + '">' +
+      '<div class="v-list-header">' +
+        '<button class="list-add" style="--list-color:' + color + '" onclick="addItemToList(\'' + L.key + '\')" title="Add to ' + labelEsc + '" aria-label="Add to ' + labelEsc + '">+</button>' +
+        '<span class="list-title v-list-title" data-vlist-key="' + L.key + '" contenteditable="plaintext-only" spellcheck="false">' + labelEsc + '</span>' +
+        '<button class="list-delete-btn" onclick="deleteList(\'' + L.key + '\')" title="Delete this list" aria-label="Delete this list"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>' +
+      '</div>' +
+      cardsHtml +
+    '</div>';
+  }).join('');
+  container.innerHTML = html;
+  wireVListTitleEditing();
+}
+
+// Wire the dynamically-rendered v-list titles for inline editing
+function wireVListTitleEditing(){
+  document.querySelectorAll('.v-list-title[data-vlist-key]').forEach(function(el){
+    var key = el.getAttribute('data-vlist-key');
+    var listObj = LISTS.find(function(L){ return L.key === key; });
+    if(!listObj) return;
+    el.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
+      else if(e.key === 'Escape'){
+        e.preventDefault();
+        el.textContent = listObj.label;
+        el.blur();
+      }
+    });
+    el.addEventListener('blur', function(){
+      var val = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if(!val) val = listObj.label;
+      el.textContent = val;
+      if(val !== listObj.label){
+        listObj.label = val;
+        saveSectionLabels();
+      }
+    });
+  });
+}
+
+function cardHTML(id, ctx){
+  ctx = ctx || {context:'schedule'};
+  var d = itemsIndex[id];
+  var isArchived = (ctx.context === 'archived');
+  var inList = (ctx.context === 'list');
+  var inSchedule = (ctx.context === 'schedule');
+  // True for cards rendered in the Inbox schedule. These get the chip-strip layout.
+  var isInboxCard = inSchedule && ctx.schedule === INBOX_KEY;
+  // Greyed home-list copy when this same card is also showing in a schedule right now.
+  var hasScheduleCopy = inList && !!d.status;
+
+  var link = ANALYSER_PAGE + '?item=' + encodeURIComponent(id);
+  var name = (d.name || id).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; });
+
+  // ── Footer composition ──
+  // Inbox cards: footer is a strip of coloured chips, one per list. No tick/cross
+  //   here (they go to top-right corner buttons instead).
+  // Other cards: standard tick/cross footer.
+  var footer = '';
+  if(isArchived){
+    footer = '<div class="card-footer">' +
+      '<button class="card-icon-btn" onclick="unarchiveItem(this)" title="Restore to pipeline">' +
+        iconSvg('restore') + ' Restore' +
+      '</button>' +
+      '<button class="card-icon-btn danger" onclick="deleteItem(this)" title="Move to deleted">' +
+        iconSvg('trash') + '' +
+      '</button>' +
+    '</div>';
+  } else if(isInboxCard){
+    if(LISTS.length){
+      var chips = LISTS.map(function(L, i){
+        var color = listColor(i);
+        var abbr = listAbbreviation(L.label);
+        var labelEsc = escapeHtml(L.label);
+        return '<button class="list-chip" style="--chip-color:' + color + '" onclick="sendItemToList(this, \'' + L.key + '\')" title="Send to ' + labelEsc + '" aria-label="Send to ' + labelEsc + '">' + escapeHtml(abbr) + '</button>';
+      }).join('');
+      footer = '<div class="card-chips">' + chips + '</div>';
+    } else {
+      footer = '';
+    }
+  } else {
+    footer = '<div class="card-footer">' +
+      '<button class="card-icon-btn danger" onclick="deleteItem(this)" title="Move to deleted">' +
+        iconSvg('trash') +
+      '</button>' +
+      '<button class="card-icon-btn affirm" onclick="archiveItem(this)" title="Archive">' +
+        iconSvg('archive') +
+      '</button>' +
+    '</div>';
+  }
+
+  // Corner buttons for Inbox cards (tick + cross, since the footer is taken by chips)
+  var cornerBtns = '';
+  if(isInboxCard){
+    cornerBtns =
+      '<div class="card-corner-btns">' +
+        '<button class="card-corner-btn danger" onclick="deleteItem(this)" title="Move to deleted" aria-label="Move to deleted">' +
+          iconSvg('trash') +
+        '</button>' +
+        '<button class="card-corner-btn affirm" onclick="archiveItem(this)" title="Archive" aria-label="Archive">' +
+          iconSvg('archive') +
+        '</button>' +
+      '</div>';
+  }
+
+  var nameHtml = isArchived
+    ? '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>'
+    : '<span class="card-name" data-item-id="' + id + '" spellcheck="false">' + name + '</span>';
+
+  // Note icon: shown only when this item has a non-empty note. Clicking opens
+  // the detail page to edit the note.
+  var noteBtn = '';
+  if(!isArchived && d.note){
+    noteBtn = '<a class="card-note-btn" href="' + link + '" title="Open note" aria-label="Open note" draggable="false">' +
+      '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="4.5" y="3.5" width="11" height="13" rx="1.5"/>' +
+      '<path d="M7 7 h6 M7 10 h6 M7 13 h4"/>' +
+      '</svg></a>';
+  }
+
+  // Send-home button: only on schedule-cards that have a home list (schedules 2-5; not Inbox; not archived)
+  var sendHomeBtn = '';
+  if(inSchedule && d.list && d.status && d.status !== INBOX_KEY){
+    sendHomeBtn = '<button class="card-send-home" onclick="sendCardHome(this)" title="Send back to home list" aria-label="Send back to home list">' +
+      '<svg viewBox="0 0 20 20"><polyline points="5,8 10,13 15,8"/></svg>' +
+    '</button>';
+  }
+
+  var ctxAttr = ' data-ctx="' + ctx.context + '"';
+  if(ctx.schedule) ctxAttr += ' data-ctx-schedule="' + ctx.schedule + '"';
+  if(ctx.list) ctxAttr += ' data-ctx-list="' + ctx.list + '"';
+
+  var classes = 'item-card';
+  if(isArchived) classes += ' archived';
+  if(hasScheduleCopy) classes += ' has-schedule-copy';
+  if(isInboxCard) classes += ' inbox-card';
+
+  return '<div class="' + classes + '" data-id="' + id + '"' + ctxAttr + '>' +
+    sendHomeBtn +
+    cornerBtns +
+    noteBtn +
+    '<div class="card-body">' +
+      nameHtml +
+    '</div>' +
+    footer +
+  '</div>';
+}
+
+// Abbreviate a list label into 2-3 characters for the Inbox chip strip.
+// Rule: 2+ words → initials of first 3 words. 1 word → first 3 letters.
+// Punctuation stripped. Output is always uppercase, max 3 chars.
+function listAbbreviation(label){
+  var s = String(label || '').replace(/[^\w\s]/g, '').trim();
+  if(!s) return '?';
+  var words = s.split(/\s+/);
+  if(words.length >= 2){
+    return words.slice(0, 3).map(function(w){ return w.charAt(0).toUpperCase(); }).join('');
+  }
+  return (words[0].slice(0, 3)).replace(/^./, function(c){ return c.toUpperCase(); });
+}
+
+// Send an Inbox card to a specific list (click on a chip).
+function sendItemToList(btn, listKey){
+  var id = btn.closest('.item-card').dataset.id;
+  var d = itemsIndex[id];
+  if(!d) return;
+  d.list = listKey;
+  d.status = null;
+  d.updated = new Date().toISOString();
+  _placeAtFront(id, function(otherId, od){ return od.list === listKey; });
+  saveIndex();
+  renderItems();
+}
+
+function iconSvg(kind){
+  var defs = {
+    archive:   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,11 8,15 16,6"/></svg>',
+    trash:     '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5 L15 15"/><path d="M15 5 L5 15"/></svg>',
+    restore:   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10 a6 6 0 1 1 2 4.2"/><polyline points="4,5 4,10 9,10"/></svg>'
+  };
+  return defs[kind] || '';
+}
+
+function getId(btn){ return btn.closest('.item-card').dataset.id; }
+
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ───── Card name state machine ─────
+//
+// Three states:
+//   A — Default. Arrow cursor. mousedown + drag → drags card. mousedown + release
+//       (no drag) → transitions to B.
+//   B — Primed. I-beam cursor (only while over the name). mousedown + drag →
+//       still drags card. mousedown + release (no drag) → transitions to C.
+//   C — Editing. Contenteditable, text selectable, full editor.
+//
+// Implemented via .card-name CSS classes ('', 'primed', 'editing') plus a
+// mousedown/mouseup pair that detects whether a drag happened.
+
+var _activeName = null;          // span currently in state C
+var _activeNameOriginal = '';    // its original text, for Escape revert
+var _primedName = null;          // span currently in state B
+var _mousedownName = null;       // span the user pressed mouse-button down on
+var _mousedownX = 0;
+var _mousedownY = 0;
+var DRAG_THRESHOLD_PX = 4;        // mouse movement beyond this = drag, not click
+
+function _enterStateC(span){
+  if(!span) return;
+  if(_primedName && _primedName !== span) _exitPrimed(_primedName);
+  _activeName = span;
+  _activeNameOriginal = (span.textContent || '').trim();
+  span.classList.remove('primed');
+  span.classList.add('editing');
+  span.setAttribute('contenteditable', 'plaintext-only');
+  // The card itself shouldn't accept drags while we're editing the name
+  var card = span.closest('.item-card');
+  if(card) card.setAttribute('draggable', 'false');
+  span.focus();
+  // Select all text by default so typing replaces it. Right-arrow / click
+  // moves to the end / a specific position.
+  var range = document.createRange();
+  range.selectNodeContents(span);
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function _enterStatePrimed(span){
+  if(!span) return;
+  if(_primedName && _primedName !== span) _exitPrimed(_primedName);
+  _primedName = span;
+  span.classList.add('primed');
+}
+
+function _exitPrimed(span){
+  if(!span) return;
+  span.classList.remove('primed');
+  if(_primedName === span) _primedName = null;
+}
+
+function _commitName(span, save){
+  if(!span) return;
+  var id = span.getAttribute('data-item-id');
+  if(!id) return;
+  var raw = (span.textContent || '').replace(/\s+/g, ' ').trim();
+  if(save){
+    if(!raw){
+      span.textContent = _activeNameOriginal || id;
+    } else if(raw !== _activeNameOriginal){
+      if(itemsIndex[id]){
+        itemsIndex[id].name = raw;
+        itemsIndex[id].updated = new Date().toISOString();
+        saveIndex();
+        document.querySelectorAll('.card-name[data-item-id="' + id + '"]').forEach(function(el){
+          if(el !== span && el.textContent !== raw) el.textContent = raw;
+        });
+      }
+    }
+  } else {
+    span.textContent = _activeNameOriginal;
+  }
+  span.classList.remove('editing');
+  span.removeAttribute('contenteditable');
+  var card = span.closest('.item-card');
+  if(card) card.setAttribute('draggable', 'true');
+  _activeName = null;
+  _activeNameOriginal = '';
+}
+
+document.addEventListener('mousedown', function(e){
+  // Click outside any card-name: clear primed + commit any active edit
+  var span = e.target.closest('.card-name');
+  if(!span || !span.hasAttribute('data-item-id')){
+    if(_primedName) _exitPrimed(_primedName);
+    if(_activeName && !e.target.closest('.card-name.editing')){
+      _commitName(_activeName, true);
+    }
+    return;
+  }
+  // Already editing this span — let normal text-editing behaviour happen
+  if(span === _activeName) return;
+  // If clicking a different primed/active card-name, exit those states first
+  if(_activeName && _activeName !== span) _commitName(_activeName, true);
+  if(_primedName && _primedName !== span) _exitPrimed(_primedName);
+
+  _mousedownName = span;
+  _mousedownX = e.clientX;
+  _mousedownY = e.clientY;
+}, true);
+
+document.addEventListener('mouseup', function(e){
+  if(!_mousedownName) return;
+  var span = _mousedownName;
+  _mousedownName = null;
+  // Did the user drag? If so, mouseup might fire over the same card after a
+  // drop, but during the drag dragstart fired and we treat that as a drag-not-click.
+  var dx = Math.abs(e.clientX - _mousedownX);
+  var dy = Math.abs(e.clientY - _mousedownY);
+  if(dx > DRAG_THRESHOLD_PX || dy > DRAG_THRESHOLD_PX) return; // was a drag, ignore
+  // Did the mouseup happen over the same name span?
+  var upSpan = e.target.closest('.card-name');
+  if(upSpan !== span) return;
+  // Transition: A → B, or B → C
+  if(span.classList.contains('primed')){
+    _enterStateC(span);
+  } else if(!span.classList.contains('editing')){
+    _enterStatePrimed(span);
+  }
+});
+
+document.addEventListener('focusout', function(e){
+  var span = e.target.closest('.card-name.editing');
+  if(!span || span !== _activeName) return;
+  _commitName(span, true);
+});
+
+document.addEventListener('keydown', function(e){
+  if(!_activeName || e.target !== _activeName) return;
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    _activeName.blur();
+  } else if(e.key === 'Escape'){
+    e.preventDefault();
+    _commitName(_activeName, false);
+    if(_activeName) _activeName.blur();
+  }
+});
+
+// Focus a brand-new card's name in edit mode (state C) with text selected.
+function focusNewCardName(id){
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      var span = document.querySelector('.card-name[data-item-id="' + id + '"]');
+      if(!span) return;
+      _enterStateC(span);
+    });
+  });
+}
+
+// ───── FLIP animation helpers ─────
+// Capture {left, top, width, height} for every card currently in the DOM,
+// keyed by item id. Used as the "First" snapshot for FLIP.
+// FLIP rect key: a card may render in two places (a schedule and a list) so
+// a plain id isn't unique. Combine with data-ctx attrs to form a stable key.
+function _flipKey(el){
+  var id = el.dataset.id;
+  if(!id) return null;
+  var ctx = el.getAttribute('data-ctx') || '';
+  var sch = el.getAttribute('data-ctx-schedule') || '';
+  var lst = el.getAttribute('data-ctx-list') || '';
+  return id + '|' + ctx + '|' + sch + '|' + lst;
+}
+
+function captureRects(){
+  var rects = {};
+  document.querySelectorAll('.item-card').forEach(function(el){
+    var k = _flipKey(el);
+    if(!k) return;
+    rects[k] = el.getBoundingClientRect();
+  });
+  return rects;
+}
+// Build a ghost clone of a card so we can animate it out AFTER it's been
+// removed from the real DOM. Must be called BEFORE the mutation.
+function prepareRemovalGhost(id){
+  var el = document.querySelector('[data-id="' + id + '"]');
+  if(!el) return null;
+  return { clone: el.cloneNode(true), rect: el.getBoundingClientRect() };
+}
+// Run FLIP: for every card that existed before AND still exists, translate
+// it from its old position back to the new one. For removed ghosts, fade
+// them out in place. For newIds, fade/scale them in.
+function animateFlip(oldRects, opts){
+  opts = opts || {};
+  var removedGhosts = opts.removedGhosts || [];
+  var newIds = opts.newIds || [];
+  var DURATION_MOVE = 380;   // ms — card slide
+  var DURATION_FADE = 280;   // ms — enter/exit
+  var EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+
+  // Existing + new cards
+  document.querySelectorAll('.item-card').forEach(function(el){
+    var id = el.dataset.id;
+    if(!id) return;
+    var k = _flipKey(el);
+
+    if(newIds.indexOf(id) >= 0){
+      // New card: scale up from 0.85 with a fade-in
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(0.85)';
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          el.style.transition = 'opacity ' + DURATION_FADE + 'ms ease-out, transform ' + DURATION_FADE + 'ms ' + EASE;
+          el.style.opacity = '';
+          el.style.transform = '';
+          setTimeout(function(){ el.style.transition = ''; }, DURATION_FADE + 50);
+        });
+      });
+      return;
+    }
+
+    if(!oldRects[k]) return; // card is neither old nor flagged new; leave it
+
+    var oldRect = oldRects[k];
+    var newRect = el.getBoundingClientRect();
+    var dx = oldRect.left - newRect.left;
+    var dy = oldRect.top - newRect.top;
+    if(Math.abs(dx) < 1 && Math.abs(dy) < 1) return; // unchanged
+
+    // INVERT — place card back at old visual position instantly
+    el.style.transition = 'none';
+    el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        // PLAY — animate back to new position
+        el.style.transition = 'transform ' + DURATION_MOVE + 'ms ' + EASE;
+        el.style.transform = '';
+        setTimeout(function(){ el.style.transition = ''; }, DURATION_MOVE + 50);
+      });
+    });
+  });
+
+  // Removed card ghosts: pin clone at old position, then fade + shrink
+  removedGhosts.forEach(function(ghost){
+    var g = ghost.clone;
+    g.style.position = 'fixed';
+    g.style.left = ghost.rect.left + 'px';
+    g.style.top = ghost.rect.top + 'px';
+    g.style.width = ghost.rect.width + 'px';
+    g.style.height = ghost.rect.height + 'px';
+    g.style.margin = '0';
+    g.style.pointerEvents = 'none';
+    g.style.zIndex = '1000';
+    g.style.transition = 'none';
+    g.style.transformOrigin = 'center center';
+    document.body.appendChild(g);
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        g.style.transition = 'opacity ' + DURATION_FADE + 'ms ease-out, transform ' + DURATION_FADE + 'ms ' + EASE;
+        g.style.opacity = '0';
+        g.style.transform = 'scale(0.85)';
+        setTimeout(function(){ g.remove(); }, DURATION_FADE + 80);
+      });
+    });
+  });
+}
+
+// ───── Actions ─────
+async function archiveItem(btn){
+  var id = getId(btn);
+  await new Promise(function(r){ setTimeout(r, 800); });
+  var oldRects = captureRects();
+  itemsIndex[id].archived = true;
+  itemsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderItems();
+  animateFlip(oldRects);
+}
+
+async function unarchiveItem(btn){
+  var id = getId(btn);
+  await new Promise(function(r){ setTimeout(r, 800); });
+  var oldRects = captureRects();
+  itemsIndex[id].archived = false;
+  if(!itemsIndex[id].status) itemsIndex[id].status = 'appraise';
+  itemsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderItems();
+  animateFlip(oldRects);
+}
+
+async function deleteItem(btn){
+  var id = getId(btn);
+  var name = itemsIndex[id].name;
+  if(!confirm('Move "' + name + '" to Deleted Items?')) return;
+  await new Promise(function(r){ setTimeout(r, 800); });
+  // Capture BEFORE mutation so remaining cards can FLIP to fill the gap,
+  // and clone the outgoing card so it can fade out as a ghost.
+  var oldRects = captureRects();
+  var ghost = prepareRemovalGhost(id);
+  itemsIndex[id].deleted = true;
+  itemsIndex[id].archived = false;
+  itemsIndex[id].updated = new Date().toISOString();
+  saveIndex(); renderItems();
+  animateFlip(oldRects, { removedGhosts: ghost ? [ghost] : [] });
+}
+
+// Re-index a sibling group so `id` sits at _order:0 (leftmost/topmost) and
+// existing siblings shift down. `predicate(otherId)` returns true if that
+// other card belongs in the same group.
+function _placeAtFront(id, predicate){
+  var siblings = Object.keys(itemsIndex).filter(function(otherId){
+    if(otherId === id) return false;
+    var od = itemsIndex[otherId];
+    if(!od || od.deleted || od.archived) return false;
+    return predicate(otherId, od);
+  });
+  siblings.sort(function(a, b){
+    var da = itemsIndex[a], db = itemsIndex[b];
+    if(da._order != null && db._order != null) return da._order - db._order;
+    if(da._order != null) return -1;
+    if(db._order != null) return  1;
+    return new Date(db.updated || 0) - new Date(da.updated || 0);
+  });
+  itemsIndex[id]._order = 0;
+  siblings.forEach(function(sid, i){ itemsIndex[sid]._order = i + 1; });
+}
+
+// Add a card to the Inbox (row1). No home list.
+function addItemToInbox(){
+  var ts = Date.now();
+  var num = Object.keys(itemsIndex).filter(function(k){ return !itemsIndex[k].archived && !itemsIndex[k].deleted; }).length + 1;
+  var name = 'Item-' + num;
+  var id = 'deal-' + ts;
+  var oldRects = captureRects();
+  itemsIndex[id] = { name: name, updated: new Date().toISOString(), status: INBOX_KEY, list: null };
+  _placeAtFront(id, function(otherId, od){ return od.status === INBOX_KEY && !od.list; });
+  renderItems();
+  animateFlip(oldRects, { newIds: [id] });
+  focusNewCardName(id);
+  _pushIndexAndItemToGist(id);
+}
+
+// Add a card directly to a list (skips Inbox).
+function addItemToList(listKey){
+  var ts = Date.now();
+  var num = Object.keys(itemsIndex).filter(function(k){ return !itemsIndex[k].archived && !itemsIndex[k].deleted; }).length + 1;
+  var name = 'Item-' + num;
+  var id = 'deal-' + ts;
+  var oldRects = captureRects();
+  itemsIndex[id] = { name: name, updated: new Date().toISOString(), status: null, list: listKey };
+  _placeAtFront(id, function(otherId, od){ return od.list === listKey; });
+  renderItems();
+  animateFlip(oldRects, { newIds: [id] });
+  focusNewCardName(id);
+  _pushIndexAndItemToGist(id);
+}
+
+function _pushIndexAndItemToGist(id){
+  var token = getToken();
+  if(token && GIST_ID){
+    var body = { files: {} };
+    body.files['deal-' + id + '.json'] = { content: JSON.stringify({ _new: true }) };
+    body.files['deals-index.json'] = { content: JSON.stringify(itemsIndex, null, 2) };
+    fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).catch(function(){ /* best-effort */ });
+  }
+}
+
+// Add a brand-new list. Numbered with the lowest unused integer.
+function addNewList(){
+  var n = nextUnusedNumber(LISTS, 'List');
+  var key = 'list-' + Date.now();
+  LISTS.push({ key: key, label: 'List ' + n });
+  saveSectionLabels();
+  renderItems();
+  // Focus the new list's title for immediate rename
+  requestAnimationFrame(function(){
+    var el = document.querySelector('.v-list-title[data-vlist-key="' + key + '"]');
+    if(el){
+      el.focus();
+      var r = document.createRange();
+      r.selectNodeContents(el);
+      var s = window.getSelection();
+      s.removeAllRanges();
+      s.addRange(r);
+    }
+  });
+}
+
+// Add a brand-new schedule. Numbered with the lowest unused integer
+// (Inbox doesn't count). Schedule keys are timestamp-based for uniqueness.
+function addNewSchedule(){
+  // Compute lowest unused number from labels matching "Schedule N",
+  // EXCLUDING Inbox.
+  var nonInbox = SCHEDULES.filter(function(S){ return S.key !== INBOX_KEY; });
+  var n = nextUnusedNumber(nonInbox, 'Schedule');
+  var key = 'sched-' + Date.now();
+  SCHEDULES.push({ key: key, label: 'Schedule ' + n });
+  saveSectionLabels();
+  renderItems();
+  // Focus the new schedule's title for immediate rename
+  requestAnimationFrame(function(){
+    var el = document.querySelector('.schedule-title[data-sched-key="' + key + '"]');
+    if(el){
+      el.focus();
+      var r = document.createRange();
+      r.selectNodeContents(el);
+      var s = window.getSelection();
+      s.removeAllRanges();
+      s.addRange(r);
+    }
+  });
+}
+
+// Delete a schedule (cannot delete Inbox). Cards in this schedule go home to
+// their list (clear status). No confirmation — easy to recreate.
+function deleteSchedule(scheduleKey){
+  if(scheduleKey === INBOX_KEY || scheduleKey === 'archived') return;
+  var affected = 0;
+  Object.keys(itemsIndex).forEach(function(id){
+    var d = itemsIndex[id];
+    if(d && d.status === scheduleKey && !d.archived && !d.deleted){
+      d.status = null;
+      d.updated = new Date().toISOString();
+      affected++;
+    }
+  });
+  // Remove from SCHEDULES
+  SCHEDULES = SCHEDULES.filter(function(S){ return S.key !== scheduleKey; });
+  saveSectionLabels();
+  if(affected) saveIndex();
+  renderItems();
+}
+
+// Delete a list. Cards homed here lose their home (go to Inbox). Confirm first.
+function deleteList(listKey){
+  var listObj = LISTS.find(function(L){ return L.key === listKey; });
+  if(!listObj) return;
+  var affected = 0;
+  Object.keys(itemsIndex).forEach(function(id){
+    var d = itemsIndex[id];
+    if(d && d.list === listKey && !d.archived && !d.deleted) affected++;
+  });
+  var msg = 'Delete list "' + listObj.label + '"?';
+  if(affected > 0){
+    msg += '\n\n' + affected + (affected === 1 ? ' card' : ' cards') + ' will be moved to the Inbox.';
+  }
+  if(!confirm(msg)) return;
+  Object.keys(itemsIndex).forEach(function(id){
+    var d = itemsIndex[id];
+    if(d && d.list === listKey && !d.archived && !d.deleted){
+      d.list = null;
+      d.status = INBOX_KEY;
+      d.updated = new Date().toISOString();
+    }
+  });
+  LISTS = LISTS.filter(function(L){ return L.key !== listKey; });
+  saveSectionLabels();
+  if(affected) saveIndex();
+  renderItems();
+}
+
+
+// "Send back to home list" button on a schedule-card. Clears its schedule placement.
+function sendCardHome(btn){
+  var id = btn.closest('.item-card').dataset.id;
+  var d = itemsIndex[id];
+  if(!d || !d.list) return;
+  var oldRects = captureRects();
+  d.status = null;
+  d.updated = new Date().toISOString();
+  saveIndex();
+  renderItems();
+  animateFlip(oldRects);
+}
+
+// Legacy alias (still referenced from a couple of legacy paths)
+function showNewItem(){ addItemToInbox(); }
+
+// ── ?addItem= handler ────────────────────────────────────────────────
+// Triggered when ?addItem=<freeform name>&source=siri (or similar) is in the
+// URL. Used by the iOS Shortcut "Add to pipeline" → Siri voice trigger.
+// Creates a placeholder card with the given name in the appraise list.
+// Must wait for itemsIndex to load before writing or it would overwrite the
+// live index with an empty one.
+async function _addItemHandlerIfNeeded(){
+  var params = new URLSearchParams(window.location.search);
+  var rawName = params.get('addItem');
+  if(!rawName) return;
+  var source = params.get('source') || '';
+  // Strip params immediately so reloads don't re-trigger
+  try {
+    var u = new URL(window.location);
+    u.searchParams.delete('addItem');
+    u.searchParams.delete('source');
+    window.history.replaceState({}, '', u);
+  } catch(e){}
+  var name = String(rawName).trim();
+  if(!name){
+    _rmToast('Empty item name', 'error');
+    return;
+  }
+  // Defensive cap on name length
+  if(name.length > 200) name = name.slice(0, 200);
+  // Wait for itemsIndex to populate from Gist before writing
+  var token = getToken();
+  if(token && GIST_ID){
+    var waitedMs = 0;
+    while(Object.keys(itemsIndex).length === 0 && waitedMs < 10000){
+      await new Promise(function(r){ setTimeout(r, 200); });
+      waitedMs += 200;
+    }
+    if(Object.keys(itemsIndex).length === 0){
+      _rmToast('Could not load existing items — aborting to protect your data', 'error');
+      return;
+    }
+  }
+  try {
+    var id = 'item-' + Date.now();
+    var notesText = (source === 'siri' ? 'From Siri: ' : 'Added: ') + name;
+    var state = {
+      _new: false,
+      _placeholder: true,
+      _source: source || 'addItem',
+      dealName: name,
+      _dealNotes: notesText
+    };
+    itemsIndex[id] = {
+      name: name,
+      updated: new Date().toISOString(),
+      status: 'appraise',
+      placeholder: true,
+      source: source || 'addItem'
+    };
+    _placeAtFront(id, 'appraise');
+    if(token && GIST_ID){
+      var body = { files: {} };
+      body.files['deal-' + id + '.json'] = { content: JSON.stringify(state, null, 2) };
+      body.files['deals-index.json'] = { content: JSON.stringify(itemsIndex, null, 2) };
+      var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+        method: 'PATCH',
+        headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if(!res.ok) throw new Error('Gist save failed: ' + res.status);
+    }
+    renderItems();
+    _rmToast(name + ' added ✓', 'ok');
+  } catch(err){
+    _rmToast('Save failed: ' + (err && err.message ? err.message : err), 'error');
+  }
+}
+
+// Run on DOM ready
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', _addItemHandlerIfNeeded);
+} else {
+  _addItemHandlerIfNeeded();
+}
+
+function _rmToast(msg, type) {
+  var t = document.getElementById('_rmPasteToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_rmPasteToast';
+    t.style.cssText = [
+      'position:fixed','bottom:28px','left:50%','transform:translateX(-50%) translateY(8px)',
+      'padding:9px 18px','border-radius:8px','font-size:13px','font-weight:500',
+      'color:#fff','z-index:9999','pointer-events:none',
+      'opacity:0','transition:opacity .18s,transform .18s',
+      'white-space:nowrap','box-shadow:0 4px 16px rgba(0,0,0,0.25)'
+    ].join(';');
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = type === 'error' ? '#7a1e1e' : type === 'ok' ? '#1e5c30' : '#2a2a2a';
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(t._to);
+  t._to = setTimeout(function() {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(8px)';
+  }, type === 'error' ? 4000 : 2500);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// Drag and drop — simplified for the schedule + list geometry
+//
+// Cards are draggable. List containers (#cardsSched_*, #cardsArchived,
+// and each v-list's #cardsList_*) are drop targets. The data-action is
+// computed from the source card's context AND the destination container, then
+// applied to the data model. We re-render after every drop.
+// ═══════════════════════════════════════════════════════════════════════
+
+var _dnd = {
+  id: null,
+  sourceCtx: null,
+  targetCtx: null,
+  targetIndex: null,
+  bar: null,
+  ghost: null
+};
+
+function _ctxFromCard(card){
+  return {
+    context: card.getAttribute('data-ctx') || 'schedule',
+    schedule: card.getAttribute('data-ctx-schedule') || null,
+    list: card.getAttribute('data-ctx-list') || null
+  };
+}
+
+function _ctxKey(ctx){
+  if(!ctx) return '';
+  if(ctx.context === 'archived') return 'archived';
+  if(ctx.context === 'schedule') return 'sched:' + ctx.schedule;
+  if(ctx.context === 'list') return 'list:' + ctx.list;
+  return '';
+}
+
+function _ctxFromContainerEl(el){
+  // Container element → context object. Containers are .list-cards (schedule
+  // or archived) and .v-list-cards (list).
+  var id = el.id || '';
+  if(id === 'cardsArchived') return { context: 'archived' };
+  if(id.indexOf('cardsSched_') === 0){
+    return { context: 'schedule', schedule: id.slice('cardsSched_'.length) };
+  }
+  if(id.indexOf('cardsList_') === 0){
+    return { context: 'list', list: id.slice('cardsList_'.length) };
+  }
+  return null;
+}
+
+function _containerElForCtx(ctx){
+  if(!ctx) return null;
+  if(ctx.context === 'archived') return document.getElementById('cardsArchived');
+  if(ctx.context === 'schedule') return document.getElementById('cardsSched_' + ctx.schedule);
+  if(ctx.context === 'list') return document.getElementById('cardsList_' + ctx.list);
+  return null;
+}
+
+function _isVerticalContainer(el){
+  return el && el.classList && el.classList.contains('v-list-cards');
+}
+
+// Return the ordered card IDs for a given context, used during DnD to compute
+// indices. Mirrors _orderedLaneIds in the property tool but for the schedule/
+// list axes.
+function _orderedIdsForCtx(ctx){
+  if(!ctx) return [];
+  if(ctx.context === 'archived'){
+    return Object.keys(itemsIndex).filter(function(id){
+      var d = itemsIndex[id];
+      return d && !d.deleted && d.archived;
+    }).sort(_dndIdSort);
+  }
+  if(ctx.context === 'schedule'){
+    var sk = ctx.schedule;
+    return Object.keys(itemsIndex).filter(function(id){
+      var d = itemsIndex[id];
+      if(!d || d.deleted || d.archived) return false;
+      if(sk === INBOX_KEY) return d.status === INBOX_KEY && !d.list;
+      return d.status === sk;
+    }).sort(_dndIdSort);
+  }
+  if(ctx.context === 'list'){
+    var lk = ctx.list;
+    return Object.keys(itemsIndex).filter(function(id){
+      var d = itemsIndex[id];
+      if(!d || d.deleted || d.archived) return false;
+      return d.list === lk;
+    }).sort(_dndIdSort);
+  }
+  return [];
+}
+function _dndIdSort(a, b){
+  var da = itemsIndex[a], db = itemsIndex[b];
+  if(da._order != null && db._order != null) return da._order - db._order;
+  if(da._order != null) return -1;
+  if(db._order != null) return  1;
+  return new Date(db.updated || 0) - new Date(da.updated || 0);
+}
+
+// Re-index a sibling group so `id` sits at position `index`. Shifts other
+// cards to make room.
+function _placeAtIndex(id, predicate, index){
+  var siblings = Object.keys(itemsIndex).filter(function(otherId){
+    if(otherId === id) return false;
+    var od = itemsIndex[otherId];
+    if(!od || od.deleted || od.archived) return false;
+    return predicate(otherId, od);
+  });
+  siblings.sort(_dndIdSort);
+  index = Math.max(0, Math.min(index, siblings.length));
+  itemsIndex[id]._order = index;
+  var pos = 0;
+  siblings.forEach(function(sid){
+    if(pos === index) pos++;
+    itemsIndex[sid]._order = pos;
+    pos++;
+  });
+}
+
+// ── Drop bar — disabled (ghost outline is the sole visual indicator) ──
+function _ensureDnDBar(){ return null; }
+function _showBar(){}
+function _hideBar(){}
+
+// ── Ghost outline ──
+// A dashed-outline rectangle positioned `fixed` on <body>, mirroring the
+// dragged card's dimensions. Travels between contexts without being clipped.
+function _createGhost(){
+  if(_dnd.ghost || !_dnd.id) return;
+  var card = document.querySelector('.item-card[data-id="' + _dnd.id + '"]');
+  if(!card) return;
+  var rect = card.getBoundingClientRect();
+  var ghost = document.createElement('div');
+  ghost.id = '_dndGhost';
+  ghost.style.cssText = [
+    'position:fixed',
+    'left:' + rect.left + 'px',
+    'top:'  + rect.top  + 'px',
+    'width:'  + rect.width  + 'px',
+    'height:' + rect.height + 'px',
+    'margin:0',
+    'box-sizing:border-box',
+    'border:2px dashed rgba(0,0,0,0.22)',
+    'border-radius:10px',
+    'background:transparent',
+    'z-index:100',
+    'pointer-events:none',
+    'transition:left 0.15s ease-out, top 0.15s ease-out, width 0.15s ease-out, height 0.15s ease-out'
+  ].join(';');
+  document.body.appendChild(ghost);
+  _dnd.ghost = ghost;
+  card.style.visibility = 'hidden';
+}
+function _destroyGhost(){
+  if(_dnd.ghost){
+    _dnd.ghost.remove();
+    _dnd.ghost = null;
+  }
+  if(_dnd.id){
+    var card = document.querySelector('.item-card[data-id="' + _dnd.id + '"]');
+    if(card) card.style.visibility = '';
+  }
+}
+function _moveGhostToTargetSlot(ctx, targetIdx){
+  if(!_dnd.ghost) return;
+  var pos = _getTargetSlotViewportPos(ctx, targetIdx);
+  if(!pos) return;
+  _dnd.ghost.style.left = pos.x + 'px';
+  _dnd.ghost.style.top  = pos.y + 'px';
+  if(pos.w) _dnd.ghost.style.width  = pos.w + 'px';
+  if(pos.h) _dnd.ghost.style.height = pos.h + 'px';
+}
+function _getTargetSlotViewportPos(ctx, targetIdx){
+  var el = _containerElForCtx(ctx);
+  if(!el) return null;
+  var rect = el.getBoundingClientRect();
+  var style = window.getComputedStyle(el);
+  var padL = parseFloat(style.paddingLeft) || 0;
+  var padT = parseFloat(style.paddingTop)  || 0;
+  var gap  = parseFloat(style.gap) || 14;
+  var isVert = _isVerticalContainer(el);
+  var cards = el.querySelectorAll('.item-card:not(.dnd-dragging)');
+  if(isVert){
+    var cardH = cards.length > 0 ? cards[0].offsetHeight : 64;
+    var cardW = cards.length > 0 ? cards[0].offsetWidth  : (el.offsetWidth - padL*2);
+    var pitch = cardH + gap;
+    return {
+      x: rect.left + padL,
+      y: rect.top  + padT + targetIdx * pitch - el.scrollTop,
+      w: cardW,
+      h: cardH
+    };
+  } else {
+    var cardW2 = cards.length > 0 ? cards[0].offsetWidth  : 172;
+    var cardH2 = cards.length > 0 ? cards[0].offsetHeight : 64;
+    var pitchX = cardW2 + gap;
+    return {
+      x: rect.left + padL + targetIdx * pitchX - el.scrollLeft,
+      y: rect.top  + padT,
+      w: cardW2,
+      h: cardH2
+    };
+  }
+}
+
+// ── Drop bar position for current target ──
+function _showBarForTarget(){}
+
+// ── Live shift: translate non-dragging cards in source + target containers
+// to make room for the drop. Source container closes the gap left behind;
+// target container opens a gap at the insertion index.
+var _lastLayoutKey = null;
+
+function _getPitch(containerEl){
+  if(!containerEl) return { axis:'x', value:186 };
+  var isVert = _isVerticalContainer(containerEl);
+  var cards = containerEl.querySelectorAll('.item-card');
+  var gap = parseFloat(window.getComputedStyle(containerEl).gap) || 14;
+  if(cards.length >= 2){
+    var a = cards[0].getBoundingClientRect();
+    var b = cards[1].getBoundingClientRect();
+    return isVert
+      ? { axis:'y', value: b.top  - a.top }
+      : { axis:'x', value: b.left - a.left };
+  }
+  if(cards.length === 1){
+    var r = cards[0].getBoundingClientRect();
+    return isVert
+      ? { axis:'y', value: r.height + gap }
+      : { axis:'x', value: r.width  + gap };
+  }
+  return isVert ? { axis:'y', value:74 } : { axis:'x', value:186 };
+}
+
+function _applyShift(card, shift, pitch){
+  if(!shift){
+    if(card.style.transform) card.style.transform = '';
+    return;
+  }
+  var t = pitch.axis === 'y'
+    ? 'translateY(' + (shift * pitch.value) + 'px)'
+    : 'translateX(' + (shift * pitch.value) + 'px)';
+  if(card.style.transform !== t) card.style.transform = t;
+}
+
+function _updateLiveLayout(){
+  var srcKey = _ctxKey(_dnd.sourceCtx);
+  var tgtKey = _ctxKey(_dnd.targetCtx);
+  var key = (_dnd.id || '') + '|' + tgtKey + '|' + (_dnd.targetIndex == null ? '' : _dnd.targetIndex);
+  if(key === _lastLayoutKey) return;
+  _lastLayoutKey = key;
+  if(!_dnd.id || !_dnd.targetCtx || _dnd.targetIndex == null) return;
+
+  if(!_dnd.ghost) _createGhost();
+
+  var sameCtx = (srcKey === tgtKey);
+  var dragId = _dnd.id;
+  var targetIdx = _dnd.targetIndex;
+
+  // Compute shifts for each card in source + target contexts.
+  var shifts = {}; // id -> shift count (typically -1, 0, +1)
+
+  if(sameCtx){
+    var ids = _orderedIdsForCtx(_dnd.sourceCtx);
+    var D = ids.indexOf(dragId);
+    if(D < 0){ _moveGhostAndBar(); return; }
+    ids.forEach(function(id, i){
+      if(i === D){
+        shifts[id] = 0; // dragged card stays put (visibility:hidden)
+      } else if(i < D){
+        shifts[id] = (i >= targetIdx) ? 1 : 0;
+      } else {
+        shifts[id] = (i - 1 < targetIdx) ? -1 : 0;
+      }
+    });
+  } else {
+    var srcIds = _orderedIdsForCtx(_dnd.sourceCtx);
+    var srcD = srcIds.indexOf(dragId);
+    if(srcD >= 0){
+      srcIds.forEach(function(id, i){
+        if(id === dragId) return;
+        shifts[id] = (i > srcD) ? -1 : 0;
+      });
+    }
+    var tgtIds = _orderedIdsForCtx(_dnd.targetCtx);
+    tgtIds.forEach(function(id, i){
+      shifts[id] = (i >= targetIdx) ? 1 : 0;
+    });
+  }
+
+  // Apply shifts in source + target containers
+  var srcEl = _containerElForCtx(_dnd.sourceCtx);
+  var tgtEl = _containerElForCtx(_dnd.targetCtx);
+  if(srcEl){
+    var srcPitch = _getPitch(srcEl);
+    srcEl.querySelectorAll('.item-card').forEach(function(card){
+      _applyShift(card, shifts[card.dataset.id] || 0, srcPitch);
+    });
+  }
+  if(tgtEl && tgtEl !== srcEl){
+    var tgtPitch = _getPitch(tgtEl);
+    tgtEl.querySelectorAll('.item-card').forEach(function(card){
+      _applyShift(card, shifts[card.dataset.id] || 0, tgtPitch);
+    });
+  }
+
+  // Clear stale transforms on any other containers
+  document.querySelectorAll('.list-cards, .v-list-cards').forEach(function(el){
+    if(el === srcEl || el === tgtEl) return;
+    el.querySelectorAll('.item-card').forEach(function(card){
+      if(card.style.transform) card.style.transform = '';
+    });
+  });
+
+  _moveGhostAndBar();
+}
+
+function _moveGhostAndBar(){
+  if(!_dnd.targetCtx || _dnd.targetIndex == null) return;
+  _moveGhostToTargetSlot(_dnd.targetCtx, _dnd.targetIndex);
+  _showBarForTarget(_dnd.targetCtx, _dnd.targetIndex);
+}
+
+function _clearLiveLayout(){
+  _destroyGhost();
+  _hideBar();
+  document.querySelectorAll('.item-card').forEach(function(card){
+    if(card.style.transform){
+      card.style.transition = 'transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)';
+      card.style.transform = '';
+      setTimeout(function(){ card.style.transition = ''; }, 200);
+    }
+  });
+  _lastLayoutKey = null;
+}
+
+// Cursor → insertion index inside a container. Filters out the dragging card.
+function _computeInsertIndex(el, clientX, clientY, dragId){
+  var cards = Array.prototype.slice.call(
+    el.querySelectorAll('.item-card:not(.dnd-dragging)')
+  );
+  if(!cards.length) return 0;
+  var isVert = _isVerticalContainer(el);
+  for(var i = 0; i < cards.length; i++){
+    var r = cards[i].getBoundingClientRect();
+    var mid = isVert ? (r.top + r.height/2) : (r.left + r.width/2);
+    var c = isVert ? clientY : clientX;
+    if(c < mid) return i;
+  }
+  return cards.length;
+}
+
+function _updateIndicator(el, ctx, clientX, clientY){
+  var idx = _computeInsertIndex(el, clientX, clientY, _dnd.id);
+  _dnd.targetCtx = ctx;
+  _dnd.targetIndex = idx;
+  if(ctx.context === 'archived'){
+    _hideBar();
+    // Still want the ghost roughly in the archived strip
+    if(!_dnd.ghost) _createGhost();
+    return;
+  }
+  _updateLiveLayout();
+}
+
+// ── Drop ──
+async function _dndPerformDrop(){
+  var dragId = _dnd.id;
+  var srcCtx = _dnd.sourceCtx;
+  var dstCtx = _dnd.targetCtx;
+  var dstIdx = _dnd.targetIndex;
+  _hideBar();
+  _destroyDragPreview();
+  _dnd.id = null;
+  if(!dragId || !dstCtx) return;
+  var d = itemsIndex[dragId];
+  if(!d) return;
+
+  // Strip live-shift transforms cleanly with no transition so the cards don't
+  // animate back from their shifted positions. Then drop the ghost — the
+  // ghost itself gave the user the "where it'll land" signal, so we don't
+  // need a FLIP animation on top.
+  document.querySelectorAll('.item-card').forEach(function(card){
+    if(card.style.transform || card.style.transition){
+      card.style.transition = 'none';
+      card.style.transform = '';
+    }
+  });
+  _destroyGhost();
+
+  // Archive
+  if(dstCtx.context === 'archived'){
+    d.archived = true;
+    d.status = null;
+    d.updated = new Date().toISOString();
+    saveIndex();
+    renderItems();
+    return;
+  }
+
+  // Data-model updates
+  if(dstCtx.context === 'schedule'){
+    if(dstCtx.schedule === INBOX_KEY){
+      d.status = INBOX_KEY;
+      d.list = null;
+    } else {
+      if(srcCtx.context === 'list'){
+        d.list = srcCtx.list;
+        d.status = dstCtx.schedule;
+      } else if(srcCtx.context === 'schedule' && srcCtx.schedule === INBOX_KEY){
+        setStatus('Drag Inbox cards into a list first to give them a home', false);
+        renderItems();
+        return;
+      } else {
+        d.status = dstCtx.schedule;
+      }
+    }
+  }
+  if(dstCtx.context === 'list'){
+    if(srcCtx.context === 'schedule' && srcCtx.schedule !== INBOX_KEY){
+      d.list = dstCtx.list;
+      d.status = null;
+    } else if(srcCtx.context === 'schedule' && srcCtx.schedule === INBOX_KEY){
+      d.list = dstCtx.list;
+      d.status = null;
+    } else if(srcCtx.context === 'list'){
+      d.list = dstCtx.list;
+      d.status = null;
+    } else if(srcCtx.context === 'archived'){
+      d.archived = false;
+      d.list = dstCtx.list;
+      d.status = null;
+    }
+  }
+  d.updated = new Date().toISOString();
+
+  if(dstCtx.context === 'schedule'){
+    _placeAtIndex(dragId, function(otherId, od){
+      return od.status === dstCtx.schedule && (dstCtx.schedule === INBOX_KEY ? !od.list : true);
+    }, dstIdx == null ? 0 : dstIdx);
+  } else if(dstCtx.context === 'list'){
+    _placeAtIndex(dragId, function(otherId, od){
+      return od.list === dstCtx.list;
+    }, dstIdx == null ? 0 : dstIdx);
+  }
+
+  saveIndex();
+  renderItems();
+}
+
+// ── Drag orchestration: mousedown / mousemove / mouseup ──
+//
+// We don't use HTML5 native drag-and-drop. Instead a global mousedown captures
+// the potential start of a drag. On mousemove past the threshold, the drag
+// begins (ghost outline + body class for cursor). Mouseup performs the drop.
+// This gives us full cursor control (clenched fist persists), which the HTML5
+// drag API doesn't allow CSS to override.
+
+var DRAG_THRESHOLD_PX_DND = 4;
+
+function _isDragMouseDownIgnored(target){
+  // Don't initiate a drag from clicks on interactive children
+  return !!(target.closest && target.closest('button, a, input, textarea, [contenteditable="plaintext-only"]'));
+}
+
+document.addEventListener('mousedown', function(e){
+  if(e.button !== 0) return;
+  if(_isDragMouseDownIgnored(e.target)) return;
+  var card = e.target.closest('.item-card');
+  if(!card) return;
+  _dnd.id = null;       // not yet — drag only begins after threshold
+  _dnd.card = card;
+  _dnd.candidateId = card.dataset.id;
+  _dnd.candidateSrcCtx = _ctxFromCard(card);
+  _dnd.startX = e.clientX;
+  _dnd.startY = e.clientY;
+  _dnd.pending = true;
+  _dnd.active = false;
+});
+
+document.addEventListener('mousemove', function(e){
+  if(!_dnd.pending) return;
+  if(!_dnd.active){
+    var dx = Math.abs(e.clientX - _dnd.startX);
+    var dy = Math.abs(e.clientY - _dnd.startY);
+    if(dx < DRAG_THRESHOLD_PX_DND && dy < DRAG_THRESHOLD_PX_DND) return;
+    _beginDrag();
+  }
+  _moveDragPreview(e.clientX, e.clientY);
+  _updateDragOver(e.clientX, e.clientY);
+});
+
+document.addEventListener('mouseup', function(e){
+  if(!_dnd.pending) return;
+  var wasActive = _dnd.active;
+  _dnd.pending = false;
+  if(wasActive){
+    _dndPerformDrop();
+  }
+  _resetDndState();
+});
+
+function _beginDrag(){
+  _dnd.active = true;
+  _dnd.id = _dnd.candidateId;
+  _dnd.sourceCtx = _dnd.candidateSrcCtx;
+  _dnd.targetCtx = null;
+  _dnd.targetIndex = null;
+  // Exit any in-flight title state so a drag from a primed/editing title still works cleanly
+  if(_activeName) _commitName(_activeName, true);
+  if(_primedName) _exitPrimed(_primedName);
+  document.body.classList.add('dnd-active');
+  if(_dnd.card) _dnd.card.classList.add('dnd-dragging');
+  _createDragPreview();
+  _createGhost();
+}
+
+// Drag preview — a translucent clone of the card that follows the cursor.
+// Replaces what HTML5 native drag-and-drop gives you for free.
+function _createDragPreview(){
+  if(_dnd.preview || !_dnd.card) return;
+  var rect = _dnd.card.getBoundingClientRect();
+  // Remember the cursor's offset from the card's top-left at mousedown, so the
+  // preview hovers at the same relative spot under the cursor while dragging.
+  _dnd.previewOffsetX = _dnd.startX - rect.left;
+  _dnd.previewOffsetY = _dnd.startY - rect.top;
+  var clone = _dnd.card.cloneNode(true);
+  clone.classList.add('dnd-preview');
+  clone.style.position = 'fixed';
+  clone.style.left = rect.left + 'px';
+  clone.style.top  = rect.top  + 'px';
+  clone.style.width  = rect.width  + 'px';
+  clone.style.height = rect.height + 'px';
+  clone.style.margin = '0';
+  clone.style.pointerEvents = 'none';
+  clone.style.zIndex = '200';
+  clone.style.opacity = '0.88';
+  clone.style.boxShadow = '0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)';
+  clone.style.transform = 'rotate(1.5deg)';
+  clone.style.transition = 'none';
+  // Strip the dragging class from the clone — it shouldn't be dimmed
+  clone.classList.remove('dnd-dragging');
+  document.body.appendChild(clone);
+  _dnd.preview = clone;
+}
+
+function _moveDragPreview(clientX, clientY){
+  if(!_dnd.preview) return;
+  _dnd.preview.style.left = (clientX - _dnd.previewOffsetX) + 'px';
+  _dnd.preview.style.top  = (clientY - _dnd.previewOffsetY) + 'px';
+}
+
+function _destroyDragPreview(){
+  if(_dnd.preview){
+    _dnd.preview.remove();
+    _dnd.preview = null;
+  }
+}
+
+function _updateDragOver(clientX, clientY){
+  // Find which drop container the cursor is over. elementFromPoint won't return
+  // the source card (it's visibility-hidden via _createGhost) or the ghost
+  // (pointer-events:none on the ghost).
+  var under = document.elementFromPoint(clientX, clientY);
+  if(!under) return;
+  var container = under.closest && under.closest('.list-cards, .v-list-cards');
+  if(!container){
+    // Cursor might be over a header; snap to that section's container
+    var vl = under.closest && under.closest('.v-list');
+    if(vl) container = vl.querySelector('.v-list-cards');
+    else {
+      var ln = under.closest && under.closest('.lane, .archived-section');
+      if(ln) container = ln.querySelector('.list-cards');
+    }
+  }
+  if(!container) return;
+  var ctx = _ctxFromContainerEl(container);
+  if(!ctx) return;
+  if(ctx.context === 'archived'){
+    _dnd.targetCtx = ctx;
+    _dnd.targetIndex = null;
+    // Still move the ghost into the archived strip visually
+    if(_dnd.ghost){
+      var r = container.getBoundingClientRect();
+      _dnd.ghost.style.left = (r.left + 12) + 'px';
+      _dnd.ghost.style.top  = (r.top  + 12) + 'px';
+    }
+    return;
+  }
+  var idx = _computeInsertIndex(container, clientX, clientY, _dnd.id);
+  _dnd.targetCtx = ctx;
+  _dnd.targetIndex = idx;
+  _updateLiveLayout();
+}
+
+function _resetDndState(){
+  // Cleanup after either successful drop or abandoned drag
+  document.body.classList.remove('dnd-active');
+  _destroyDragPreview();
+  if(_dnd.card){
+    _dnd.card.classList.remove('dnd-dragging');
+    _dnd.card.style.visibility = '';
+  }
+  // If the drop didn't run a re-render (e.g. cancelled drag), clear ghost + shifts
+  if(_dnd.ghost) _clearLiveLayout();
+  _dnd.id = null;
+  _dnd.card = null;
+  _dnd.candidateId = null;
+  _dnd.candidateSrcCtx = null;
+  _dnd.sourceCtx = null;
+  _dnd.targetCtx = null;
+  _dnd.targetIndex = null;
+  _dnd.active = false;
+  _lastLayoutKey = null;
+}
+
+// Stub _wireDrag for compatibility — the system is now global, no per-card wiring needed
+function _wireDrag(){}
+
+
+
+
+
+(function(){
+  var t = localStorage.getItem('todoToken');
+  if(t) loadItems();
+})();
+</script>
+
+</body>
+</html>
