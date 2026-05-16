@@ -433,7 +433,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:14 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:08 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1901,54 +1901,27 @@ function _getTargetSlotViewportPos(ctx, targetIdx){
   var padT = parseFloat(style.paddingTop)  || 0;
   var gap  = parseFloat(style.gap) || 14;
   var isVert = _isVerticalContainer(el);
-  // Read positions from the actual DOM cards (post-transform). We want each
-  // visible card's UNTRANSFORMED rect so that the slot we report matches where
-  // the dropped card will land after we strip transforms on drop.
-  var cards = Array.prototype.slice.call(
-    el.querySelectorAll('.item-card:not(.dnd-dragging):not(.dnd-source-shadow)')
-  );
-  // Filter to siblings the live-shift logic considers (matches the ordered-id
-  // list used to compute targetIdx). To find an untransformed rect, take the
-  // bounding rect and subtract the current transform translation.
-  function untransformedRect(card){
-    var r = card.getBoundingClientRect();
-    var t = card.style.transform || '';
-    var tx = 0, ty = 0;
-    var mx = t.match(/translateX\((-?\d+(?:\.\d+)?)px\)/);
-    var my = t.match(/translateY\((-?\d+(?:\.\d+)?)px\)/);
-    if(mx) tx = parseFloat(mx[1]);
-    if(my) ty = parseFloat(my[1]);
-    return { left: r.left - tx, top: r.top - ty, width: r.width, height: r.height,
-             right: r.right - tx, bottom: r.bottom - ty };
-  }
+  var cards = el.querySelectorAll('.item-card:not(.dnd-dragging):not(.dnd-source-shadow)');
   if(isVert){
-    var defaultCardH = cards.length > 0 ? cards[0].offsetHeight : 64;
-    var defaultCardW = cards.length > 0 ? cards[0].offsetWidth  : (el.offsetWidth - padL*2);
-    // The Nth slot is the position that the Nth card would occupy AFTER the
-    // dropped card takes slot targetIdx. So if targetIdx is 0, position = first
-    // card's original top. If targetIdx is at the end, position = last card's
-    // bottom + gap.
-    if(cards.length === 0){
-      return { x: rect.left + padL, y: rect.top + padT, w: defaultCardW, h: defaultCardH };
-    }
-    if(targetIdx >= cards.length){
-      var lastR = untransformedRect(cards[cards.length - 1]);
-      return { x: lastR.left, y: lastR.bottom + gap, w: lastR.width, h: defaultCardH };
-    }
-    var atR = untransformedRect(cards[targetIdx]);
-    return { x: atR.left, y: atR.top, w: atR.width, h: defaultCardH };
+    var cardH = cards.length > 0 ? cards[0].offsetHeight : 64;
+    var cardW = cards.length > 0 ? cards[0].offsetWidth  : (el.offsetWidth - padL*2);
+    var pitch = cardH + gap;
+    return {
+      x: rect.left + padL,
+      y: rect.top  + padT + targetIdx * pitch - el.scrollTop,
+      w: cardW,
+      h: cardH
+    };
   } else {
-    var defaultCardW2 = cards.length > 0 ? cards[0].offsetWidth  : 172;
-    var defaultCardH2 = cards.length > 0 ? cards[0].offsetHeight : 64;
-    if(cards.length === 0){
-      return { x: rect.left + padL, y: rect.top + padT, w: defaultCardW2, h: defaultCardH2 };
-    }
-    if(targetIdx >= cards.length){
-      var lastR2 = untransformedRect(cards[cards.length - 1]);
-      return { x: lastR2.right + gap, y: lastR2.top, w: defaultCardW2, h: lastR2.height };
-    }
-    var atR2 = untransformedRect(cards[targetIdx]);
-    return { x: atR2.left, y: atR2.top, w: defaultCardW2, h: atR2.height };
+    var cardW2 = cards.length > 0 ? cards[0].offsetWidth  : 172;
+    var cardH2 = cards.length > 0 ? cards[0].offsetHeight : 64;
+    var pitchX = cardW2 + gap;
+    return {
+      x: rect.left + padL + targetIdx * pitchX - el.scrollLeft,
+      y: rect.top  + padT,
+      w: cardW2,
+      h: cardH2
+    };
   }
 }
 
@@ -2093,20 +2066,10 @@ function _computeInsertIndex(el, clientX, clientY, dragId){
   );
   if(!cards.length) return 0;
   var isVert = _isVerticalContainer(el);
-  // Compute midpoint from UNTRANSFORMED rects so the index doesn't oscillate
-  // as live-shift translates cards on each mousemove.
   for(var i = 0; i < cards.length; i++){
     var r = cards[i].getBoundingClientRect();
-    var t = cards[i].style.transform || '';
-    var tx = 0, ty = 0;
-    var mx = t.match(/translateX\((-?\d+(?:\.\d+)?)px\)/);
-    var my = t.match(/translateY\((-?\d+(?:\.\d+)?)px\)/);
-    if(mx) tx = parseFloat(mx[1]);
-    if(my) ty = parseFloat(my[1]);
-    var top  = r.top  - ty;
-    var left = r.left - tx;
-    var mid  = isVert ? (top + r.height/2) : (left + r.width/2);
-    var c    = isVert ? clientY : clientX;
+    var mid = isVert ? (r.top + r.height/2) : (r.left + r.width/2);
+    var c = isVert ? clientY : clientX;
     if(c < mid) return i;
   }
   return cards.length;
