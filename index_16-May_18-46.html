@@ -433,7 +433,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:45 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:37 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1883,107 +1883,153 @@ function _destroyGhost(){
     if(card) card.style.visibility = '';
   }
 }
+function _moveGhostToTargetSlot(ctx, targetIdx){
+  if(!_dnd.ghost) return;
+  var pos = _getTargetSlotViewportPos(ctx, targetIdx);
+  if(!pos) return;
+  _dnd.ghost.style.left = pos.x + 'px';
+  _dnd.ghost.style.top  = pos.y + 'px';
+  if(pos.w) _dnd.ghost.style.width  = pos.w + 'px';
+  if(pos.h) _dnd.ghost.style.height = pos.h + 'px';
+}
+function _getTargetSlotViewportPos(ctx, targetIdx){
+  var el = _containerElForCtx(ctx);
+  if(!el) return null;
+  var rect = el.getBoundingClientRect();
+  var style = window.getComputedStyle(el);
+  var padL = parseFloat(style.paddingLeft) || 0;
+  var padT = parseFloat(style.paddingTop)  || 0;
+  var gap  = parseFloat(style.gap) || 14;
+  var isVert = _isVerticalContainer(el);
 
-// ── Clean geometry model ──
-//
-// Single source of truth: for any container during a drag, compute the
-// "natural slots" — the untransformed positions cards would occupy if all
-// transforms were stripped. Cards in the natural slots have a fixed position.
-// On every mousemove we:
-//   1. Read every card's natural position (rect minus current translateY).
-//   2. Sort by natural Y (or X for horizontal).
-//   3. Use the cursor's position relative to those natural midpoints to pick
-//      an insertion slot index.
-//   4. Compute target Y for each card: cards above insertion stay; cards at
-//      or below insertion move down by one pitch.
-//   5. Apply translateY = (targetY - naturalY) to each card.
-//   6. Ghost goes to the freed slot's position.
+  // Read positions from the ALL DOM cards (including the source card, which is
+  // visibility:hidden but still occupies its flex slot in the layout). Subtract
+  // each card's current transform to get its natural (untransformed) rect.
+  // The "natural slot N" is then defined relative to these positions.
+  function untransformedRect(card){
+    var r = card.getBoundingClientRect();
+    var t = card.style.transform || '';
+    var tx = 0, ty = 0;
+    var mx = t.match(/translateX\((-?\d+(?:\.\d+)?)px\)/);
+    var my = t.match(/translateY\((-?\d+(?:\.\d+)?)px\)/);
+    if(mx) tx = parseFloat(mx[1]);
+    if(my) ty = parseFloat(my[1]);
+    return { left: r.left - tx, top: r.top - ty, right: r.right - tx,
+             bottom: r.bottom - ty, width: r.width, height: r.height };
+  }
+  // ALL DOM cards in order — including the hidden source. These define the
+  // natural slot positions.
+  var allCards = Array.prototype.slice.call(
+    el.querySelectorAll('.item-card:not(.dnd-source-shadow)')
+  );
+  // VISIBLE cards (excluding hidden source) — these are what `targetIdx` is
+  // indexed against (it comes from _computeInsertIndex which filters out
+  // .dnd-dragging cards).
+  var visibleCards = allCards.filter(function(c){
+    return !c.classList.contains('dnd-dragging');
+  });
 
+  if(!allCards.length){
+    return { x: rect.left + padL, y: rect.top + padT,
+             w: isVert ? (el.offsetWidth - padL*2) : 172,
+             h: isVert ? 64 : 64 };
+  }
+  // Find the source's position among allCards. The ghost's visual index is
+  // `targetIdx` in the visible space. Map that back to a natural slot in the
+  // allCards space.
+  //
+  // Natural slot N's position = the position cards[N] would occupy if no
+  // transforms were applied. allCards already gives us those untransformed
+  // positions directly.
+  //
+  // For same-context drag, allCards = [c0, source, c1, c2, ...] etc. The
+  // ghost should occupy a slot that ISN'T any existing visible card's slot.
+  // Concretely: if source is at DOM index s, and we want ghost at visible
+  // index v (= targetIdx), the corresponding natural DOM slot is:
+  //   if v < s:  slot v
+  //   if v == s: slot s (where source was)
+  //   if v > s:  slot v + 1  (we skipped over source)
+  //
+  // Hmm that's complex. Simpler: the natural slot's position can be derived
+  // from any adjacent natural slot positions, since all slots are at uniform
+  // pitch in a flex layout.
+
+  var firstR = untransformedRect(allCards[0]);
+  var pitch;
+  if(allCards.length >= 2){
+    var secondR = untransformedRect(allCards[1]);
+    pitch = isVert ? (secondR.top - firstR.top) : (secondR.left - firstR.left);
+  } else {
+    pitch = isVert ? (firstR.height + gap) : (firstR.width + gap);
+  }
+  // The empty visual slot in the container is always at DOM index = targetIdx.
+  // This holds whether or not the source is in this container, because:
+  // - cross-context: source not here, the visible cards at idx >= targetIdx
+  //   shift down by 1, leaving slot targetIdx free.
+  // - same-context source ABOVE target (targetIdx > srcDomIdx): cards between
+  //   source and target shift up by 1 to close the source gap, leaving slot
+  //   targetIdx free.
+  // - same-context source BELOW target (targetIdx <= srcDomIdx): cards between
+  //   target and source shift down by 1, leaving slot targetIdx free.
+  var naturalSlot = targetIdx;
+  // For out-of-bounds, clamp by appending
+  var cardW = firstR.width;
+  var cardH = firstR.height;
+  if(isVert){
+    return {
+      x: firstR.left,
+      y: firstR.top + naturalSlot * pitch,
+      w: cardW,
+      h: cardH
+    };
+  } else {
+    return {
+      x: firstR.left + naturalSlot * pitch,
+      y: firstR.top,
+      w: cardW,
+      h: cardH
+    };
+  }
+}
+
+// ── Drop bar position for current target ──
+function _showBarForTarget(){}
+
+// ── Live shift: translate non-dragging cards in source + target containers
+// to make room for the drop. Source container closes the gap left behind;
+// target container opens a gap at the insertion index.
 var _lastLayoutKey = null;
 
-function _isVert(el){
-  return el && el.classList && el.classList.contains('v-list-cards');
-}
-
-// Read a card's natural (untransformed) rect by subtracting current translateX/Y
-function _naturalRect(card){
-  var r = card.getBoundingClientRect();
-  var t = card.style.transform || '';
-  var tx = 0, ty = 0;
-  var mx = t.match(/translateX\((-?\d+(?:\.\d+)?)px\)/);
-  var my = t.match(/translateY\((-?\d+(?:\.\d+)?)px\)/);
-  if(mx) tx = parseFloat(mx[1]);
-  if(my) ty = parseFloat(my[1]);
-  return {
-    left:   r.left - tx,
-    top:    r.top  - ty,
-    right:  r.right  - tx,
-    bottom: r.bottom - ty,
-    width:  r.width,
-    height: r.height
-  };
-}
-
-// Compute the pitch (slot-to-slot distance) for the container's primary axis.
-// Reads two adjacent cards' natural positions; falls back to card size + gap.
-function _slotPitch(containerEl, naturalRects){
-  var isVert = _isVert(containerEl);
-  if(naturalRects.length >= 2){
-    return isVert
-      ? naturalRects[1].top  - naturalRects[0].top
-      : naturalRects[1].left - naturalRects[0].left;
-  }
+function _getPitch(containerEl){
+  if(!containerEl) return { axis:'x', value:186 };
+  var isVert = _isVerticalContainer(containerEl);
+  var cards = containerEl.querySelectorAll('.item-card');
   var gap = parseFloat(window.getComputedStyle(containerEl).gap) || 14;
-  if(naturalRects.length === 1){
+  if(cards.length >= 2){
+    var a = cards[0].getBoundingClientRect();
+    var b = cards[1].getBoundingClientRect();
     return isVert
-      ? naturalRects[0].height + gap
-      : naturalRects[0].width  + gap;
+      ? { axis:'y', value: b.top  - a.top }
+      : { axis:'x', value: b.left - a.left };
   }
-  return isVert ? 74 : 186;
-}
-
-// Visible cards in a container, in DOM order, each paired with its natural rect.
-// "Visible" = not the hidden source and not a removed-ghost. The source-shadow
-// (still occupying its slot) IS counted as visible — it sits in its natural slot.
-function _visibleCardsWithRects(containerEl){
-  var cards = Array.prototype.slice.call(
-    containerEl.querySelectorAll('.item-card:not(.dnd-dragging)')
-  );
-  return cards.map(function(c){ return { card: c, nat: _naturalRect(c) }; });
-}
-
-// Insertion index from cursor position, comparing against the natural midpoints
-// of visible cards. Returns 0..N where N = number of visible cards.
-function _insertIndexAt(containerEl, items, clientX, clientY){
-  if(!items.length) return 0;
-  var isVert = _isVert(containerEl);
-  for(var i = 0; i < items.length; i++){
-    var nat = items[i].nat;
-    var mid = isVert ? (nat.top + nat.height/2) : (nat.left + nat.width/2);
-    var c   = isVert ? clientY : clientX;
-    if(c < mid) return i;
+  if(cards.length === 1){
+    var r = cards[0].getBoundingClientRect();
+    return isVert
+      ? { axis:'y', value: r.height + gap }
+      : { axis:'x', value: r.width  + gap };
   }
-  return items.length;
+  return isVert ? { axis:'y', value:74 } : { axis:'x', value:186 };
 }
 
-// Apply translateY (or X) to a card so it sits at targetTop (or Left)
-function _applyTargetPos(card, nat, targetTop, targetLeft, isVert){
-  var shift = isVert ? (targetTop - nat.top) : (targetLeft - nat.left);
-  if(Math.abs(shift) < 0.5){
+function _applyShift(card, shift, pitch){
+  if(!shift){
     if(card.style.transform) card.style.transform = '';
     return;
   }
-  var t = isVert ? ('translateY(' + shift + 'px)') : ('translateX(' + shift + 'px)');
+  var t = pitch.axis === 'y'
+    ? 'translateY(' + (shift * pitch.value) + 'px)'
+    : 'translateX(' + (shift * pitch.value) + 'px)';
   if(card.style.transform !== t) card.style.transform = t;
-}
-
-// Position the ghost at viewport (left, top) with optional width/height
-function _ghostTo(left, top, width, height){
-  if(!_dnd.ghost) return;
-  _dnd.ghost.style.left = left + 'px';
-  _dnd.ghost.style.top  = top  + 'px';
-  if(width  != null) _dnd.ghost.style.width  = width  + 'px';
-  if(height != null) _dnd.ghost.style.height = height + 'px';
 }
 
 function _updateLiveLayout(){
@@ -1996,190 +2042,169 @@ function _updateLiveLayout(){
 
   if(!_dnd.ghost) _createGhost();
 
-  var sameCtx = (srcKey === tgtKey);
   var dragId = _dnd.id;
   var targetIdx = _dnd.targetIndex;
-
+  var sameCtx = (srcKey === tgtKey);
   var srcEl = _containerElForCtx(_dnd.sourceCtx);
   var tgtEl = _containerElForCtx(_dnd.targetCtx);
 
-  // ── SOURCE-SIDE (only when different from target) ──
+  // ── SOURCE-SIDE LAYOUT ──
+  // Cards in the source container shift to close the gap left by the dragged
+  // card (unless source is a list, in which case we leave it occupying its slot).
+  // For same-context drags, source IS the target, so we skip this step here.
   if(srcEl && !sameCtx){
-    var srcItems = _visibleCardsWithRects(srcEl);
-    var srcIsVert = _isVert(srcEl);
+    var srcCards = Array.prototype.slice.call(srcEl.querySelectorAll('.item-card'));
+    var srcPitch = _getPitch(srcEl);
     if(_dnd.sourceIsList){
-      // Source-shadow holds the slot — nothing shifts
-      srcItems.forEach(function(it){
-        _applyTargetPos(it.card, it.nat, it.nat.top, it.nat.left, srcIsVert);
-      });
+      // No source-side shifts — source-shadow holds the slot in place
+      srcCards.forEach(function(c){ _applyShift(c, 0, srcPitch); });
     } else {
-      // Find the source slot (the .dnd-dragging hidden card) in DOM order, and
-      // shift everything after it up by one pitch.
-      var allSrc = Array.prototype.slice.call(srcEl.querySelectorAll('.item-card'));
-      var allSrcRects = allSrc.map(_naturalRect);
-      var srcPitchVal = _slotPitch(srcEl, allSrcRects);
+      // Find the dragged card's DOM position and shift everything after it by -1
       var srcDomIdx = -1;
-      for(var si = 0; si < allSrc.length; si++){
-        if(allSrc[si].dataset.id === dragId){ srcDomIdx = si; break; }
+      for(var si = 0; si < srcCards.length; si++){
+        if(srcCards[si].dataset.id === dragId){ srcDomIdx = si; break; }
       }
-      allSrc.forEach(function(card, i){
-        var nat = allSrcRects[i];
-        if(i === srcDomIdx){
-          _applyTargetPos(card, nat, nat.top, nat.left, srcIsVert);
-        } else if(srcDomIdx >= 0 && i > srcDomIdx){
-          _applyTargetPos(card,
-            nat,
-            srcIsVert ? (nat.top - srcPitchVal) : nat.top,
-            srcIsVert ? nat.left : (nat.left - srcPitchVal),
-            srcIsVert);
-        } else {
-          _applyTargetPos(card, nat, nat.top, nat.left, srcIsVert);
-        }
+      srcCards.forEach(function(c, i){
+        if(i === srcDomIdx){ _applyShift(c, 0, srcPitch); return; }
+        if(srcDomIdx >= 0 && i > srcDomIdx) _applyShift(c, -1, srcPitch);
+        else _applyShift(c, 0, srcPitch);
       });
     }
   }
 
-  // ── TARGET-SIDE ──
-  // Read all cards in target container, sort by natural position. The dragged
-  // source card (if in this container) is hidden but occupies a natural slot.
-  // We treat its natural slot as part of the "natural slot grid" but don't
-  // shift it.
-  var allTgt = Array.prototype.slice.call(tgtEl.querySelectorAll('.item-card'));
-  var allTgtRects = allTgt.map(_naturalRect);
-  var tgtIsVert = _isVert(tgtEl);
-  var tgtPitchVal = _slotPitch(tgtEl, allTgtRects);
-
-  // Compute the "visible cards" in this container — these are the ones
-  // _computeInsertIndex would have iterated. The source card (if here) is
-  // skipped because it's .dnd-dragging.
-  var visibleIndices = []; // DOM indices of visible cards
-  for(var ti = 0; ti < allTgt.length; ti++){
-    if(!allTgt[ti].classList.contains('dnd-dragging')) visibleIndices.push(ti);
-  }
-
-  // For each visible card at visibleIndices[v], its destination visual slot is:
-  //   v  if v <  targetIdx
-  //   v+1 if v >= targetIdx
-  // Map that destination back to a *natural slot index* (the slot grid in the
-  // target container's coordinate system). The natural slot grid is just
-  // 0..allTgt.length-1, but if there's a source card in this container, its
-  // slot is "occupied" by a hidden card. The destination natural slot for a
-  // visible card is computed as: the d-th gap in the grid (where d = its
-  // destination visual slot), where gaps are slots NOT containing a same-ctx
-  // source card.
-  //
-  // Simpler approach: build a list of "available natural slots" in the target.
-  // - If same-ctx: source is at one of the natural slots (DOM index = source
-  //   position). The dragged card will go into the slot that ENDS UP at
-  //   visual position targetIdx. The other slots are taken by the other
-  //   visible cards in their visual order.
-  // - If cross-ctx: source isn't in target, so all natural slots are available
-  //   for visible cards plus the ghost. The ghost takes one of the slots
-  //   (specifically: after the drop, there will be N+1 slots; one extra is
-  //   appended).
-
-  // To keep things uniform: define an array `naturalSlotYs` of length
-  // (visibleIndices.length + 1). These are the Y positions of the N+1 slots
-  // available after we make room for the ghost.
-  //
-  // For same-context: the source's natural slot is one of the existing slots
-  // (visible.length + 1 == allTgt.length). naturalSlotYs[k] = allTgtRects[k].top.
-  //
-  // For cross-context: we need to add an extra slot at the end. The N existing
-  // slots are at allTgtRects[0..N-1].top. The extra slot is at
-  // allTgtRects[N-1].top + pitch (or 0 if empty).
-
-  var naturalSlotYs = [];
-  var naturalSlotXs = [];
-  if(sameCtx){
-    for(var k = 0; k < allTgtRects.length; k++){
-      naturalSlotYs.push(allTgtRects[k].top);
-      naturalSlotXs.push(allTgtRects[k].left);
-    }
-  } else {
-    for(var k2 = 0; k2 < allTgtRects.length; k2++){
-      naturalSlotYs.push(allTgtRects[k2].top);
-      naturalSlotXs.push(allTgtRects[k2].left);
-    }
-    // Add one extra trailing slot
-    if(allTgtRects.length){
-      var last = allTgtRects[allTgtRects.length - 1];
-      naturalSlotYs.push(last.top  + (tgtIsVert ? tgtPitchVal : 0));
-      naturalSlotXs.push(last.left + (tgtIsVert ? 0 : tgtPitchVal));
-    } else {
-      var trect = tgtEl.getBoundingClientRect();
-      var st = window.getComputedStyle(tgtEl);
-      naturalSlotYs.push(trect.top  + (parseFloat(st.paddingTop)  || 0));
-      naturalSlotXs.push(trect.left + (parseFloat(st.paddingLeft) || 0));
-    }
-  }
-
-  // The dragged card occupies destination visual slot `targetIdx`. That maps
-  // to natural slot index... we want the slot AT position targetIdx in the
-  // "available slots" list. For same-context, the source's own DOM slot is
-  // counted but it's hidden — that slot is exactly where the ghost lands when
-  // the visual layout positions it.
-  //
-  // Cleanest: build an array of destination visual slot → natural slot index.
-  // Order: visible cards fill in their visual positions, ghost takes target.
-  //
-  // Visible cards in DOM order (visibleIndices) have natural slot positions
-  // at... well, the source's natural slot is HIDDEN but real. So in the
-  // natural slot grid, indices = 0..allTgt.length-1, and visible cards occupy
-  // all of those except the source's DOM index.
-  //
-  // For each destination visual slot d (0..N where N = visibleIndices.length):
-  //   We need to pick a natural slot index.
-  // The mapping is: in the destination final order, slot d holds whichever
-  // card. Translating to natural slot positions, since natural slots are
-  // already in geometric order, the d-th occupied natural slot is just the
-  // d-th element of [0..length-1] (or [0..length] for cross-ctx).
-  //
-  // I.e. **natural slot at visual position d = d**. Always.
-  //
-  // Proof: natural slot k has Y position = first_top + k*pitch. Visual slot d
-  // has Y position = first_top + d*pitch (cards are uniformly spaced). So
-  // visual slot d sits at natural position d.
-
-  // So each visible card with visual slot v maps to natural position v.
-  visibleIndices.forEach(function(domIdx, v){
-    var card = allTgt[domIdx];
-    var nat  = allTgtRects[domIdx];
-    var visualSlot = (v < targetIdx) ? v : v + 1;
-    var targetTop  = naturalSlotYs[visualSlot];
-    var targetLeft = naturalSlotXs[visualSlot];
-    _applyTargetPos(card, nat, targetTop, targetLeft, tgtIsVert);
-  });
-
-  // Source (if same-context): stays at its natural slot, hidden
-  if(sameCtx){
-    for(var s = 0; s < allTgt.length; s++){
-      if(allTgt[s].classList.contains('dnd-dragging')){
-        var nat2 = allTgtRects[s];
-        _applyTargetPos(allTgt[s], nat2, nat2.top, nat2.left, tgtIsVert);
-        break;
+  // ── TARGET-SIDE LAYOUT ──
+  // Compute each card's target VISUAL slot index based on the final order
+  // after the drop. The dragged card's visual slot is targetIdx.
+  if(tgtEl){
+    var tgtCards = Array.prototype.slice.call(tgtEl.querySelectorAll('.item-card'));
+    var tgtPitch = _getPitch(tgtEl);
+    var srcDomIdxTgt = -1;
+    if(sameCtx){
+      for(var ti = 0; ti < tgtCards.length; ti++){
+        if(tgtCards[ti].dataset.id === dragId){ srcDomIdxTgt = ti; break; }
       }
     }
+    tgtCards.forEach(function(c, domIdx){
+      if(c.dataset.id === dragId){
+        // Source card stays put visually (it's hidden anyway)
+        _applyShift(c, 0, tgtPitch);
+        return;
+      }
+      // Compute filtered index (excluding the source if same-context)
+      var filteredIdx = (sameCtx && srcDomIdxTgt >= 0 && domIdx > srcDomIdxTgt)
+        ? domIdx - 1
+        : domIdx;
+      // Where this card sits in the FINAL order after dropping at targetIdx:
+      //   if filteredIdx < targetIdx → final position = filteredIdx
+      //   if filteredIdx >= targetIdx → final position = filteredIdx + 1
+      var finalVisualSlot = (filteredIdx < targetIdx) ? filteredIdx : filteredIdx + 1;
+      // Map final visual slot back to DOM slot space.
+      // For same-context: DOM slots = [c0, c1, ..., src, ..., cN]. Without the
+      // source, the "visual slots" are 0..N-1 but they map to DOM slots
+      // skipping srcDomIdxTgt. So visual slot V maps to DOM slot:
+      //   V if V < srcDomIdxTgt, V+1 if V >= srcDomIdxTgt
+      var finalDomSlot = finalVisualSlot;
+      if(sameCtx && srcDomIdxTgt >= 0){
+        finalDomSlot = (finalVisualSlot < srcDomIdxTgt) ? finalVisualSlot : finalVisualSlot + 1;
+      }
+      var shift = finalDomSlot - domIdx;
+      _applyShift(c, shift, tgtPitch);
+    });
   }
 
-  // Ghost goes to visual slot targetIdx
-  var ghostTop  = naturalSlotYs[targetIdx];
-  var ghostLeft = naturalSlotXs[targetIdx];
-  var ghostW = allTgtRects.length ? allTgtRects[0].width  : 172;
-  var ghostH = allTgtRects.length ? allTgtRects[0].height : 64;
-  _ghostTo(ghostLeft, ghostTop, ghostW, ghostH);
-
-  // Clear stale transforms on other containers
+  // Clear stale transforms on any other containers
   document.querySelectorAll('.list-cards, .v-list-cards').forEach(function(el){
     if(el === srcEl || el === tgtEl) return;
     el.querySelectorAll('.item-card').forEach(function(card){
       if(card.style.transform) card.style.transform = '';
     });
   });
+
+  // ── GHOST POSITION ──
+  // The dragged card's final position is finalDomSlot computed for the source
+  // card. Compute it explicitly here for the ghost.
+  if(tgtEl){
+    var tgtCards2 = Array.prototype.slice.call(tgtEl.querySelectorAll('.item-card'));
+    var srcDomInTgt = -1;
+    if(sameCtx){
+      for(var ki = 0; ki < tgtCards2.length; ki++){
+        if(tgtCards2[ki].dataset.id === dragId){ srcDomInTgt = ki; break; }
+      }
+    }
+    // The dragged card sits at visual slot = targetIdx in the final order.
+    // Map to DOM slot:
+    var ghostDomSlot = targetIdx;
+    if(sameCtx && srcDomInTgt >= 0){
+      ghostDomSlot = (targetIdx < srcDomInTgt) ? targetIdx : targetIdx + 1;
+    }
+    _positionGhostAtDomSlot(tgtEl, ghostDomSlot);
+  }
+}
+
+// Position the ghost at a specific DOM slot index in a container, regardless
+// of any live-shift transforms on the cards themselves.
+function _positionGhostAtDomSlot(containerEl, domSlot){
+  if(!_dnd.ghost) return;
+  var cards = Array.prototype.slice.call(containerEl.querySelectorAll('.item-card'));
+  var isVert = _isVerticalContainer(containerEl);
+  if(!cards.length){
+    var rect = containerEl.getBoundingClientRect();
+    var st = window.getComputedStyle(containerEl);
+    _dnd.ghost.style.left = (rect.left + (parseFloat(st.paddingLeft) || 0)) + 'px';
+    _dnd.ghost.style.top  = (rect.top  + (parseFloat(st.paddingTop)  || 0)) + 'px';
+    return;
+  }
+  function untransformedTop(card){
+    var r = card.getBoundingClientRect();
+    var t = card.style.transform || '';
+    var ty = 0;
+    var my = t.match(/translateY\((-?\d+(?:\.\d+)?)px\)/);
+    if(my) ty = parseFloat(my[1]);
+    return r.top - ty;
+  }
+  function untransformedLeft(card){
+    var r = card.getBoundingClientRect();
+    var t = card.style.transform || '';
+    var tx = 0;
+    var mx = t.match(/translateX\((-?\d+(?:\.\d+)?)px\)/);
+    if(mx) tx = parseFloat(mx[1]);
+    return r.left - tx;
+  }
+  // Compute pitch between two adjacent DOM cards (using their untransformed positions)
+  var pitch;
+  if(cards.length >= 2){
+    if(isVert){
+      pitch = untransformedTop(cards[1]) - untransformedTop(cards[0]);
+    } else {
+      pitch = untransformedLeft(cards[1]) - untransformedLeft(cards[0]);
+    }
+  } else {
+    var r = cards[0].getBoundingClientRect();
+    var gap = parseFloat(window.getComputedStyle(containerEl).gap) || 14;
+    pitch = isVert ? (r.height + gap) : (r.width + gap);
+  }
+  if(isVert){
+    var x0 = untransformedLeft(cards[0]);
+    var y0 = untransformedTop(cards[0]);
+    _dnd.ghost.style.left = x0 + 'px';
+    _dnd.ghost.style.top  = (y0 + domSlot * pitch) + 'px';
+  } else {
+    var xL0 = untransformedLeft(cards[0]);
+    var yT0 = untransformedTop(cards[0]);
+    _dnd.ghost.style.left = (xL0 + domSlot * pitch) + 'px';
+    _dnd.ghost.style.top  = yT0 + 'px';
+  }
+}
+
+function _moveGhostAndBar(){
+  if(!_dnd.targetCtx || _dnd.targetIndex == null) return;
+  _moveGhostToTargetSlot(_dnd.targetCtx, _dnd.targetIndex);
+  _showBarForTarget(_dnd.targetCtx, _dnd.targetIndex);
 }
 
 function _clearLiveLayout(){
   _destroyGhost();
+  _hideBar();
   document.querySelectorAll('.item-card').forEach(function(card){
     if(card.style.transform){
       card.style.transition = 'transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)';
@@ -2190,18 +2215,30 @@ function _clearLiveLayout(){
   _lastLayoutKey = null;
 }
 
-// Bar functions kept as no-ops (we don't show a bar)
-function _hideBar(){}
-function _showBar(){}
-function _ensureDnDBar(){ return null; }
-function _showBarForTarget(){}
-
-// Cursor → insertion index. Uses the natural midpoints (untransformed) of
-// visible cards in the container so the index is stable as cards animate.
+// Cursor → insertion index inside a container. Filters out the dragging card.
 function _computeInsertIndex(el, clientX, clientY, dragId){
-  var items = _visibleCardsWithRects(el);
-  if(!items.length) return 0;
-  return _insertIndexAt(el, items, clientX, clientY);
+  var cards = Array.prototype.slice.call(
+    el.querySelectorAll('.item-card:not(.dnd-dragging):not(.dnd-source-shadow)')
+  );
+  if(!cards.length) return 0;
+  var isVert = _isVerticalContainer(el);
+  // Compute midpoint from UNTRANSFORMED rects so the index doesn't oscillate
+  // as live-shift translates cards on each mousemove.
+  for(var i = 0; i < cards.length; i++){
+    var r = cards[i].getBoundingClientRect();
+    var t = cards[i].style.transform || '';
+    var tx = 0, ty = 0;
+    var mx = t.match(/translateX\((-?\d+(?:\.\d+)?)px\)/);
+    var my = t.match(/translateY\((-?\d+(?:\.\d+)?)px\)/);
+    if(mx) tx = parseFloat(mx[1]);
+    if(my) ty = parseFloat(my[1]);
+    var top  = r.top  - ty;
+    var left = r.left - tx;
+    var mid  = isVert ? (top + r.height/2) : (left + r.width/2);
+    var c    = isVert ? clientY : clientX;
+    if(c < mid) return i;
+  }
+  return cards.length;
 }
 
 function _updateIndicator(el, ctx, clientX, clientY){
