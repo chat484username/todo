@@ -425,7 +425,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:22 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:03 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -2054,7 +2054,6 @@ async function _dndPerformDrop(){
   var dstCtx = _dnd.targetCtx;
   var dstIdx = _dnd.targetIndex;
   _hideBar();
-  _destroyDragPreview();
   _dnd.id = null;
   if(!dragId || !dstCtx) return;
   var d = itemsIndex[dragId];
@@ -2170,7 +2169,6 @@ document.addEventListener('mousemove', function(e){
     if(dx < DRAG_THRESHOLD_PX_DND && dy < DRAG_THRESHOLD_PX_DND) return;
     _beginDrag();
   }
-  _moveDragPreview(e.clientX, e.clientY);
   _updateDragOver(e.clientX, e.clientY);
 });
 
@@ -2195,50 +2193,7 @@ function _beginDrag(){
   if(_primedName) _exitPrimed(_primedName);
   document.body.classList.add('dnd-active');
   if(_dnd.card) _dnd.card.classList.add('dnd-dragging');
-  _createDragPreview();
   _createGhost();
-}
-
-// Drag preview — a translucent clone of the card that follows the cursor.
-// Replaces what HTML5 native drag-and-drop gives you for free.
-function _createDragPreview(){
-  if(_dnd.preview || !_dnd.card) return;
-  var rect = _dnd.card.getBoundingClientRect();
-  // Remember the cursor's offset from the card's top-left at mousedown, so the
-  // preview hovers at the same relative spot under the cursor while dragging.
-  _dnd.previewOffsetX = _dnd.startX - rect.left;
-  _dnd.previewOffsetY = _dnd.startY - rect.top;
-  var clone = _dnd.card.cloneNode(true);
-  clone.classList.add('dnd-preview');
-  clone.style.position = 'fixed';
-  clone.style.left = rect.left + 'px';
-  clone.style.top  = rect.top  + 'px';
-  clone.style.width  = rect.width  + 'px';
-  clone.style.height = rect.height + 'px';
-  clone.style.margin = '0';
-  clone.style.pointerEvents = 'none';
-  clone.style.zIndex = '200';
-  clone.style.opacity = '0.88';
-  clone.style.boxShadow = '0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)';
-  clone.style.transform = 'rotate(1.5deg)';
-  clone.style.transition = 'none';
-  // Strip the dragging class from the clone — it shouldn't be dimmed
-  clone.classList.remove('dnd-dragging');
-  document.body.appendChild(clone);
-  _dnd.preview = clone;
-}
-
-function _moveDragPreview(clientX, clientY){
-  if(!_dnd.preview) return;
-  _dnd.preview.style.left = (clientX - _dnd.previewOffsetX) + 'px';
-  _dnd.preview.style.top  = (clientY - _dnd.previewOffsetY) + 'px';
-}
-
-function _destroyDragPreview(){
-  if(_dnd.preview){
-    _dnd.preview.remove();
-    _dnd.preview = null;
-  }
 }
 
 function _updateDragOver(clientX, clientY){
@@ -2280,7 +2235,6 @@ function _updateDragOver(clientX, clientY){
 function _resetDndState(){
   // Cleanup after either successful drop or abandoned drag
   document.body.classList.remove('dnd-active');
-  _destroyDragPreview();
   if(_dnd.card){
     _dnd.card.classList.remove('dnd-dragging');
     _dnd.card.style.visibility = '';
