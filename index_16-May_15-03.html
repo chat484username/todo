@@ -425,7 +425,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:03 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:59 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1241,6 +1241,15 @@ document.addEventListener('keydown', function(e){
     if(_activeName) _activeName.blur();
   }
 });
+
+// Drag start on a card → exit any primed/editing state so the drag wins
+document.addEventListener('dragstart', function(e){
+  var card = e.target.closest('.item-card');
+  if(!card) return;
+  if(_primedName) _exitPrimed(_primedName);
+  if(_activeName) _commitName(_activeName, true);
+  _mousedownName = null;
+}, true);
 
 // Focus a brand-new card's name in edit mode (state C) with text selected.
 function focusNewCardName(id){
@@ -2131,131 +2140,66 @@ async function _dndPerformDrop(){
   renderItems();
 }
 
-// ── Drag orchestration: mousedown / mousemove / mouseup ──
-//
-// We don't use HTML5 native drag-and-drop. Instead a global mousedown captures
-// the potential start of a drag. On mousemove past the threshold, the drag
-// begins (ghost outline + body class for cursor). Mouseup performs the drop.
-// This gives us full cursor control (clenched fist persists), which the HTML5
-// drag API doesn't allow CSS to override.
+function _wireDrag(){
+  document.querySelectorAll('.item-card').forEach(function(card){
+    if(card._dndWired) return;
+    card._dndWired = true;
+    card.setAttribute('draggable', 'true');
+    var id = card.dataset.id;
 
-var DRAG_THRESHOLD_PX_DND = 4;
+    card.addEventListener('dragstart', function(e){
+      if(_activeName){ _activeName.blur(); }
+      _dnd.id = id;
+      _dnd.sourceCtx = _ctxFromCard(card);
+      _dnd.targetCtx = null;
+      _dnd.targetIndex = null;
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', id); } catch(_){}
+      setTimeout(function(){ card.classList.add('dnd-dragging'); }, 0);
+      document.body.classList.add('dnd-active');
+    });
 
-function _isDragMouseDownIgnored(target){
-  // Don't initiate a drag from clicks on interactive children
-  return !!(target.closest && target.closest('button, a, input, textarea, [contenteditable="plaintext-only"]'));
+    card.addEventListener('dragend', function(){
+      card.classList.remove('dnd-dragging');
+      document.body.classList.remove('dnd-active');
+      // If the drag was cancelled (no successful drop), _dnd.id is still set.
+      // Smoothly clear shifts. On successful drop, _dndPerformDrop already
+      // nulled _dnd.id and we DO want the FLIP from the ghost rect; transforms
+      // were left in place to feed captureRects, and renderItems clears them.
+      if(_dnd.id) _clearLiveLayout();
+      _hideBar();
+      _dnd.id = null;
+      _dnd.sourceCtx = null;
+      _dnd.targetCtx = null;
+      _dnd.targetIndex = null;
+      _lastLayoutKey = null;
+      document.querySelectorAll('.dnd-target').forEach(function(el){
+        el.classList.remove('dnd-target');
+      });
+    });
+  });
+
+  // Wire each drop container for dragover/drop
+  document.querySelectorAll('.list-cards, .v-list-cards').forEach(function(el){
+    if(el._dndDropWired) return;
+    el._dndDropWired = true;
+
+    el.addEventListener('dragover', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      var ctx = _ctxFromContainerEl(el);
+      if(!ctx) return;
+      _updateIndicator(el, ctx, e.clientX, e.clientY);
+    });
+
+    el.addEventListener('drop', function(e){
+      if(!_dnd.id) return;
+      e.preventDefault();
+      _dndPerformDrop();
+    });
+  });
 }
-
-document.addEventListener('mousedown', function(e){
-  if(e.button !== 0) return;
-  if(_isDragMouseDownIgnored(e.target)) return;
-  var card = e.target.closest('.item-card');
-  if(!card) return;
-  _dnd.id = null;       // not yet — drag only begins after threshold
-  _dnd.card = card;
-  _dnd.candidateId = card.dataset.id;
-  _dnd.candidateSrcCtx = _ctxFromCard(card);
-  _dnd.startX = e.clientX;
-  _dnd.startY = e.clientY;
-  _dnd.pending = true;
-  _dnd.active = false;
-});
-
-document.addEventListener('mousemove', function(e){
-  if(!_dnd.pending) return;
-  if(!_dnd.active){
-    var dx = Math.abs(e.clientX - _dnd.startX);
-    var dy = Math.abs(e.clientY - _dnd.startY);
-    if(dx < DRAG_THRESHOLD_PX_DND && dy < DRAG_THRESHOLD_PX_DND) return;
-    _beginDrag();
-  }
-  _updateDragOver(e.clientX, e.clientY);
-});
-
-document.addEventListener('mouseup', function(e){
-  if(!_dnd.pending) return;
-  var wasActive = _dnd.active;
-  _dnd.pending = false;
-  if(wasActive){
-    _dndPerformDrop();
-  }
-  _resetDndState();
-});
-
-function _beginDrag(){
-  _dnd.active = true;
-  _dnd.id = _dnd.candidateId;
-  _dnd.sourceCtx = _dnd.candidateSrcCtx;
-  _dnd.targetCtx = null;
-  _dnd.targetIndex = null;
-  // Exit any in-flight title state so a drag from a primed/editing title still works cleanly
-  if(_activeName) _commitName(_activeName, true);
-  if(_primedName) _exitPrimed(_primedName);
-  document.body.classList.add('dnd-active');
-  if(_dnd.card) _dnd.card.classList.add('dnd-dragging');
-  _createGhost();
-}
-
-function _updateDragOver(clientX, clientY){
-  // Find which drop container the cursor is over. elementFromPoint won't return
-  // the source card (it's visibility-hidden via _createGhost) or the ghost
-  // (pointer-events:none on the ghost).
-  var under = document.elementFromPoint(clientX, clientY);
-  if(!under) return;
-  var container = under.closest && under.closest('.list-cards, .v-list-cards');
-  if(!container){
-    // Cursor might be over a header; snap to that section's container
-    var vl = under.closest && under.closest('.v-list');
-    if(vl) container = vl.querySelector('.v-list-cards');
-    else {
-      var ln = under.closest && under.closest('.lane, .archived-section');
-      if(ln) container = ln.querySelector('.list-cards');
-    }
-  }
-  if(!container) return;
-  var ctx = _ctxFromContainerEl(container);
-  if(!ctx) return;
-  if(ctx.context === 'archived'){
-    _dnd.targetCtx = ctx;
-    _dnd.targetIndex = null;
-    // Still move the ghost into the archived strip visually
-    if(_dnd.ghost){
-      var r = container.getBoundingClientRect();
-      _dnd.ghost.style.left = (r.left + 12) + 'px';
-      _dnd.ghost.style.top  = (r.top  + 12) + 'px';
-    }
-    return;
-  }
-  var idx = _computeInsertIndex(container, clientX, clientY, _dnd.id);
-  _dnd.targetCtx = ctx;
-  _dnd.targetIndex = idx;
-  _updateLiveLayout();
-}
-
-function _resetDndState(){
-  // Cleanup after either successful drop or abandoned drag
-  document.body.classList.remove('dnd-active');
-  if(_dnd.card){
-    _dnd.card.classList.remove('dnd-dragging');
-    _dnd.card.style.visibility = '';
-  }
-  // If the drop didn't run a re-render (e.g. cancelled drag), clear ghost + shifts
-  if(_dnd.ghost) _clearLiveLayout();
-  _dnd.id = null;
-  _dnd.card = null;
-  _dnd.candidateId = null;
-  _dnd.candidateSrcCtx = null;
-  _dnd.sourceCtx = null;
-  _dnd.targetCtx = null;
-  _dnd.targetIndex = null;
-  _dnd.active = false;
-  _lastLayoutKey = null;
-}
-
-// Stub _wireDrag for compatibility — the system is now global, no per-card wiring needed
-function _wireDrag(){}
-
-
 
 
 
