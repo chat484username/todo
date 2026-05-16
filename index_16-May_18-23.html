@@ -433,7 +433,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:22 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:14 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1901,11 +1901,15 @@ function _getTargetSlotViewportPos(ctx, targetIdx){
   var padT = parseFloat(style.paddingTop)  || 0;
   var gap  = parseFloat(style.gap) || 14;
   var isVert = _isVerticalContainer(el);
-
-  // Read positions from the ALL DOM cards (including the source card, which is
-  // visibility:hidden but still occupies its flex slot in the layout). Subtract
-  // each card's current transform to get its natural (untransformed) rect.
-  // The "natural slot N" is then defined relative to these positions.
+  // Read positions from the actual DOM cards (post-transform). We want each
+  // visible card's UNTRANSFORMED rect so that the slot we report matches where
+  // the dropped card will land after we strip transforms on drop.
+  var cards = Array.prototype.slice.call(
+    el.querySelectorAll('.item-card:not(.dnd-dragging):not(.dnd-source-shadow)')
+  );
+  // Filter to siblings the live-shift logic considers (matches the ordered-id
+  // list used to compute targetIdx). To find an untransformed rect, take the
+  // bounding rect and subtract the current transform translation.
   function untransformedRect(card){
     var r = card.getBoundingClientRect();
     var t = card.style.transform || '';
@@ -1914,84 +1918,37 @@ function _getTargetSlotViewportPos(ctx, targetIdx){
     var my = t.match(/translateY\((-?\d+(?:\.\d+)?)px\)/);
     if(mx) tx = parseFloat(mx[1]);
     if(my) ty = parseFloat(my[1]);
-    return { left: r.left - tx, top: r.top - ty, right: r.right - tx,
-             bottom: r.bottom - ty, width: r.width, height: r.height };
+    return { left: r.left - tx, top: r.top - ty, width: r.width, height: r.height,
+             right: r.right - tx, bottom: r.bottom - ty };
   }
-  // ALL DOM cards in order — including the hidden source. These define the
-  // natural slot positions.
-  var allCards = Array.prototype.slice.call(
-    el.querySelectorAll('.item-card:not(.dnd-source-shadow)')
-  );
-  // VISIBLE cards (excluding hidden source) — these are what `targetIdx` is
-  // indexed against (it comes from _computeInsertIndex which filters out
-  // .dnd-dragging cards).
-  var visibleCards = allCards.filter(function(c){
-    return !c.classList.contains('dnd-dragging');
-  });
-
-  if(!allCards.length){
-    return { x: rect.left + padL, y: rect.top + padT,
-             w: isVert ? (el.offsetWidth - padL*2) : 172,
-             h: isVert ? 64 : 64 };
-  }
-  // Find the source's position among allCards. The ghost's visual index is
-  // `targetIdx` in the visible space. Map that back to a natural slot in the
-  // allCards space.
-  //
-  // Natural slot N's position = the position cards[N] would occupy if no
-  // transforms were applied. allCards already gives us those untransformed
-  // positions directly.
-  //
-  // For same-context drag, allCards = [c0, source, c1, c2, ...] etc. The
-  // ghost should occupy a slot that ISN'T any existing visible card's slot.
-  // Concretely: if source is at DOM index s, and we want ghost at visible
-  // index v (= targetIdx), the corresponding natural DOM slot is:
-  //   if v < s:  slot v
-  //   if v == s: slot s (where source was)
-  //   if v > s:  slot v + 1  (we skipped over source)
-  //
-  // Hmm that's complex. Simpler: the natural slot's position can be derived
-  // from any adjacent natural slot positions, since all slots are at uniform
-  // pitch in a flex layout.
-
-  var firstR = untransformedRect(allCards[0]);
-  var pitch;
-  if(allCards.length >= 2){
-    var secondR = untransformedRect(allCards[1]);
-    pitch = isVert ? (secondR.top - firstR.top) : (secondR.left - firstR.left);
-  } else {
-    pitch = isVert ? (firstR.height + gap) : (firstR.width + gap);
-  }
-  // Same-context: the source occupies a DOM slot but is hidden, so visible
-  // slot N maps to natural DOM slot N if before source, or N+1 if at/after.
-  var srcDomIdx = -1;
-  for(var i = 0; i < allCards.length; i++){
-    if(allCards[i].classList.contains('dnd-dragging')){ srcDomIdx = i; break; }
-  }
-  var naturalSlot;
-  if(srcDomIdx >= 0){
-    naturalSlot = (targetIdx <= srcDomIdx) ? targetIdx : (targetIdx + 1);
-  } else {
-    // Cross-context: source isn't in this container; visible idx = natural idx
-    naturalSlot = targetIdx;
-  }
-  // For out-of-bounds, clamp by appending
-  var cardW = firstR.width;
-  var cardH = firstR.height;
   if(isVert){
-    return {
-      x: firstR.left,
-      y: firstR.top + naturalSlot * pitch,
-      w: cardW,
-      h: cardH
-    };
+    var defaultCardH = cards.length > 0 ? cards[0].offsetHeight : 64;
+    var defaultCardW = cards.length > 0 ? cards[0].offsetWidth  : (el.offsetWidth - padL*2);
+    // The Nth slot is the position that the Nth card would occupy AFTER the
+    // dropped card takes slot targetIdx. So if targetIdx is 0, position = first
+    // card's original top. If targetIdx is at the end, position = last card's
+    // bottom + gap.
+    if(cards.length === 0){
+      return { x: rect.left + padL, y: rect.top + padT, w: defaultCardW, h: defaultCardH };
+    }
+    if(targetIdx >= cards.length){
+      var lastR = untransformedRect(cards[cards.length - 1]);
+      return { x: lastR.left, y: lastR.bottom + gap, w: lastR.width, h: defaultCardH };
+    }
+    var atR = untransformedRect(cards[targetIdx]);
+    return { x: atR.left, y: atR.top, w: atR.width, h: defaultCardH };
   } else {
-    return {
-      x: firstR.left + naturalSlot * pitch,
-      y: firstR.top,
-      w: cardW,
-      h: cardH
-    };
+    var defaultCardW2 = cards.length > 0 ? cards[0].offsetWidth  : 172;
+    var defaultCardH2 = cards.length > 0 ? cards[0].offsetHeight : 64;
+    if(cards.length === 0){
+      return { x: rect.left + padL, y: rect.top + padT, w: defaultCardW2, h: defaultCardH2 };
+    }
+    if(targetIdx >= cards.length){
+      var lastR2 = untransformedRect(cards[cards.length - 1]);
+      return { x: lastR2.right + gap, y: lastR2.top, w: defaultCardW2, h: lastR2.height };
+    }
+    var atR2 = untransformedRect(cards[targetIdx]);
+    return { x: atR2.left, y: atR2.top, w: defaultCardW2, h: atR2.height };
   }
 }
 
