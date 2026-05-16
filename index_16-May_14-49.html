@@ -113,11 +113,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .item-card.archived:hover{opacity:0.85}
 .item-card.dnd-dragging{opacity:0.35}
 
-/* While any drag is active, force the closed-fist cursor everywhere. The
-   browser's native HTML5 drag API normally overrides CSS :active, so we add
-   this class to <body> on dragstart and remove it on dragend. */
-body.dnd-active, body.dnd-active *{cursor:grabbing !important}
-
 /* ─── Inbox card overrides: wider, with chip strip ─── */
 .item-card.inbox-card{
   flex:0 0 auto;
@@ -421,7 +416,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:49 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:43 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -2152,12 +2147,10 @@ function _wireDrag(){
       e.dataTransfer.effectAllowed = 'move';
       try { e.dataTransfer.setData('text/plain', id); } catch(_){}
       setTimeout(function(){ card.classList.add('dnd-dragging'); }, 0);
-      document.body.classList.add('dnd-active');
     });
 
     card.addEventListener('dragend', function(){
       card.classList.remove('dnd-dragging');
-      document.body.classList.remove('dnd-active');
       // If the drag was cancelled (no successful drop), _dnd.id is still set.
       // Smoothly clear shifts. On successful drop, _dndPerformDrop already
       // nulled _dnd.id and we DO want the FLIP from the ghost rect; transforms
