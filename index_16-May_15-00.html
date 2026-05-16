@@ -104,10 +104,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   display:flex;
   flex-direction:column;
   transition:box-shadow 0.15s, transform 0.15s, border-color 0.15s;
-  /* Hand cursor over the whole card — the entire card is draggable */
-  cursor:grab;
 }
-.item-card:active{cursor:grabbing}
 .item-card:hover{
   border-color:var(--brown);
   box-shadow:0 4px 12px rgba(0,0,0,0.04);
@@ -191,8 +188,8 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
   -webkit-box-orient:vertical;
   word-break:break-word;
   min-height:0;
-  /* State A — inherit grab from .item-card. Don't allow text selection. */
-  cursor:inherit;
+  /* State A — default: open-hand cursor to signal "draggable", no text selection */
+  cursor:grab;
   user-select:none;
   -webkit-user-select:none;
   outline:none;
@@ -232,7 +229,6 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
   border-radius:4px;
   text-decoration:none;
   z-index:2;
-  cursor:pointer;
   transition:background 0.12s, color 0.12s;
 }
 .card-note-btn:hover{background:rgba(0,0,0,0.08);color:var(--ink)}
@@ -425,7 +421,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:59 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">14:49 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
