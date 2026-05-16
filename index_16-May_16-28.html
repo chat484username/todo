@@ -354,14 +354,6 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 }
 .item-card.has-schedule-copy:hover{opacity:0.8}
 
-/* During a drag FROM a list, the original card stays visible in its list slot
-   but rendered as a greyed-out placeholder so the user sees where it lives. */
-.item-card.dnd-source-shadow{
-  opacity:0.5;
-  filter:saturate(0.5);
-  pointer-events:none;
-}
-
 /* ─── Down-arrow "send home" button on schedule-cards ─── */
 .card-send-home{
   position:absolute;top:6px;right:6px;
@@ -433,7 +425,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">16:27 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:42 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1871,11 +1863,7 @@ function _createGhost(){
   ].join(';');
   document.body.appendChild(ghost);
   _dnd.ghost = ghost;
-  // For list sources we want the original card to stay visible (greyed via
-  // dnd-source-shadow). For schedule sources, hide it so its flex slot is empty.
-  if(!_dnd.sourceIsList){
-    card.style.visibility = 'hidden';
-  }
+  card.style.visibility = 'hidden';
 }
 function _destroyGhost(){
   if(_dnd.ghost){
@@ -1905,7 +1893,7 @@ function _getTargetSlotViewportPos(ctx, targetIdx){
   var padT = parseFloat(style.paddingTop)  || 0;
   var gap  = parseFloat(style.gap) || 14;
   var isVert = _isVerticalContainer(el);
-  var cards = el.querySelectorAll('.item-card:not(.dnd-dragging):not(.dnd-source-shadow)');
+  var cards = el.querySelectorAll('.item-card:not(.dnd-dragging)');
   if(isVert){
     var cardH = cards.length > 0 ? cards[0].offsetHeight : 64;
     var cardW = cards.length > 0 ? cards[0].offsetWidth  : (el.offsetWidth - padL*2);
@@ -2002,10 +1990,7 @@ function _updateLiveLayout(){
   } else {
     var srcIds = _orderedIdsForCtx(_dnd.sourceCtx);
     var srcD = srcIds.indexOf(dragId);
-    // When the source is a list, the card stays visible in its slot (greyed
-    // via dnd-source-shadow). Don't close the source gap — the slot is
-    // "reserved" for the original placement.
-    if(srcD >= 0 && !_dnd.sourceIsList){
+    if(srcD >= 0){
       srcIds.forEach(function(id, i){
         if(id === dragId) return;
         shifts[id] = (i > srcD) ? -1 : 0;
@@ -2066,7 +2051,7 @@ function _clearLiveLayout(){
 // Cursor → insertion index inside a container. Filters out the dragging card.
 function _computeInsertIndex(el, clientX, clientY, dragId){
   var cards = Array.prototype.slice.call(
-    el.querySelectorAll('.item-card:not(.dnd-dragging):not(.dnd-source-shadow)')
+    el.querySelectorAll('.item-card:not(.dnd-dragging)')
   );
   if(!cards.length) return 0;
   var isVert = _isVerticalContainer(el);
@@ -2239,16 +2224,7 @@ function _beginDrag(){
   if(_activeName) _commitName(_activeName, true);
   if(_primedName) _exitPrimed(_primedName);
   document.body.classList.add('dnd-active');
-  // If the source is a list-card, leave it visible as a greyed shadow so the
-  // user sees where the item lives. Otherwise dim it the standard way.
-  _dnd.sourceIsList = (_dnd.sourceCtx && _dnd.sourceCtx.context === 'list');
-  if(_dnd.card){
-    if(_dnd.sourceIsList){
-      _dnd.card.classList.add('dnd-source-shadow');
-    } else {
-      _dnd.card.classList.add('dnd-dragging');
-    }
-  }
+  if(_dnd.card) _dnd.card.classList.add('dnd-dragging');
   _createDragPreview();
   _createGhost();
 }
@@ -2338,7 +2314,6 @@ function _resetDndState(){
   _destroyDragPreview();
   if(_dnd.card){
     _dnd.card.classList.remove('dnd-dragging');
-    _dnd.card.classList.remove('dnd-source-shadow');
     _dnd.card.style.visibility = '';
   }
   // If the drop didn't run a re-render (e.g. cancelled drag), clear ghost + shifts
