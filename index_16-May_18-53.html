@@ -354,6 +354,14 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 }
 .item-card.has-schedule-copy:hover{opacity:0.8}
 
+/* During a drag FROM a list, the original card stays visible in its list slot
+   but rendered as a greyed-out placeholder so the user sees where it lives. */
+.item-card.dnd-source-shadow{
+  opacity:0.5;
+  filter:saturate(0.5);
+  pointer-events:none;
+}
+
 /* ─── Down-arrow "send home" button on schedule-cards ─── */
 .card-send-home{
   position:absolute;top:6px;right:6px;
@@ -425,7 +433,7 @@ body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:52 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">18:45 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1999,29 +2007,36 @@ function _updateLiveLayout(){
   if(srcEl && !sameCtx){
     var srcItems = _visibleCardsWithRects(srcEl);
     var srcIsVert = _isVert(srcEl);
-    // Find the source slot (the .dnd-dragging hidden card) in DOM order, and
-    // shift everything after it up by one pitch.
-    var allSrc = Array.prototype.slice.call(srcEl.querySelectorAll('.item-card'));
-    var allSrcRects = allSrc.map(_naturalRect);
-    var srcPitchVal = _slotPitch(srcEl, allSrcRects);
-    var srcDomIdx = -1;
-    for(var si = 0; si < allSrc.length; si++){
-      if(allSrc[si].dataset.id === dragId){ srcDomIdx = si; break; }
-    }
-    allSrc.forEach(function(card, i){
-      var nat = allSrcRects[i];
-      if(i === srcDomIdx){
-        _applyTargetPos(card, nat, nat.top, nat.left, srcIsVert);
-      } else if(srcDomIdx >= 0 && i > srcDomIdx){
-        _applyTargetPos(card,
-          nat,
-          srcIsVert ? (nat.top - srcPitchVal) : nat.top,
-          srcIsVert ? nat.left : (nat.left - srcPitchVal),
-          srcIsVert);
-      } else {
-        _applyTargetPos(card, nat, nat.top, nat.left, srcIsVert);
+    if(_dnd.sourceIsList){
+      // Source-shadow holds the slot — nothing shifts
+      srcItems.forEach(function(it){
+        _applyTargetPos(it.card, it.nat, it.nat.top, it.nat.left, srcIsVert);
+      });
+    } else {
+      // Find the source slot (the .dnd-dragging hidden card) in DOM order, and
+      // shift everything after it up by one pitch.
+      var allSrc = Array.prototype.slice.call(srcEl.querySelectorAll('.item-card'));
+      var allSrcRects = allSrc.map(_naturalRect);
+      var srcPitchVal = _slotPitch(srcEl, allSrcRects);
+      var srcDomIdx = -1;
+      for(var si = 0; si < allSrc.length; si++){
+        if(allSrc[si].dataset.id === dragId){ srcDomIdx = si; break; }
       }
-    });
+      allSrc.forEach(function(card, i){
+        var nat = allSrcRects[i];
+        if(i === srcDomIdx){
+          _applyTargetPos(card, nat, nat.top, nat.left, srcIsVert);
+        } else if(srcDomIdx >= 0 && i > srcDomIdx){
+          _applyTargetPos(card,
+            nat,
+            srcIsVert ? (nat.top - srcPitchVal) : nat.top,
+            srcIsVert ? nat.left : (nat.left - srcPitchVal),
+            srcIsVert);
+        } else {
+          _applyTargetPos(card, nat, nat.top, nat.left, srcIsVert);
+        }
+      });
+    }
   }
 
   // ── TARGET-SIDE ──
@@ -2349,6 +2364,9 @@ function _beginDrag(){
   if(_activeName) _commitName(_activeName, true);
   if(_primedName) _exitPrimed(_primedName);
   document.body.classList.add('dnd-active');
+  // If the source is a list-card we may switch into the "greyed in place"
+  // mode once we know the target. Start in the standard hidden mode.
+  _dnd.sourceIsList = (_dnd.sourceCtx && _dnd.sourceCtx.context === 'list');
   if(_dnd.card){
     _dnd.card.classList.add('dnd-dragging');
   }
@@ -2418,6 +2436,9 @@ function _updateDragOver(clientX, clientY){
   if(!container) return;
   var ctx = _ctxFromContainerEl(container);
   if(!ctx) return;
+  // Switch the source card between greyed-in-place (cross-context) and
+  // hidden-slot (same-context reorder) modes based on the current target.
+  _applySourceMode(ctx);
   if(ctx.context === 'archived'){
     _dnd.targetCtx = ctx;
     _dnd.targetIndex = null;
@@ -2434,12 +2455,34 @@ function _updateDragOver(clientX, clientY){
   _updateLiveLayout();
 }
 
+// Decide which "source state" to apply based on whether the current drop target
+// is in the same context as the source. Cross-context (list → schedule) keeps
+// the source card visible-but-greyed in place. Same-context (reorder within
+// the source list/schedule) hides it so the slot can be reclaimed.
+function _applySourceMode(targetCtx){
+  if(!_dnd.card) return;
+  var sameCtx = _dnd.sourceCtx && targetCtx &&
+                _ctxKey(_dnd.sourceCtx) === _ctxKey(targetCtx);
+  if(_dnd.sourceIsList && !sameCtx){
+    // Cross-context drag from a list: greyed shadow in place
+    _dnd.card.classList.remove('dnd-dragging');
+    _dnd.card.classList.add('dnd-source-shadow');
+    _dnd.card.style.visibility = '';
+  } else {
+    // Same-context or non-list source: hide the slot so siblings can close
+    _dnd.card.classList.remove('dnd-source-shadow');
+    _dnd.card.classList.add('dnd-dragging');
+    _dnd.card.style.visibility = 'hidden';
+  }
+}
+
 function _resetDndState(){
   // Cleanup after either successful drop or abandoned drag
   document.body.classList.remove('dnd-active');
   _destroyDragPreview();
   if(_dnd.card){
     _dnd.card.classList.remove('dnd-dragging');
+    _dnd.card.classList.remove('dnd-source-shadow');
     _dnd.card.style.visibility = '';
   }
   // If the drop didn't run a re-render (e.g. cancelled drag), clear ghost + shifts
