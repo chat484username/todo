@@ -414,7 +414,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:13 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:05 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -452,9 +452,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
   <div class="topbar" style="margin-top:24px">
     <a href="deleted-todo.html" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;text-decoration:none">🗑 Deleted items</a>
-    <button onclick="diagnoseSave()" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;cursor:pointer">🩺 Test save</button>
   </div>
-  <pre id="diagnoseOut" style="display:none;margin-top:12px;padding:12px;background:#fff;border:1px solid var(--line);border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto"></pre>
 </div>
 
 <script>
@@ -535,99 +533,6 @@ async function saveIndex(){
     console.error('saveIndex network error', err);
     setStatus('Save failed: network error — see console', false);
   }
-}
-
-// Diagnostic: try one trivial write and dump the full GitHub response so we
-// can see exactly what's being refused and why.
-async function diagnoseSave(){
-  var out = document.getElementById('diagnoseOut');
-  out.style.display = 'block';
-  out.textContent = 'Running…';
-  var token = getToken();
-  var gistId = GIST_ID;
-  var lines = [];
-  lines.push('GIST_ID: ' + gistId);
-  lines.push('Token length: ' + (token ? token.length : 0));
-  lines.push('Token starts with: ' + (token ? token.substring(0, 4) + '…' : '(empty)'));
-  lines.push('');
-
-  // Step 1: check rate limit
-  try {
-    var rl = await fetch('https://api.github.com/rate_limit', {
-      headers: token ? { Authorization: 'token ' + token } : {}
-    });
-    var rldata = await rl.json();
-    lines.push('--- Rate limit ---');
-    if(rldata && rldata.resources && rldata.resources.core){
-      var c = rldata.resources.core;
-      var resetTime = new Date(c.reset * 1000).toLocaleTimeString();
-      lines.push('Core: ' + c.remaining + '/' + c.limit + ' (resets ' + resetTime + ')');
-    }
-    if(rldata && rldata.resources && rldata.resources.graphql){
-      var g = rldata.resources.graphql;
-      lines.push('GraphQL: ' + g.remaining + '/' + g.limit);
-    }
-    lines.push('');
-  } catch(e){
-    lines.push('Rate-limit check failed: ' + e.message);
-  }
-
-  // Step 2: check who the token belongs to
-  try {
-    var ur = await fetch('https://api.github.com/user', {
-      headers: { Authorization: 'token ' + token }
-    });
-    lines.push('--- Token owner ---');
-    lines.push('Status: ' + ur.status);
-    if(ur.ok){
-      var u = await ur.json();
-      lines.push('Logged-in as: ' + u.login);
-    } else {
-      var et = await ur.text();
-      lines.push(et.substring(0, 300));
-    }
-    lines.push('');
-  } catch(e){
-    lines.push('Token-owner check failed: ' + e.message);
-  }
-
-  // Step 3: check gist owner
-  try {
-    var gr = await fetch('https://api.github.com/gists/' + gistId, {
-      headers: { Authorization: 'token ' + token }
-    });
-    lines.push('--- Gist owner ---');
-    lines.push('Status: ' + gr.status);
-    if(gr.ok){
-      var g = await gr.json();
-      lines.push('Owner: ' + (g.owner ? g.owner.login : '(none)'));
-      lines.push('Public: ' + g.public);
-    } else {
-      var ge = await gr.text();
-      lines.push(ge.substring(0, 300));
-    }
-    lines.push('');
-  } catch(e){
-    lines.push('Gist-owner check failed: ' + e.message);
-  }
-
-  // Step 4: try a trivial PATCH (rewrite the index file to its current content)
-  try {
-    lines.push('--- Test PATCH ---');
-    var body = { files: { 'deals-index.json': { content: JSON.stringify(itemsIndex, null, 2) } } };
-    var pr = await fetch('https://api.github.com/gists/' + gistId, {
-      method: 'PATCH',
-      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    lines.push('Status: ' + pr.status + ' ' + pr.statusText);
-    var pt = await pr.text();
-    lines.push('Body: ' + pt.substring(0, 500));
-  } catch(e){
-    lines.push('PATCH failed: ' + e.message);
-  }
-
-  out.textContent = lines.join('\n');
 }
 
 async function loadItems(){
