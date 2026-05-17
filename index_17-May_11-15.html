@@ -414,7 +414,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">11:15 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">11:05 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -960,7 +960,7 @@ function cardHTML(id, ctx){
   // Greyed home-list copy when this same card is also showing in a schedule right now.
   var hasScheduleCopy = inList && !!d.status;
 
-  var link = ANALYSER_PAGE + '?deal=' + encodeURIComponent(id);
+  var link = ANALYSER_PAGE + '?item=' + encodeURIComponent(id);
   var rawName = d.name || id;
   // Plain-text version for tooltip/aria-label (no HTML)
   var nameTextOnly = rawName;
