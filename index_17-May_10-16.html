@@ -224,17 +224,6 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 }
 .card-name.placeholder-name{color:var(--mute);font-style:italic}
 
-/* Link rendered in place of a URL in the title. Hyperlink-blue text. The
-   cursor matches whichever state the parent title is in — in primed state
-   the cursor over the link becomes a finger-pointer for clickability. */
-.card-link{
-  color:#1668c1;
-  text-decoration:underline;
-  cursor:inherit;
-}
-.card-name.primed .card-link{cursor:pointer}
-.card-link:hover{color:#0d4f99}
-
 /* Note icon — top-right, only visible if item has a note */
 .card-note-btn{
   position:absolute;
@@ -441,7 +430,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">10:08 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">09:59 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -988,13 +977,7 @@ function cardHTML(id, ctx){
   var hasScheduleCopy = inList && !!d.status;
 
   var link = ANALYSER_PAGE + '?item=' + encodeURIComponent(id);
-  var rawName = d.name || id;
-  // Plain-text version for tooltip/aria-label (no HTML)
-  var nameTextOnly = rawName;
-  // HTML version where any URLs are rendered as <a class="card-link">Link</a>.
-  // We only display "Link" for URLs in state A/B; in state C the contenteditable
-  // is populated with the raw text (see _enterStateC).
-  var nameDisplay = _renderNameWithLinks(rawName);
+  var name = (d.name || id).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; });
 
   // ── Footer composition ──
   // Inbox cards: footer is a strip of coloured chips, one per list. No tick/cross
@@ -1048,8 +1031,8 @@ function cardHTML(id, ctx){
   }
 
   var nameHtml = isArchived
-    ? '<a class="card-name" href="' + link + '" title="' + escapeHtml(nameTextOnly) + '" draggable="false">' + nameDisplay + '</a>'
-    : '<span class="card-name" data-item-id="' + id + '" spellcheck="false" data-raw-name="' + escapeHtml(nameTextOnly) + '">' + nameDisplay + '</span>';
+    ? '<a class="card-name" href="' + link + '" title="' + name + '" draggable="false">' + name + '</a>'
+    : '<span class="card-name" data-item-id="' + id + '" spellcheck="false">' + name + '</span>';
 
   // Note icon: shown only when this item has a non-empty note. Clicking opens
   // the detail page to edit the note.
@@ -1131,28 +1114,6 @@ function escapeHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// Render a card-title string as HTML, replacing any URLs with a clickable
-// "Link" anchor styled like a hyperlink. Used for the display layer; the raw
-// text (with URLs intact) is kept on the element via data-raw-name so the
-// editor can show the actual URL text in state C.
-function _renderNameWithLinks(s){
-  s = String(s == null ? '' : s);
-  // Matches http(s)://… or www.… up to the next whitespace
-  var urlRe = /\b((?:https?:\/\/|www\.)[^\s]+)/gi;
-  var out = '';
-  var lastIdx = 0;
-  var m;
-  while((m = urlRe.exec(s)) !== null){
-    out += escapeHtml(s.slice(lastIdx, m.index));
-    var href = m[1];
-    if(/^www\./i.test(href)) href = 'http://' + href;
-    out += '<a class="card-link" href="' + escapeHtml(href) + '" target="_blank" rel="noopener noreferrer" draggable="false">Link</a>';
-    lastIdx = m.index + m[1].length;
-  }
-  out += escapeHtml(s.slice(lastIdx));
-  return out;
-}
-
 // ───── Card name state machine ─────
 //
 // Three states:
@@ -1177,20 +1138,16 @@ function _enterStateC(span){
   if(!span) return;
   if(_primedName && _primedName !== span) _exitPrimed(_primedName);
   _activeName = span;
-  // Capture the raw text (with URLs intact) — prefer data-raw-name set at
-  // render time. Fall back to textContent for archived/legacy cards.
-  var raw = span.getAttribute('data-raw-name');
-  if(raw == null) raw = (span.textContent || '').trim();
-  _activeNameOriginal = raw;
+  _activeNameOriginal = (span.textContent || '').trim();
   span.classList.remove('primed');
   span.classList.add('editing');
-  // Replace any Link anchors with the actual URL text so the user can edit it
-  span.textContent = raw;
   span.setAttribute('contenteditable', 'plaintext-only');
+  // The card itself shouldn't accept drags while we're editing the name
   var card = span.closest('.item-card');
   if(card) card.setAttribute('draggable', 'false');
   span.focus();
-  // Select all by default so typing replaces; right-arrow → end
+  // Select all text by default so typing replaces it. Right-arrow / click
+  // moves to the end / a specific position.
   var range = document.createRange();
   range.selectNodeContents(span);
   var sel = window.getSelection();
@@ -1216,31 +1173,21 @@ function _commitName(span, save){
   var id = span.getAttribute('data-item-id');
   if(!id) return;
   var raw = (span.textContent || '').replace(/\s+/g, ' ').trim();
-  var finalRaw;
   if(save){
     if(!raw){
-      finalRaw = _activeNameOriginal || id;
-    } else {
-      finalRaw = raw;
-      if(raw !== _activeNameOriginal && itemsIndex[id]){
+      span.textContent = _activeNameOriginal || id;
+    } else if(raw !== _activeNameOriginal){
+      if(itemsIndex[id]){
         itemsIndex[id].name = raw;
         itemsIndex[id].updated = new Date().toISOString();
         saveIndex();
+        document.querySelectorAll('.card-name[data-item-id="' + id + '"]').forEach(function(el){
+          if(el !== span && el.textContent !== raw) el.textContent = raw;
+        });
       }
     }
   } else {
-    finalRaw = _activeNameOriginal;
-  }
-  // Re-render display: replace URLs with Link anchors
-  span.setAttribute('data-raw-name', finalRaw);
-  span.innerHTML = _renderNameWithLinks(finalRaw);
-  // Sync any other DOM copy of this card
-  if(save && finalRaw !== _activeNameOriginal){
-    document.querySelectorAll('.card-name[data-item-id="' + id + '"]').forEach(function(el){
-      if(el === span) return;
-      el.setAttribute('data-raw-name', finalRaw);
-      el.innerHTML = _renderNameWithLinks(finalRaw);
-    });
+    span.textContent = _activeNameOriginal;
   }
   span.classList.remove('editing');
   span.removeAttribute('contenteditable');
@@ -1271,21 +1218,6 @@ document.addEventListener('mousedown', function(e){
   _mousedownY = e.clientY;
 }, true);
 
-// Suppress card-link clicks when the title isn't in the "primed" state.
-// In State A (default), the whole card is for dragging — clicking a link in
-// the title should NOT open it; instead the click transitions to State B.
-// In State B (primed), clicking the link opens it (default behaviour).
-document.addEventListener('click', function(e){
-  var linkEl = e.target.closest && e.target.closest('.card-link');
-  if(!linkEl) return;
-  var span = linkEl.closest('.card-name');
-  if(!span) return;
-  if(!span.classList.contains('primed') && !span.classList.contains('editing')){
-    e.preventDefault();
-    e.stopPropagation();
-  }
-}, true);
-
 document.addEventListener('mouseup', function(e){
   if(!_mousedownName) return;
   var span = _mousedownName;
@@ -1294,17 +1226,10 @@ document.addEventListener('mouseup', function(e){
   // drop, but during the drag dragstart fired and we treat that as a drag-not-click.
   var dx = Math.abs(e.clientX - _mousedownX);
   var dy = Math.abs(e.clientY - _mousedownY);
-  if(dx > DRAG_THRESHOLD_PX || dy > DRAG_THRESHOLD_PX) return;
+  if(dx > DRAG_THRESHOLD_PX || dy > DRAG_THRESHOLD_PX) return; // was a drag, ignore
   // Did the mouseup happen over the same name span?
   var upSpan = e.target.closest('.card-name');
   if(upSpan !== span) return;
-  // If the user clicked on a Link inside the title while the title was primed,
-  // let the anchor's default click behaviour handle it (opens the URL). Don't
-  // transition to editing mode.
-  if(e.target.closest && e.target.closest('.card-link')){
-    if(span.classList.contains('primed')) return;
-    // From state A, clicking a link still just primes (consistent rule)
-  }
   // Transition: A → B, or B → C
   if(span.classList.contains('primed')){
     _enterStateC(span);
