@@ -414,7 +414,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:17 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:13 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -515,32 +515,9 @@ async function getGist(){
   catch(e){ setStatus('Error reading Gist: ' + e.message, false); return null; }
 }
 
-// ── Save scheduling ──
-// Public saveIndex() now just schedules a save. Multiple rapid calls collapse
-// into a single network round-trip. On 403/rate-limit, the real save backs off
-// and retries automatically (30s → 1m → 2m → 5m, capped).
-var _saveTimer = null;
-var _saveRetryDelay = 0;       // ms; non-zero while retrying
-var _saveInFlight = false;
-var _savePending = false;
-var SAVE_DEBOUNCE_MS = 1500;
-
-function saveIndex(){
-  // While a retry is in flight, just mark the queue dirty — the retry will
-  // pick up the latest itemsIndex when it fires.
-  if(_saveInFlight){ _savePending = true; return; }
-  if(_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(_doSaveIndexNow, _saveRetryDelay || SAVE_DEBOUNCE_MS);
-}
-
-async function _doSaveIndexNow(){
-  _saveTimer = null;
-  if(_saveInFlight){ _savePending = true; return; }
+async function saveIndex(){
   var token = getToken();
   if(!token) return;
-  _saveInFlight = true;
-  _savePending = false;
-  setStatus('Saving…');
   var body = { files: { 'deals-index.json': { content: JSON.stringify(itemsIndex, null, 2) } } };
   try {
     var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
@@ -548,56 +525,16 @@ async function _doSaveIndexNow(){
       headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    if(res.ok){
-      _saveRetryDelay = 0;
-      setStatus('Saved ✓');
-      _saveInFlight = false;
-      if(_savePending){
-        _savePending = false;
-        saveIndex();
-      }
-      return;
-    }
-    var txt = '';
-    try { txt = await res.text(); } catch(_){}
-    console.error('saveIndex failed', res.status, txt);
-    if(res.status === 403 || res.status === 429){
-      // Rate-limited — back off and retry
-      _saveRetryDelay = _nextRetryDelay(_saveRetryDelay);
-      var secs = Math.round(_saveRetryDelay / 1000);
-      setStatus('Rate-limited by GitHub — retrying in ' + secs + 's', false);
-      _saveInFlight = false;
-      _savePending = true;
-      _saveTimer = setTimeout(_doSaveIndexNow, _saveRetryDelay);
-    } else {
-      // Hard failure — surface to user, don't auto-retry
-      setStatus('Save failed: HTTP ' + res.status, false);
-      _saveInFlight = false;
+    if(!res.ok){
+      var txt = '';
+      try { txt = await res.text(); } catch(_){}
+      console.error('saveIndex failed', res.status, txt);
+      setStatus('Save failed: HTTP ' + res.status + ' — see console', false);
     }
   } catch(err){
     console.error('saveIndex network error', err);
-    _saveRetryDelay = _nextRetryDelay(_saveRetryDelay);
-    var secs2 = Math.round(_saveRetryDelay / 1000);
-    setStatus('Network error — retrying in ' + secs2 + 's', false);
-    _saveInFlight = false;
-    _savePending = true;
-    _saveTimer = setTimeout(_doSaveIndexNow, _saveRetryDelay);
+    setStatus('Save failed: network error — see console', false);
   }
-}
-
-function _nextRetryDelay(prev){
-  // 30s → 60s → 2m → 5m → 5m → …
-  if(!prev) return 30 * 1000;
-  if(prev <= 30 * 1000)  return 60 * 1000;
-  if(prev <= 60 * 1000)  return 120 * 1000;
-  return 300 * 1000;
-}
-
-// Force a save immediately (used by tab-close handlers if we add any)
-async function flushSaveIndex(){
-  if(_saveTimer){ clearTimeout(_saveTimer); _saveTimer = null; }
-  if(_saveInFlight) return;
-  await _doSaveIndexNow();
 }
 
 // Diagnostic: try one trivial write and dump the full GitHub response so we
