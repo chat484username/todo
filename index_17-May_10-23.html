@@ -441,7 +441,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">10:22 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">10:08 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1169,7 +1169,6 @@ var _activeName = null;          // span currently in state C
 var _activeNameOriginal = '';    // its original text, for Escape revert
 var _primedName = null;          // span currently in state B
 var _mousedownName = null;       // span the user pressed mouse-button down on
-var _mousedownSpanWasPrimed = false; // was the title already primed at mousedown?
 var _mousedownX = 0;
 var _mousedownY = 0;
 var DRAG_THRESHOLD_PX = 4;        // mouse movement beyond this = drag, not click
@@ -1263,9 +1262,6 @@ document.addEventListener('mousedown', function(e){
   }
   // Already editing this span — let normal text-editing behaviour happen
   if(span === _activeName) return;
-  // Track whether this span was primed BEFORE this mousedown started — used by
-  // the click handler below to decide if a card-link click should open.
-  _mousedownSpanWasPrimed = span.classList.contains('primed');
   // If clicking a different primed/active card-name, exit those states first
   if(_activeName && _activeName !== span) _commitName(_activeName, true);
   if(_primedName && _primedName !== span) _exitPrimed(_primedName);
@@ -1275,20 +1271,19 @@ document.addEventListener('mousedown', function(e){
   _mousedownY = e.clientY;
 }, true);
 
-// Suppress card-link clicks unless the title was already primed BEFORE the
-// mousedown. State A: first click primes (link does NOT open). State B
-// (already primed): clicking the link opens it.
+// Suppress card-link clicks when the title isn't in the "primed" state.
+// In State A (default), the whole card is for dragging — clicking a link in
+// the title should NOT open it; instead the click transitions to State B.
+// In State B (primed), clicking the link opens it (default behaviour).
 document.addEventListener('click', function(e){
   var linkEl = e.target.closest && e.target.closest('.card-link');
   if(!linkEl) return;
   var span = linkEl.closest('.card-name');
   if(!span) return;
-  if(!_mousedownSpanWasPrimed){
+  if(!span.classList.contains('primed') && !span.classList.contains('editing')){
     e.preventDefault();
     e.stopPropagation();
   }
-  // Reset for next click
-  _mousedownSpanWasPrimed = false;
 }, true);
 
 document.addEventListener('mouseup', function(e){
