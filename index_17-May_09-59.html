@@ -116,15 +116,10 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .item-card.archived:hover{opacity:0.85}
 .item-card.dnd-dragging{opacity:0.35}
 
-/* Drop indicator — dashed line between cards during drag */
-.dnd-bar{
-  position:fixed;
-  z-index:1000;
-  pointer-events:none;
-  display:none;
-}
-.dnd-bar.horizontal{border-top:2px dashed var(--brown)}
-.dnd-bar.vertical{border-left:2px dashed var(--brown)}
+/* While any drag is active, force the closed-fist cursor everywhere. The
+   browser's native HTML5 drag API normally overrides CSS :active, so we add
+   this class to <body> on dragstart and remove it on dragend. */
+body.dnd-active, body.dnd-active *{cursor:grabbing !important}
 
 /* ─── Inbox card overrides: wider, with chip strip ─── */
 .item-card.inbox-card{
@@ -430,7 +425,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">09:59 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">19:28 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1710,44 +1705,98 @@ function _rmToast(msg, type) {
 // applied to the data model. We re-render after every drop.
 // ═══════════════════════════════════════════════════════════════════════
 
-var _dnd = { id:null, sourceCtx:null, targetCtx:null, targetIndex:null, bar:null };
+var _dnd = {
+  id: null,
+  sourceCtx: null,
+  targetCtx: null,
+  targetIndex: null,
+  bar: null,
+  ghost: null
+};
 
 function _ctxFromCard(card){
   return {
     context: card.getAttribute('data-ctx') || 'schedule',
     schedule: card.getAttribute('data-ctx-schedule') || null,
-    list:    card.getAttribute('data-ctx-list') || null
+    list: card.getAttribute('data-ctx-list') || null
   };
 }
 
-function _ctxFromTarget(targetEl){
-  var id = targetEl.id || '';
-  if(id === 'cardsArchived') return { context:'archived' };
+function _ctxKey(ctx){
+  if(!ctx) return '';
+  if(ctx.context === 'archived') return 'archived';
+  if(ctx.context === 'schedule') return 'sched:' + ctx.schedule;
+  if(ctx.context === 'list') return 'list:' + ctx.list;
+  return '';
+}
+
+function _ctxFromContainerEl(el){
+  // Container element → context object. Containers are .list-cards (schedule
+  // or archived) and .v-list-cards (list).
+  var id = el.id || '';
+  if(id === 'cardsArchived') return { context: 'archived' };
   if(id.indexOf('cardsSched_') === 0){
-    return { context:'schedule', schedule: id.slice('cardsSched_'.length) };
+    return { context: 'schedule', schedule: id.slice('cardsSched_'.length) };
   }
   if(id.indexOf('cardsList_') === 0){
-    return { context:'list', list: id.slice('cardsList_'.length) };
+    return { context: 'list', list: id.slice('cardsList_'.length) };
   }
   return null;
 }
 
+function _containerElForCtx(ctx){
+  if(!ctx) return null;
+  if(ctx.context === 'archived') return document.getElementById('cardsArchived');
+  if(ctx.context === 'schedule') return document.getElementById('cardsSched_' + ctx.schedule);
+  if(ctx.context === 'list') return document.getElementById('cardsList_' + ctx.list);
+  return null;
+}
+
+function _isVerticalContainer(el){
+  return el && el.classList && el.classList.contains('v-list-cards');
+}
+
+// Return the ordered card IDs for a given context, used during DnD to compute
+// indices. Mirrors _orderedLaneIds in the property tool but for the schedule/
+// list axes.
 function _orderFieldForCtx(ctx){
   if(!ctx) return '_order';
   if(ctx.context === 'list') return '_listOrder';
-  return '_schedOrder';
+  return '_schedOrder'; // schedule or archived
 }
 
-// Re-index a sibling group so `id` sits at position `index`. Per-context order field.
-function _placeAtIndex(id, predicate, index, ctx){
+function _orderedIdsForCtx(ctx){
+  if(!ctx) return [];
   var orderField = _orderFieldForCtx(ctx);
-  var siblings = Object.keys(itemsIndex).filter(function(otherId){
-    if(otherId === id) return false;
-    var od = itemsIndex[otherId];
-    if(!od || od.deleted || od.archived) return false;
-    return predicate(otherId, od);
-  });
-  siblings.sort(function(a, b){
+  var sorter = _makeDndSort(orderField);
+  if(ctx.context === 'archived'){
+    return Object.keys(itemsIndex).filter(function(id){
+      var d = itemsIndex[id];
+      return d && !d.deleted && d.archived;
+    }).sort(sorter);
+  }
+  if(ctx.context === 'schedule'){
+    var sk = ctx.schedule;
+    return Object.keys(itemsIndex).filter(function(id){
+      var d = itemsIndex[id];
+      if(!d || d.deleted || d.archived) return false;
+      if(sk === INBOX_KEY) return d.status === INBOX_KEY && !d.list;
+      return d.status === sk;
+    }).sort(sorter);
+  }
+  if(ctx.context === 'list'){
+    var lk = ctx.list;
+    return Object.keys(itemsIndex).filter(function(id){
+      var d = itemsIndex[id];
+      if(!d || d.deleted || d.archived) return false;
+      return d.list === lk;
+    }).sort(sorter);
+  }
+  return [];
+}
+
+function _makeDndSort(orderField){
+  return function(a, b){
     var da = itemsIndex[a], db = itemsIndex[b];
     var oa = da[orderField] != null ? da[orderField] : da._order;
     var ob = db[orderField] != null ? db[orderField] : db._order;
@@ -1755,7 +1804,23 @@ function _placeAtIndex(id, predicate, index, ctx){
     if(oa != null) return -1;
     if(ob != null) return  1;
     return new Date(db.updated || 0) - new Date(da.updated || 0);
+  };
+}
+
+// Re-index a sibling group so `id` sits at position `index`. Shifts other
+// cards to make room. Writes into the per-context order field (`_schedOrder`
+// for schedules/archived, `_listOrder` for lists) so reordering in one
+// context doesn't disturb other contexts where this card also appears.
+function _placeAtIndex(id, predicate, index, ctx){
+  var orderField = _orderFieldForCtx(ctx);
+  var sorter = _makeDndSort(orderField);
+  var siblings = Object.keys(itemsIndex).filter(function(otherId){
+    if(otherId === id) return false;
+    var od = itemsIndex[otherId];
+    if(!od || od.deleted || od.archived) return false;
+    return predicate(otherId, od);
   });
+  siblings.sort(sorter);
   index = Math.max(0, Math.min(index, siblings.length));
   itemsIndex[id][orderField] = index;
   var pos = 0;
@@ -1766,93 +1831,378 @@ function _placeAtIndex(id, predicate, index, ctx){
   });
 }
 
-// Compute insertion index by cursor midpoint comparison
-function _computeInsertIndex(containerEl, clientX, clientY, dragId){
-  var children = Array.prototype.filter.call(
-    containerEl.children,
-    function(c){ return c.classList && c.classList.contains('item-card') && c.dataset.id !== dragId; }
-  );
-  if(!children.length) return 0;
-  var isVertical = containerEl.classList.contains('v-list-cards');
-  for(var i = 0; i < children.length; i++){
-    var rect = children[i].getBoundingClientRect();
-    var mid = isVertical ? (rect.top + rect.height/2) : (rect.left + rect.width/2);
-    var cursor = isVertical ? clientY : clientX;
-    if(cursor < mid) return i;
+// ── Drop bar — disabled (ghost outline is the sole visual indicator) ──
+function _ensureDnDBar(){ return null; }
+function _showBar(){}
+function _hideBar(){}
+
+// ── Ghost outline ──
+// A dashed-outline rectangle positioned `fixed` on <body>, mirroring the
+// dragged card's dimensions. Travels between contexts without being clipped.
+// Ghost outline disabled — the drag preview itself is the visual indicator
+function _createGhost(){}
+function _destroyGhost(){
+  if(_dnd.id){
+    var card = document.querySelector('.item-card[data-id="' + _dnd.id + '"]');
+    if(card) card.style.visibility = '';
   }
-  return children.length;
 }
 
-// Drop indicator — a floating dashed line at the gap
-function _ensureDndBar(){
-  if(_dnd.bar) return _dnd.bar;
-  var bar = document.createElement('div');
-  bar.className = 'dnd-bar';
-  document.body.appendChild(bar);
-  _dnd.bar = bar;
-  return bar;
+// ── Clean geometry model ──
+//
+// Single source of truth: for any container during a drag, compute the
+// "natural slots" — the untransformed positions cards would occupy if all
+// transforms were stripped. Cards in the natural slots have a fixed position.
+// On every mousemove we:
+//   1. Read every card's natural position (rect minus current translateY).
+//   2. Sort by natural Y (or X for horizontal).
+//   3. Use the cursor's position relative to those natural midpoints to pick
+//      an insertion slot index.
+//   4. Compute target Y for each card: cards above insertion stay; cards at
+//      or below insertion move down by one pitch.
+//   5. Apply translateY = (targetY - naturalY) to each card.
+//   6. Ghost goes to the freed slot's position.
+
+var _lastLayoutKey = null;
+
+function _isVert(el){
+  return el && el.classList && el.classList.contains('v-list-cards');
 }
-function _hideDndBar(){
-  if(_dnd.bar) _dnd.bar.style.display = 'none';
+
+// Read a card's natural (untransformed) rect by subtracting current translateX/Y
+function _naturalRect(card){
+  var r = card.getBoundingClientRect();
+  var t = card.style.transform || '';
+  var tx = 0, ty = 0;
+  var mx = t.match(/translateX\((-?\d+(?:\.\d+)?)px\)/);
+  var my = t.match(/translateY\((-?\d+(?:\.\d+)?)px\)/);
+  if(mx) tx = parseFloat(mx[1]);
+  if(my) ty = parseFloat(my[1]);
+  return {
+    left:   r.left - tx,
+    top:    r.top  - ty,
+    right:  r.right  - tx,
+    bottom: r.bottom - ty,
+    width:  r.width,
+    height: r.height
+  };
 }
-function _showDndBar(containerEl, insertIndex){
-  var children = Array.prototype.filter.call(
-    containerEl.children,
-    function(c){ return c.classList && c.classList.contains('item-card'); }
+
+// Compute the pitch (slot-to-slot distance) for the container's primary axis.
+// Reads two adjacent cards' natural positions; falls back to card size + gap.
+function _slotPitch(containerEl, naturalRects){
+  var isVert = _isVert(containerEl);
+  if(naturalRects.length >= 2){
+    return isVert
+      ? naturalRects[1].top  - naturalRects[0].top
+      : naturalRects[1].left - naturalRects[0].left;
+  }
+  var gap = parseFloat(window.getComputedStyle(containerEl).gap) || 14;
+  if(naturalRects.length === 1){
+    return isVert
+      ? naturalRects[0].height + gap
+      : naturalRects[0].width  + gap;
+  }
+  return isVert ? 74 : 186;
+}
+
+// Visible cards in a container, in DOM order, each paired with its natural rect.
+// "Visible" = not the hidden source and not a removed-ghost. The source-shadow
+// (still occupying its slot) IS counted as visible — it sits in its natural slot.
+function _visibleCardsWithRects(containerEl){
+  var cards = Array.prototype.slice.call(
+    containerEl.querySelectorAll('.item-card:not(.dnd-dragging)')
   );
-  var isVertical = containerEl.classList.contains('v-list-cards');
-  var bar = _ensureDndBar();
-  bar.className = 'dnd-bar ' + (isVertical ? 'horizontal' : 'vertical');
-  var containerRect = containerEl.getBoundingClientRect();
-  if(isVertical){
-    var top;
-    if(!children.length){
-      top = containerRect.top + 8;
-    } else if(insertIndex >= children.length){
-      var last = children[children.length-1].getBoundingClientRect();
-      top = last.bottom + 4;
-    } else {
-      var atRect = children[insertIndex].getBoundingClientRect();
-      top = atRect.top - 6;
+  return cards.map(function(c){ return { card: c, nat: _naturalRect(c) }; });
+}
+
+// Insertion index from cursor position, comparing against the natural midpoints
+// of visible cards. Returns 0..N where N = number of visible cards.
+function _insertIndexAt(containerEl, items, clientX, clientY){
+  if(!items.length) return 0;
+  var isVert = _isVert(containerEl);
+  for(var i = 0; i < items.length; i++){
+    var nat = items[i].nat;
+    var mid = isVert ? (nat.top + nat.height/2) : (nat.left + nat.width/2);
+    var c   = isVert ? clientY : clientX;
+    if(c < mid) return i;
+  }
+  return items.length;
+}
+
+// Apply translateY (or X) to a card so it sits at targetTop (or Left)
+function _applyTargetPos(card, nat, targetTop, targetLeft, isVert){
+  var shift = isVert ? (targetTop - nat.top) : (targetLeft - nat.left);
+  if(Math.abs(shift) < 0.5){
+    if(card.style.transform) card.style.transform = '';
+    return;
+  }
+  var t = isVert ? ('translateY(' + shift + 'px)') : ('translateX(' + shift + 'px)');
+  if(card.style.transform !== t) card.style.transform = t;
+}
+
+// Position the ghost at viewport (left, top) with optional width/height
+function _ghostTo(left, top, width, height){
+  if(!_dnd.ghost) return;
+  _dnd.ghost.style.left = left + 'px';
+  _dnd.ghost.style.top  = top  + 'px';
+  if(width  != null) _dnd.ghost.style.width  = width  + 'px';
+  if(height != null) _dnd.ghost.style.height = height + 'px';
+}
+
+function _updateLiveLayout(){
+  var srcKey = _ctxKey(_dnd.sourceCtx);
+  var tgtKey = _ctxKey(_dnd.targetCtx);
+  var key = (_dnd.id || '') + '|' + tgtKey + '|' + (_dnd.targetIndex == null ? '' : _dnd.targetIndex);
+  if(key === _lastLayoutKey) return;
+  _lastLayoutKey = key;
+  if(!_dnd.id || !_dnd.targetCtx || _dnd.targetIndex == null) return;
+
+  if(!_dnd.ghost) _createGhost();
+
+  var sameCtx = (srcKey === tgtKey);
+  var dragId = _dnd.id;
+  var targetIdx = _dnd.targetIndex;
+
+  var srcEl = _containerElForCtx(_dnd.sourceCtx);
+  var tgtEl = _containerElForCtx(_dnd.targetCtx);
+
+  // ── SOURCE-SIDE (only when different from target) ──
+  if(srcEl && !sameCtx){
+    var srcItems = _visibleCardsWithRects(srcEl);
+    var srcIsVert = _isVert(srcEl);
+    // Find the source slot (the .dnd-dragging hidden card) in DOM order, and
+    // shift everything after it up by one pitch.
+    var allSrc = Array.prototype.slice.call(srcEl.querySelectorAll('.item-card'));
+    var allSrcRects = allSrc.map(_naturalRect);
+    var srcPitchVal = _slotPitch(srcEl, allSrcRects);
+    var srcDomIdx = -1;
+    for(var si = 0; si < allSrc.length; si++){
+      if(allSrc[si].dataset.id === dragId){ srcDomIdx = si; break; }
     }
-    bar.style.left = (containerRect.left + 4) + 'px';
-    bar.style.top = top + 'px';
-    bar.style.width = (containerRect.width - 8) + 'px';
-    bar.style.height = '0px';
+    allSrc.forEach(function(card, i){
+      var nat = allSrcRects[i];
+      if(i === srcDomIdx){
+        _applyTargetPos(card, nat, nat.top, nat.left, srcIsVert);
+      } else if(srcDomIdx >= 0 && i > srcDomIdx){
+        _applyTargetPos(card,
+          nat,
+          srcIsVert ? (nat.top - srcPitchVal) : nat.top,
+          srcIsVert ? nat.left : (nat.left - srcPitchVal),
+          srcIsVert);
+      } else {
+        _applyTargetPos(card, nat, nat.top, nat.left, srcIsVert);
+      }
+    });
+  }
+
+  // ── TARGET-SIDE ──
+  // Read all cards in target container, sort by natural position. The dragged
+  // source card (if in this container) is hidden but occupies a natural slot.
+  // We treat its natural slot as part of the "natural slot grid" but don't
+  // shift it.
+  var allTgt = Array.prototype.slice.call(tgtEl.querySelectorAll('.item-card'));
+  var allTgtRects = allTgt.map(_naturalRect);
+  var tgtIsVert = _isVert(tgtEl);
+  var tgtPitchVal = _slotPitch(tgtEl, allTgtRects);
+
+  // Compute the "visible cards" in this container — these are the ones
+  // _computeInsertIndex would have iterated. The source card (if here) is
+  // skipped because it's .dnd-dragging.
+  var visibleIndices = []; // DOM indices of visible cards
+  for(var ti = 0; ti < allTgt.length; ti++){
+    if(!allTgt[ti].classList.contains('dnd-dragging')) visibleIndices.push(ti);
+  }
+
+  // For each visible card at visibleIndices[v], its destination visual slot is:
+  //   v  if v <  targetIdx
+  //   v+1 if v >= targetIdx
+  // Map that destination back to a *natural slot index* (the slot grid in the
+  // target container's coordinate system). The natural slot grid is just
+  // 0..allTgt.length-1, but if there's a source card in this container, its
+  // slot is "occupied" by a hidden card. The destination natural slot for a
+  // visible card is computed as: the d-th gap in the grid (where d = its
+  // destination visual slot), where gaps are slots NOT containing a same-ctx
+  // source card.
+  //
+  // Simpler approach: build a list of "available natural slots" in the target.
+  // - If same-ctx: source is at one of the natural slots (DOM index = source
+  //   position). The dragged card will go into the slot that ENDS UP at
+  //   visual position targetIdx. The other slots are taken by the other
+  //   visible cards in their visual order.
+  // - If cross-ctx: source isn't in target, so all natural slots are available
+  //   for visible cards plus the ghost. The ghost takes one of the slots
+  //   (specifically: after the drop, there will be N+1 slots; one extra is
+  //   appended).
+
+  // To keep things uniform: define an array `naturalSlotYs` of length
+  // (visibleIndices.length + 1). These are the Y positions of the N+1 slots
+  // available after we make room for the ghost.
+  //
+  // For same-context: the source's natural slot is one of the existing slots
+  // (visible.length + 1 == allTgt.length). naturalSlotYs[k] = allTgtRects[k].top.
+  //
+  // For cross-context: we need to add an extra slot at the end. The N existing
+  // slots are at allTgtRects[0..N-1].top. The extra slot is at
+  // allTgtRects[N-1].top + pitch (or 0 if empty).
+
+  var naturalSlotYs = [];
+  var naturalSlotXs = [];
+  if(sameCtx){
+    for(var k = 0; k < allTgtRects.length; k++){
+      naturalSlotYs.push(allTgtRects[k].top);
+      naturalSlotXs.push(allTgtRects[k].left);
+    }
   } else {
-    var left;
-    if(!children.length){
-      left = containerRect.left + 8;
-    } else if(insertIndex >= children.length){
-      var last = children[children.length-1].getBoundingClientRect();
-      left = last.right + 5;
-    } else {
-      var atRect = children[insertIndex].getBoundingClientRect();
-      left = atRect.left - 7;
+    for(var k2 = 0; k2 < allTgtRects.length; k2++){
+      naturalSlotYs.push(allTgtRects[k2].top);
+      naturalSlotXs.push(allTgtRects[k2].left);
     }
-    bar.style.left = left + 'px';
-    bar.style.top = (containerRect.top + 4) + 'px';
-    bar.style.height = (containerRect.height - 16) + 'px';
-    bar.style.width = '0px';
+    // Add one extra trailing slot
+    if(allTgtRects.length){
+      var last = allTgtRects[allTgtRects.length - 1];
+      naturalSlotYs.push(last.top  + (tgtIsVert ? tgtPitchVal : 0));
+      naturalSlotXs.push(last.left + (tgtIsVert ? 0 : tgtPitchVal));
+    } else {
+      var trect = tgtEl.getBoundingClientRect();
+      var st = window.getComputedStyle(tgtEl);
+      naturalSlotYs.push(trect.top  + (parseFloat(st.paddingTop)  || 0));
+      naturalSlotXs.push(trect.left + (parseFloat(st.paddingLeft) || 0));
+    }
   }
-  bar.style.display = 'block';
+
+  // The dragged card occupies destination visual slot `targetIdx`. That maps
+  // to natural slot index... we want the slot AT position targetIdx in the
+  // "available slots" list. For same-context, the source's own DOM slot is
+  // counted but it's hidden — that slot is exactly where the ghost lands when
+  // the visual layout positions it.
+  //
+  // Cleanest: build an array of destination visual slot → natural slot index.
+  // Order: visible cards fill in their visual positions, ghost takes target.
+  //
+  // Visible cards in DOM order (visibleIndices) have natural slot positions
+  // at... well, the source's natural slot is HIDDEN but real. So in the
+  // natural slot grid, indices = 0..allTgt.length-1, and visible cards occupy
+  // all of those except the source's DOM index.
+  //
+  // For each destination visual slot d (0..N where N = visibleIndices.length):
+  //   We need to pick a natural slot index.
+  // The mapping is: in the destination final order, slot d holds whichever
+  // card. Translating to natural slot positions, since natural slots are
+  // already in geometric order, the d-th occupied natural slot is just the
+  // d-th element of [0..length-1] (or [0..length] for cross-ctx).
+  //
+  // I.e. **natural slot at visual position d = d**. Always.
+  //
+  // Proof: natural slot k has Y position = first_top + k*pitch. Visual slot d
+  // has Y position = first_top + d*pitch (cards are uniformly spaced). So
+  // visual slot d sits at natural position d.
+
+  // So each visible card with visual slot v maps to natural position v.
+  visibleIndices.forEach(function(domIdx, v){
+    var card = allTgt[domIdx];
+    var nat  = allTgtRects[domIdx];
+    var visualSlot = (v < targetIdx) ? v : v + 1;
+    var targetTop  = naturalSlotYs[visualSlot];
+    var targetLeft = naturalSlotXs[visualSlot];
+    _applyTargetPos(card, nat, targetTop, targetLeft, tgtIsVert);
+  });
+
+  // Source (if same-context): stays at its natural slot, hidden
+  if(sameCtx){
+    for(var s = 0; s < allTgt.length; s++){
+      if(allTgt[s].classList.contains('dnd-dragging')){
+        var nat2 = allTgtRects[s];
+        _applyTargetPos(allTgt[s], nat2, nat2.top, nat2.left, tgtIsVert);
+        break;
+      }
+    }
+  }
+
+  // Clear stale transforms on other containers
+  document.querySelectorAll('.list-cards, .v-list-cards').forEach(function(el){
+    if(el === srcEl || el === tgtEl) return;
+    el.querySelectorAll('.item-card').forEach(function(card){
+      if(card.style.transform) card.style.transform = '';
+    });
+  });
 }
 
-function _performDrop(dragId, srcCtx, dstCtx, dstIndex){
+function _clearLiveLayout(){
+  _destroyGhost();
+  document.querySelectorAll('.item-card').forEach(function(card){
+    if(card.style.transform){
+      card.style.transition = 'transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)';
+      card.style.transform = '';
+      setTimeout(function(){ card.style.transition = ''; }, 200);
+    }
+  });
+  _lastLayoutKey = null;
+}
+
+// Bar functions kept as no-ops (we don't show a bar)
+function _hideBar(){}
+function _showBar(){}
+function _ensureDnDBar(){ return null; }
+function _showBarForTarget(){}
+
+// Cursor → insertion index. Uses the natural midpoints (untransformed) of
+// visible cards in the container so the index is stable as cards animate.
+function _computeInsertIndex(el, clientX, clientY, dragId){
+  var items = _visibleCardsWithRects(el);
+  if(!items.length) return 0;
+  return _insertIndexAt(el, items, clientX, clientY);
+}
+
+function _updateIndicator(el, ctx, clientX, clientY){
+  var idx = _computeInsertIndex(el, clientX, clientY, _dnd.id);
+  _dnd.targetCtx = ctx;
+  _dnd.targetIndex = idx;
+  if(ctx.context === 'archived'){
+    _hideBar();
+    // Still want the ghost roughly in the archived strip
+    if(!_dnd.ghost) _createGhost();
+    return;
+  }
+  _updateLiveLayout();
+}
+
+// ── Drop ──
+async function _dndPerformDrop(){
+  var dragId = _dnd.id;
+  var srcCtx = _dnd.sourceCtx;
+  var dstCtx = _dnd.targetCtx;
+  var dstIdx = _dnd.targetIndex;
+  _hideBar();
+  _destroyDragPreview();
+  _dnd.id = null;
+  if(!dragId || !dstCtx) return;
   var d = itemsIndex[dragId];
   if(!d) return;
-  var oldRects = captureRects();
 
+  // Strip live-shift transforms cleanly with no transition so the cards don't
+  // animate back from their shifted positions. Then drop the ghost — the
+  // ghost itself gave the user the "where it'll land" signal, so we don't
+  // need a FLIP animation on top.
+  document.querySelectorAll('.item-card').forEach(function(card){
+    if(card.style.transform || card.style.transition){
+      card.style.transition = 'none';
+      card.style.transform = '';
+    }
+  });
+  _destroyGhost();
+
+  // Archive
   if(dstCtx.context === 'archived'){
     d.archived = true;
     d.status = null;
     d.updated = new Date().toISOString();
     saveIndex();
     renderItems();
-    animateFlip(oldRects);
     return;
   }
 
+  // Data-model updates
   if(dstCtx.context === 'schedule'){
     if(dstCtx.schedule === INBOX_KEY){
       d.status = INBOX_KEY;
@@ -1863,13 +2213,13 @@ function _performDrop(dragId, srcCtx, dstCtx, dstIndex){
         d.status = dstCtx.schedule;
       } else if(srcCtx.context === 'schedule' && srcCtx.schedule === INBOX_KEY){
         setStatus('Drag Inbox cards into a list first to give them a home', false);
+        renderItems();
         return;
       } else {
         d.status = dstCtx.schedule;
       }
     }
   }
-
   if(dstCtx.context === 'list'){
     if(srcCtx.context === 'schedule' && srcCtx.schedule !== INBOX_KEY){
       d.list = dstCtx.list;
@@ -1886,100 +2236,199 @@ function _performDrop(dragId, srcCtx, dstCtx, dstIndex){
       d.status = null;
     }
   }
-
   d.updated = new Date().toISOString();
+
   if(dstCtx.context === 'schedule'){
     _placeAtIndex(dragId, function(otherId, od){
       return od.status === dstCtx.schedule && (dstCtx.schedule === INBOX_KEY ? !od.list : true);
-    }, dstIndex == null ? 0 : dstIndex, dstCtx);
+    }, dstIdx == null ? 0 : dstIdx, dstCtx);
   } else if(dstCtx.context === 'list'){
     _placeAtIndex(dragId, function(otherId, od){
       return od.list === dstCtx.list;
-    }, dstIndex == null ? 0 : dstIndex, dstCtx);
+    }, dstIdx == null ? 0 : dstIdx, dstCtx);
   }
+
   saveIndex();
   renderItems();
-  animateFlip(oldRects);
 }
 
-function _wireDrag(){
-  document.querySelectorAll('.item-card').forEach(function(card){
-    if(card._dndWired) return;
-    card._dndWired = true;
-    card.setAttribute('draggable', 'true');
+// ── Drag orchestration: mousedown / mousemove / mouseup ──
+//
+// We don't use HTML5 native drag-and-drop. Instead a global mousedown captures
+// the potential start of a drag. On mousemove past the threshold, the drag
+// begins (ghost outline + body class for cursor). Mouseup performs the drop.
+// This gives us full cursor control (clenched fist persists), which the HTML5
+// drag API doesn't allow CSS to override.
 
-    card.addEventListener('dragstart', function(e){
-      if(_activeName){ _commitName(_activeName, true); }
-      if(_primedName){ _exitPrimed(_primedName); }
-      _dnd.id = card.dataset.id;
-      _dnd.sourceCtx = _ctxFromCard(card);
-      _dnd.targetCtx = null;
-      _dnd.targetIndex = null;
-      e.dataTransfer.effectAllowed = 'move';
-      try { e.dataTransfer.setData('text/plain', card.dataset.id); } catch(_){}
-      setTimeout(function(){ card.classList.add('dnd-dragging'); }, 0);
-    });
+var DRAG_THRESHOLD_PX_DND = 4;
 
-    card.addEventListener('dragend', function(){
-      card.classList.remove('dnd-dragging');
-      _dnd.id = null;
-      _dnd.sourceCtx = null;
-      _dnd.targetCtx = null;
-      _dnd.targetIndex = null;
-      _hideDndBar();
-      document.querySelectorAll('.dnd-target').forEach(function(el){
-        el.classList.remove('dnd-target');
-      });
-    });
-  });
-
-  document.querySelectorAll('.list-cards, .v-list-cards').forEach(function(el){
-    if(el._dndDropWired) return;
-    el._dndDropWired = true;
-
-    el.addEventListener('dragover', function(e){
-      if(!_dnd.id) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      var parent = el.closest('.v-list');
-      if(parent) parent.classList.add('dnd-target');
-      var dstCtx = _ctxFromTarget(el);
-      if(!dstCtx) return;
-      if(dstCtx.context === 'archived'){
-        _hideDndBar();
-        _dnd.targetCtx = dstCtx;
-        _dnd.targetIndex = null;
-        return;
-      }
-      var idx = _computeInsertIndex(el, e.clientX, e.clientY, _dnd.id);
-      _dnd.targetCtx = dstCtx;
-      _dnd.targetIndex = idx;
-      _showDndBar(el, idx);
-    });
-
-    el.addEventListener('dragleave', function(e){
-      var parent = el.closest('.v-list');
-      if(parent) parent.classList.remove('dnd-target');
-      var rect = el.getBoundingClientRect();
-      if(e.clientX < rect.left || e.clientX > rect.right ||
-         e.clientY < rect.top  || e.clientY > rect.bottom){
-        _hideDndBar();
-      }
-    });
-
-    el.addEventListener('drop', function(e){
-      if(!_dnd.id) return;
-      e.preventDefault();
-      var dstCtx = _dnd.targetCtx || _ctxFromTarget(el);
-      if(!dstCtx) return;
-      var idx = _dnd.targetIndex;
-      if(idx == null) idx = _computeInsertIndex(el, e.clientX, e.clientY, _dnd.id);
-      _hideDndBar();
-      _performDrop(_dnd.id, _dnd.sourceCtx, dstCtx, idx);
-    });
-  });
+function _isDragMouseDownIgnored(target){
+  // Don't initiate a drag from clicks on interactive children
+  return !!(target.closest && target.closest('button, a, input, textarea, [contenteditable="plaintext-only"]'));
 }
 
+document.addEventListener('mousedown', function(e){
+  if(e.button !== 0) return;
+  if(_isDragMouseDownIgnored(e.target)) return;
+  var card = e.target.closest('.item-card');
+  if(!card) return;
+  _dnd.id = null;       // not yet — drag only begins after threshold
+  _dnd.card = card;
+  _dnd.candidateId = card.dataset.id;
+  _dnd.candidateSrcCtx = _ctxFromCard(card);
+  _dnd.startX = e.clientX;
+  _dnd.startY = e.clientY;
+  _dnd.pending = true;
+  _dnd.active = false;
+});
+
+document.addEventListener('mousemove', function(e){
+  if(!_dnd.pending) return;
+  if(!_dnd.active){
+    var dx = Math.abs(e.clientX - _dnd.startX);
+    var dy = Math.abs(e.clientY - _dnd.startY);
+    if(dx < DRAG_THRESHOLD_PX_DND && dy < DRAG_THRESHOLD_PX_DND) return;
+    _beginDrag();
+  }
+  _moveDragPreview(e.clientX, e.clientY);
+  // For hit-testing, use the centre of the drag preview rather than the raw
+  // cursor position. The preview hangs off the cursor at the original grab
+  // offset; users intuitively expect the dropped card to land where they see
+  // the preview, not where the cursor pixel is.
+  var rect = _dnd.preview ? _dnd.preview.getBoundingClientRect() : null;
+  var hitX = rect ? (rect.left + rect.width/2)  : e.clientX;
+  var hitY = rect ? (rect.top  + rect.height/2) : e.clientY;
+  _updateDragOver(hitX, hitY);
+});
+
+document.addEventListener('mouseup', function(e){
+  if(!_dnd.pending) return;
+  var wasActive = _dnd.active;
+  _dnd.pending = false;
+  if(wasActive){
+    _dndPerformDrop();
+  }
+  _resetDndState();
+});
+
+function _beginDrag(){
+  _dnd.active = true;
+  _dnd.id = _dnd.candidateId;
+  _dnd.sourceCtx = _dnd.candidateSrcCtx;
+  _dnd.targetCtx = null;
+  _dnd.targetIndex = null;
+  // Exit any in-flight title state so a drag from a primed/editing title still works cleanly
+  if(_activeName) _commitName(_activeName, true);
+  if(_primedName) _exitPrimed(_primedName);
+  document.body.classList.add('dnd-active');
+  if(_dnd.card){
+    _dnd.card.classList.add('dnd-dragging');
+  }
+  _createDragPreview();
+  _createGhost();
+}
+
+// Drag preview — a translucent clone of the card that follows the cursor.
+// Replaces what HTML5 native drag-and-drop gives you for free.
+function _createDragPreview(){
+  if(_dnd.preview || !_dnd.card) return;
+  var rect = _dnd.card.getBoundingClientRect();
+  // Remember the cursor's offset from the card's top-left at mousedown, so the
+  // preview hovers at the same relative spot under the cursor while dragging.
+  _dnd.previewOffsetX = _dnd.startX - rect.left;
+  _dnd.previewOffsetY = _dnd.startY - rect.top;
+  var clone = _dnd.card.cloneNode(true);
+  clone.classList.add('dnd-preview');
+  clone.style.position = 'fixed';
+  clone.style.left = rect.left + 'px';
+  clone.style.top  = rect.top  + 'px';
+  clone.style.width  = rect.width  + 'px';
+  clone.style.height = rect.height + 'px';
+  clone.style.margin = '0';
+  clone.style.pointerEvents = 'none';
+  clone.style.zIndex = '200';
+  clone.style.opacity = '0.88';
+  clone.style.boxShadow = '0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)';
+  clone.style.outline = '2px dashed rgba(0,0,0,0.22)';
+  clone.style.outlineOffset = '0px';
+  clone.style.transition = 'none';
+  // Strip the dragging class from the clone — it shouldn't be dimmed
+  clone.classList.remove('dnd-dragging');
+  document.body.appendChild(clone);
+  _dnd.preview = clone;
+}
+
+function _moveDragPreview(clientX, clientY){
+  if(!_dnd.preview) return;
+  _dnd.preview.style.left = (clientX - _dnd.previewOffsetX) + 'px';
+  _dnd.preview.style.top  = (clientY - _dnd.previewOffsetY) + 'px';
+}
+
+function _destroyDragPreview(){
+  if(_dnd.preview){
+    _dnd.preview.remove();
+    _dnd.preview = null;
+  }
+}
+
+function _updateDragOver(clientX, clientY){
+  // Find which drop container the cursor is over. elementFromPoint won't return
+  // the source card (it's visibility-hidden via _createGhost) or the ghost
+  // (pointer-events:none on the ghost).
+  var under = document.elementFromPoint(clientX, clientY);
+  if(!under) return;
+  var container = under.closest && under.closest('.list-cards, .v-list-cards');
+  if(!container){
+    // Cursor might be over a header; snap to that section's container
+    var vl = under.closest && under.closest('.v-list');
+    if(vl) container = vl.querySelector('.v-list-cards');
+    else {
+      var ln = under.closest && under.closest('.lane, .archived-section');
+      if(ln) container = ln.querySelector('.list-cards');
+    }
+  }
+  if(!container) return;
+  var ctx = _ctxFromContainerEl(container);
+  if(!ctx) return;
+  if(ctx.context === 'archived'){
+    _dnd.targetCtx = ctx;
+    _dnd.targetIndex = null;
+    if(_dnd.ghost){
+      var r = container.getBoundingClientRect();
+      _dnd.ghost.style.left = (r.left + 12) + 'px';
+      _dnd.ghost.style.top  = (r.top  + 12) + 'px';
+    }
+    return;
+  }
+  var idx = _computeInsertIndex(container, clientX, clientY, _dnd.id);
+  _dnd.targetCtx = ctx;
+  _dnd.targetIndex = idx;
+  _updateLiveLayout();
+}
+
+function _resetDndState(){
+  // Cleanup after either successful drop or abandoned drag
+  document.body.classList.remove('dnd-active');
+  _destroyDragPreview();
+  if(_dnd.card){
+    _dnd.card.classList.remove('dnd-dragging');
+    _dnd.card.style.visibility = '';
+  }
+  // If the drop didn't run a re-render (e.g. cancelled drag), clear ghost + shifts
+  if(_dnd.ghost) _clearLiveLayout();
+  _dnd.id = null;
+  _dnd.card = null;
+  _dnd.candidateId = null;
+  _dnd.candidateSrcCtx = null;
+  _dnd.sourceCtx = null;
+  _dnd.targetCtx = null;
+  _dnd.targetIndex = null;
+  _dnd.active = false;
+  _lastLayoutKey = null;
+}
+
+// Stub _wireDrag for compatibility — the system is now global, no per-card wiring needed
+function _wireDrag(){}
 
 
 
