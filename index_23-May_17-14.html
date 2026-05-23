@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="App">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#FBFAF9">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=EB+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -31,7 +31,7 @@
 body{font-family:'DM Sans',system-ui,sans-serif;background:#ffffff;min-height:100vh;color:var(--ink);font-size:14px}
 
 header{background:#4E8A87;color:#fff;padding:0 16px;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:#fff;margin:0;flex-shrink:0}
+header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:#fff;margin:0;flex-shrink:0}
 
 .gist-warning{background:#FFF8EC;border-bottom:1px solid #F5C97A;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;display:none}
 .gist-warning.show{display:flex}
@@ -48,7 +48,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 /* ───── List ───── */
 .list{margin-bottom:14px}
 .list-header{display:flex;align-items:center;gap:12px;margin-bottom:6px;padding-bottom:0}
-.list-title{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink)}
+.list-title{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink)}
 .list-title[contenteditable]{outline:none;cursor:text;padding:1px 5px;margin:-1px -5px;border-radius:4px;transition:background 0.12s,box-shadow 0.12s;min-width:1em}
 .list-title[contenteditable]:hover{background:rgba(0,0,0,0.045)}
 .list-title[contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,0.12)}
@@ -183,14 +183,15 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 .list-chip:hover{background:rgba(0,0,0,0.04)}
 
 .card-body{padding:8px 11px;display:flex;flex-direction:column;gap:6px;flex:1;position:relative}
-/* Thick coloured bar across the top edge of the card only — sits on the
-   card's top border line, spanning the full width. */
+/* Coloured 3-sided border (top/left/right) sitting exactly on the card's
+   border line. Covers the body region and stops at the footer top. Bottom
+   open so no colour reaches the rounded bottom corners. */
 .card-body::before{
   content:"";
   position:absolute;
-  left:-1px; right:-1px; top:-1px;
-  height:3px;
-  background:var(--card-line);
+  left:-1px; right:-1px; top:-1px; bottom:0;
+  border:1px solid var(--card-line);
+  border-bottom:none;
   border-radius:10px 10px 0 0;
   pointer-events:none;
   z-index:3;
@@ -198,7 +199,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 .item-card.inbox-card .card-body::before,
 .item-card.archived .card-body::before{display:none}
 .card-name{
-  font-family:'DM Sans',sans-serif;
+  font-family:'EB Garamond',Georgia,serif;
   font-weight:500;
   font-size:14px;
   line-height:1.2;
@@ -287,7 +288,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
   margin-bottom:16px;
 }
 .lists-section-title{
-  font-family:'DM Sans',sans-serif;
+  font-family:'EB Garamond',Georgia,serif;
   font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink);
 }
 .add-list-btn{
@@ -428,7 +429,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:13 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:08 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
