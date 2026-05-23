@@ -98,13 +98,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   flex:0 0 auto;
   width:172px;
   background:var(--card-bg);
-  /* Border colour: top/left/right use --card-line (lane colour for list and
-     row cards; default otherwise). Bottom stays the default line colour. */
-  --card-line:var(--line-2);
   border:1px solid var(--line-2);
-  border-top-color:var(--card-line);
-  border-left-color:var(--card-line);
-  border-right-color:var(--card-line);
   border-radius:10px;
   overflow:hidden;
   display:flex;
@@ -245,11 +239,8 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 /* Footer icons (archive / delete / schedule / notes) */
 .card-footer{
   display:flex;
-  /* Footer keeps default-colour borders on all sides regardless of the card's
-     lane colour. Negative horizontal + bottom margins pull it flush to the
-     card edge so it covers the coloured border in the footer region. */
-  border:1px solid var(--line);
-  margin:4px -1px -1px -1px;
+  border-top:1px solid var(--line);
+  margin-top:4px;
 }
 .card-icon-btn{
   flex:1;
@@ -423,7 +414,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">16:59 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:28 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1231,20 +1222,7 @@ function cardHTML(id, ctx){
   if(hasScheduleCopy) classes += ' has-schedule-copy';
   if(isInboxCard) classes += ' inbox-card';
 
-  // Lane colour: list-cards and row-cards take the colour of their home list
-  // on the card's top/left/right border. Inbox cards keep the default.
-  var laneStyle = '';
-  if(!isInboxCard && !isArchived && d.list){
-    var listIdx = -1;
-    for(var li = 0; li < LISTS.length; li++){
-      if(LISTS[li].key === d.list){ listIdx = li; break; }
-    }
-    if(listIdx >= 0){
-      laneStyle = ' style="--card-line:' + listColor(listIdx) + '"';
-    }
-  }
-
-  return '<div class="' + classes + '" data-id="' + id + '"' + ctxAttr + laneStyle + '>' +
+  return '<div class="' + classes + '" data-id="' + id + '"' + ctxAttr + '>' +
     cornerBtns +
     '<div class="card-body">' +
       nameHtml +
