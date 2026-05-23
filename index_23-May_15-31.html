@@ -414,7 +414,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">15:28 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">12:17 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1839,7 +1839,7 @@ function showNewItem(){ addItemToInbox(); }
 // ── ?addItem= handler ────────────────────────────────────────────────
 // Triggered when ?addItem=<freeform name>&source=siri (or similar) is in the
 // URL. Used by the iOS Shortcut "Add to pipeline" → Siri voice trigger.
-// Creates a card with the given name in the Inbox.
+// Creates a placeholder card with the given name in the appraise list.
 // Must wait for itemsIndex to load before writing or it would overwrite the
 // live index with an empty one.
 async function _addItemHandlerIfNeeded(){
@@ -1859,6 +1859,7 @@ async function _addItemHandlerIfNeeded(){
     _rmToast('Empty item name', 'error');
     return;
   }
+  // Defensive cap on name length
   if(name.length > 200) name = name.slice(0, 200);
   // Wait for itemsIndex to populate from Gist before writing
   var token = getToken();
@@ -1874,23 +1875,38 @@ async function _addItemHandlerIfNeeded(){
     }
   }
   try {
-    var id = 'deal-' + Date.now();
+    var id = 'item-' + Date.now();
+    var notesText = (source === 'siri' ? 'From Siri: ' : 'Added: ') + name;
+    var state = {
+      _new: false,
+      _placeholder: true,
+      _source: source || 'addItem',
+      dealName: name,
+      _dealNotes: notesText
+    };
     itemsIndex[id] = {
       name: name,
       updated: new Date().toISOString(),
-      status: INBOX_KEY,
-      list: null,
+      status: 'appraise',
+      placeholder: true,
       source: source || 'addItem'
     };
-    // Place at the front of the Inbox bucket
-    _placeAtFront(id, function(otherId, od){
-      return od.status === INBOX_KEY && !od.list;
-    }, '_schedOrder');
-    saveIndex();
+    _placeAtFront(id, 'appraise');
+    if(token && GIST_ID){
+      var body = { files: {} };
+      body.files['deal-' + id + '.json'] = { content: JSON.stringify(state, null, 2) };
+      body.files['deals-index.json'] = { content: JSON.stringify(itemsIndex, null, 2) };
+      var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+        method: 'PATCH',
+        headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if(!res.ok) throw new Error('Gist save failed: ' + res.status);
+    }
     renderItems();
-    _rmToast(name + ' added to Inbox ✓', 'ok');
+    _rmToast(name + ' added ✓', 'ok');
   } catch(err){
-    _rmToast('Add failed: ' + (err && err.message ? err.message : err), 'error');
+    _rmToast('Save failed: ' + (err && err.message ? err.message : err), 'error');
   }
 }
 
