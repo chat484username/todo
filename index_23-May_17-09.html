@@ -28,7 +28,7 @@
   --c-followup:#6D4B6B;   /* aubergine */
   --c-archived:#8E8B82;   /* grey */
 }
-body{font-family:'DM Sans',system-ui,sans-serif;background:#ffffff;min-height:100vh;color:var(--ink);font-size:14px}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--paper);min-height:100vh;color:var(--ink);font-size:14px}
 
 header{background:#4E8A87;color:#fff;padding:0 16px;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px;letter-spacing:-0.01em;color:#fff;margin:0;flex-shrink:0}
@@ -98,12 +98,17 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
   flex:0 0 auto;
   width:172px;
   background:var(--card-bg);
+  /* Border colour: top/left/right use --card-line (lane colour for list and
+     row cards; default otherwise). Bottom stays the default line colour. */
   --card-line:var(--line-2);
   border:1px solid var(--line-2);
+  border-top-color:var(--card-line);
+  border-left-color:var(--card-line);
+  border-right-color:var(--card-line);
   border-radius:10px;
+  overflow:hidden;
   display:flex;
   flex-direction:column;
-  position:relative;
   transition:box-shadow 0.15s, transform 0.15s, border-color 0.15s;
   /* Hand cursor over the whole card — the entire card is draggable */
   cursor:grab;
@@ -182,22 +187,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 .list-chip:last-child{border-right:none}
 .list-chip:hover{background:rgba(0,0,0,0.04)}
 
-.card-body{padding:8px 11px;display:flex;flex-direction:column;gap:6px;flex:1;position:relative}
-/* Coloured 3-sided border (top/left/right) sitting exactly on the card's
-   border line. Covers the body region and stops at the footer top. Bottom
-   open so no colour reaches the rounded bottom corners. */
-.card-body::before{
-  content:"";
-  position:absolute;
-  left:-1px; right:-1px; top:-1px; bottom:0;
-  border:1px solid var(--card-line);
-  border-bottom:none;
-  border-radius:10px 10px 0 0;
-  pointer-events:none;
-  z-index:3;
-}
-.item-card.inbox-card .card-body::before,
-.item-card.archived .card-body::before{display:none}
+.card-body{padding:8px 11px;display:flex;flex-direction:column;gap:6px;flex:1}
 .card-name{
   font-family:'EB Garamond',Georgia,serif;
   font-weight:500;
@@ -255,7 +245,11 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 /* Footer icons (archive / delete / schedule / notes) */
 .card-footer{
   display:flex;
-  border-top:1px solid var(--line);
+  /* Footer keeps default-colour borders on all sides regardless of the card's
+     lane colour. Negative horizontal + bottom margins pull it flush to the
+     card edge so it covers the coloured border in the footer region. */
+  border:1px solid var(--line);
+  margin:4px -1px -1px -1px;
 }
 .card-icon-btn{
   flex:1;
@@ -429,7 +423,7 @@ header h1{font-family:'EB Garamond',Georgia,serif;font-weight:500;font-size:22px
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:08 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">16:59 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
