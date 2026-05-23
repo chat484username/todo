@@ -101,7 +101,6 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
   --card-line:var(--line-2);
   border:1px solid var(--line-2);
   border-radius:10px;
-  overflow:hidden;
   display:flex;
   flex-direction:column;
   position:relative;
@@ -183,20 +182,21 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 .list-chip:last-child{border-right:none}
 .list-chip:hover{background:rgba(0,0,0,0.04)}
 
-.card-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px;flex:1;position:relative}
-/* Coloured accent bar across the top of the card. Anchored to the card (not
-   the body) so it spans the full outer width and the card's overflow:hidden
-   clips it to the rounded top corners. */
-.item-card > .card-accent{
+.card-body{padding:8px 11px;display:flex;flex-direction:column;gap:6px;flex:1;position:relative}
+/* Thick coloured bar across the top edge of the card only — sits on the
+   card's top border line, spanning the full width. */
+.card-body::before{
+  content:"";
   position:absolute;
-  left:0; right:0; top:0;
+  left:-1px; right:-1px; top:-1px;
   height:3px;
   background:var(--card-line);
+  border-radius:10px 10px 0 0;
   pointer-events:none;
   z-index:3;
 }
-.item-card.inbox-card > .card-accent,
-.item-card.archived > .card-accent{display:none}
+.item-card.inbox-card .card-body::before,
+.item-card.archived .card-body::before{display:none}
 .card-name{
   font-family:'DM Sans',sans-serif;
   font-weight:500;
@@ -428,7 +428,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:21 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:13 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1250,7 +1250,6 @@ function cardHTML(id, ctx){
   }
 
   return '<div class="' + classes + '" data-id="' + id + '"' + ctxAttr + laneStyle + '>' +
-    '<div class="card-accent"></div>' +
     cornerBtns +
     '<div class="card-body">' +
       nameHtml +
