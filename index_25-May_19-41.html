@@ -204,14 +204,14 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 .card-name{
   font-family:'DM Sans',sans-serif;
   font-weight:500;
-  font-size:14px;
+  font-size:13px;
   line-height:1.2;
   color:var(--ink);
   text-decoration:none;
   display:block;
   overflow:hidden;
   display:-webkit-box;
-  -webkit-line-clamp:2;
+  -webkit-line-clamp:3;
   -webkit-box-orient:vertical;
   word-break:break-word;
   min-height:0;
@@ -338,7 +338,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
   padding-bottom:0;
 }
 .v-list-cards{
-  display:flex;flex-direction:column;gap:10px;
+  display:flex;flex-direction:column;gap:15px;
   min-height:80px;
   padding:4px 0;
 }
@@ -389,7 +389,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 @media (max-width:600px){
   .container{padding:0 14px;margin-top:16px}
   .item-card{width:148px}
-  .card-name{font-size:13px;min-height:32px}
+  .card-name{font-size:12px;min-height:32px}
   .list-title{font-size:18px}
 }
 
@@ -432,7 +432,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:18 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">19:36 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
