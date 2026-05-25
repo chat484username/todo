@@ -378,74 +378,20 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 .card-icon-btn.note.has-note{background:var(--mute);color:var(--card-bg)}
 .card-icon-btn.note.has-note:hover{background:#1255A8;color:#fff}
 
-/* ════════════════════════════════════════════════════════════════
-   MOBILE — Phase 1 responsive shell (iPhone). Desktop is unaffected;
-   everything here is gated behind the 640px breakpoint.
-   ════════════════════════════════════════════════════════════════ */
-@media (max-width:640px){
-  .container{
-    padding-left:max(14px, env(safe-area-inset-left));
-    padding-right:max(14px, env(safe-area-inset-right));
-    margin-top:14px;
-  }
-  body{
-    padding-bottom:env(safe-area-inset-bottom);
-  }
-
-  /* Schedule rows: stop horizontal scrolling, stack cards vertically */
-  .list-cards{
-    flex-direction:column;
-    overflow-x:visible;
-    gap:12px;
-    align-items:stretch;
-  }
-  .list-cards.empty-list{align-items:stretch}
-
-  /* Lists section: stack the v-lists vertically instead of side-by-side */
-  .lists-container{
-    flex-direction:column;
-    overflow-x:visible;
-    gap:8px;
-    align-items:stretch;
-  }
-  .v-list{
-    width:100%;
-    flex:1 1 auto;
-  }
-
-  /* Cards go full-width in every context */
-  .item-card{width:100%}
-  .v-list-cards .item-card{width:100%}
-
-  /* Typography for small screens */
-  .card-name{font-size:12px}
-  .list-title{font-size:18px}
-  .lists-section-title{font-size:18px}
-
-  /* Collapsible section headers — show a chevron, make the whole header tappable */
-  .list-header,
-  .v-list-header{
-    cursor:pointer;
-    -webkit-tap-highlight-color:transparent;
-  }
-  .section-chevron{
-    display:inline-flex;
-    align-items:center;justify-content:center;
-    width:24px;height:24px;
-    margin-left:auto;
-    color:var(--mute);
-    transition:transform 0.18s ease;
-    flex-shrink:0;
-  }
-  .section-collapsed .section-chevron{transform:rotate(-90deg)}
-  /* Hide the card area when a section is collapsed */
-  .section-collapsed .list-cards,
-  .section-collapsed .v-list-cards,
-  .section-collapsed .add-schedule-row{display:none}
+@media (max-width:600px){
+  .v-list{width:170px}
 }
 
-/* The chevron is mobile-only — hidden on desktop */
-.section-chevron{display:none}
+.trash-link{display:block;text-align:center;margin-top:32px;font-size:13px;color:var(--mute);text-decoration:none}
+.trash-link:hover{color:var(--ink-2);text-decoration:underline}
+
+/* Mobile: make cards a bit narrower */
+@media (max-width:600px){
+  .container{padding:0 14px;margin-top:16px}
+  .item-card{width:148px}
+  .card-name{font-size:12px;min-height:32px}
+  .list-title{font-size:18px}
+}
 
 .item-card{position:relative}
 
@@ -486,7 +432,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">22:59 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">19:51 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -534,42 +480,6 @@ var ANALYSER_PAGE = 'todo-v14.html';
 var GIST_ID = localStorage.getItem('todoGistId') || 'acb18997fb5494fd10b3696c038a0fd7';
 var itemsIndex = {};
 var gistFilesMeta = null; // cached reference to gist.files from last fetch
-
-// ───── Collapsible sections (mobile) — local-only view preference ─────
-// A section key looks like 'sched:row1' or 'list:abc'. Persisted to
-// localStorage so it survives reload, but never written to the gist.
-var COLLAPSED_KEY = 'todoCollapsedSections';
-var collapsedSections = (function(){
-  try {
-    var raw = localStorage.getItem(COLLAPSED_KEY);
-    return new Set(raw ? JSON.parse(raw) : []);
-  } catch(e){ return new Set(); }
-})();
-function _saveCollapsed(){
-  try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(Array.from(collapsedSections))); } catch(e){}
-}
-function isSectionCollapsed(key){ return collapsedSections.has(key); }
-function toggleSection(key, sectionEl){
-  if(collapsedSections.has(key)){
-    collapsedSections.delete(key);
-    sectionEl.classList.remove('section-collapsed');
-  } else {
-    collapsedSections.add(key);
-    sectionEl.classList.add('section-collapsed');
-  }
-  _saveCollapsed();
-}
-// Delegated handler: tap a header (but not its buttons / editable title) to
-// collapse. Only meaningful on mobile, but harmless to bind always.
-document.addEventListener('click', function(e){
-  var header = e.target.closest('.list-header, .v-list-header');
-  if(!header) return;
-  if(e.target.closest('button')) return;
-  if(e.target.closest('[contenteditable]')) return;
-  var section = header.closest('[data-section-key]');
-  if(!section) return;
-  toggleSection(section.getAttribute('data-section-key'), section);
-});
 
 // ───── Token / Gist management (unchanged) ─────
 function getToken(){
@@ -1116,15 +1026,12 @@ function renderSchedules(scheduleBuckets){
       : '<button class="list-delete-btn" onclick="deleteSchedule(\'' + S.key + '\')" title="Delete this schedule" aria-label="Delete this schedule"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>';
 
     var titleClass = 'list-title schedule-title' + (inboxEmpty ? ' title-muted' : '');
-    var sectionKey = 'sched:' + S.key;
-    var collapsedCls = isSectionCollapsed(sectionKey) ? ' section-collapsed' : '';
 
-    return '<div class="list' + (inboxEmpty ? ' list-collapsed' : '') + collapsedCls + '" data-schedule="' + S.key + '" data-section-key="' + sectionKey + '">' +
+    return '<div class="list' + (inboxEmpty ? ' list-collapsed' : '') + '" data-schedule="' + S.key + '">' +
       '<div class="list-header">' +
         addBtn +
         '<span class="' + titleClass + '" data-sched-key="' + S.key + '" contenteditable="' + (isInbox ? 'false' : 'plaintext-only') + '" spellcheck="false">' + labelEsc + '</span>' +
         delBtn +
-        '<span class="section-chevron">' + iconSvg('chevron') + '</span>' +
       '</div>' +
       cardsHtml +
     '</div>';
@@ -1197,14 +1104,11 @@ function renderLists(listBuckets){
       cardsHtml = '<div class="v-list-cards" id="cardsList_' + L.key + '">' + inner + '</div>';
     }
     var labelEsc = escapeHtml(L.label);
-    var sectionKey = 'list:' + L.key;
-    var collapsedCls = isSectionCollapsed(sectionKey) ? ' section-collapsed' : '';
-    return '<div class="v-list' + collapsedCls + '" data-list="' + L.key + '" data-section-key="' + sectionKey + '">' +
+    return '<div class="v-list" data-list="' + L.key + '">' +
       '<div class="v-list-header">' +
         '<button class="list-add" style="--list-color:' + color + '" onclick="addItemToList(\'' + L.key + '\')" title="Add to ' + labelEsc + '" aria-label="Add to ' + labelEsc + '">+</button>' +
         '<span class="list-title v-list-title" data-vlist-key="' + L.key + '" contenteditable="plaintext-only" spellcheck="false">' + labelEsc + '</span>' +
         '<button class="list-delete-btn" onclick="deleteList(\'' + L.key + '\')" title="Delete this list" aria-label="Delete this list"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>' +
-        '<span class="section-chevron">' + iconSvg('chevron') + '</span>' +
       '</div>' +
       cardsHtml +
     '</div>';
@@ -1398,8 +1302,7 @@ function iconSvg(kind){
     restore:   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10 a6 6 0 1 1 2 4.2"/><polyline points="4,5 4,10 9,10"/></svg>',
     'arrow-up':   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5,9 10,4 15,9"/><line x1="10" y1="4" x2="10" y2="16"/></svg>',
     'arrow-down': '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5,11 10,16 15,11"/><line x1="10" y1="4" x2="10" y2="16"/></svg>',
-    note:         '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="16" y2="6"/><line x1="4" y1="10" x2="16" y2="10"/><line x1="4" y1="14" x2="16" y2="14"/></svg>',
-    chevron:      '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6,8 10,12 14,8"/></svg>'
+    note:         '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="16" y2="6"/><line x1="4" y1="10" x2="16" y2="10"/><line x1="4" y1="14" x2="16" y2="14"/></svg>'
   };
   return defs[kind] || '';
 }
