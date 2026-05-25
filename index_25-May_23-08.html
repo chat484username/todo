@@ -486,7 +486,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">23:07 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">22:59 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1617,20 +1617,12 @@ document.addEventListener('keydown', function(e){
 
 // Focus a brand-new card's name in edit mode (state C) with text selected.
 function focusNewCardName(id){
-  // iOS Safari only raises the on-screen keyboard if .focus() happens
-  // synchronously within the user-gesture (tap) call stack. renderItems()
-  // has already run synchronously, so the card span exists now — focus it
-  // immediately, without requestAnimationFrame, or iOS suppresses the keyboard.
-  var span = document.querySelector('.card-name[data-item-id="' + id + '"]');
-  if(span){
-    _enterStateC(span);
-    return;
-  }
-  // Fallback: if for some reason it isn't in the DOM yet, try next frame
-  // (keyboard may not open on iOS in this path, but focus still lands).
   requestAnimationFrame(function(){
-    var s2 = document.querySelector('.card-name[data-item-id="' + id + '"]');
-    if(s2) _enterStateC(s2);
+    requestAnimationFrame(function(){
+      var span = document.querySelector('.card-name[data-item-id="' + id + '"]');
+      if(!span) return;
+      _enterStateC(span);
+    });
   });
 }
 
