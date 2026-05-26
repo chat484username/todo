@@ -144,22 +144,6 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 .dnd-bar.horizontal{border-top:2px dashed var(--brown)}
 .dnd-bar.vertical{border-left:2px dashed var(--brown)}
 
-/* Touch-drag: the floating clone that follows the finger */
-.touch-drag-clone{
-  position:fixed;
-  z-index:1001;
-  pointer-events:none;
-  opacity:0.92;
-  box-shadow:0 8px 24px rgba(0,0,0,0.22);
-  transform:scale(1.04);
-  transition:none;
-  margin:0;
-}
-/* The original card while its clone is being dragged */
-.item-card.touch-drag-source{
-  opacity:0.35;
-}
-
 /* ─── Inbox card overrides: wider, with chip strip ─── */
 .item-card.inbox-card{
   flex:0 0 auto;
@@ -412,7 +396,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
   .list-cards{
     flex-direction:column;
     overflow-x:visible;
-    gap:17px;
+    gap:12px;
     align-items:stretch;
   }
   .list-cards.empty-list{align-items:stretch}
@@ -435,13 +419,6 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 
   /* Typography for small screens */
   .card-name{font-size:12px}
-
-  /* Deeper cards + footer on mobile for easier reading and tapping */
-  .card-body{padding:16px 14px}
-  .card-icon-btn{padding:12px 0}
-  .card-icon-btn svg{width:18px;height:18px}
-  /* Extra 5px between cards in both lists and schedule rows */
-  .v-list-cards{gap:20px}
   .list-title{font-size:18px}
   .lists-section-title{font-size:18px}
 
@@ -509,7 +486,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">07:46 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">23:07 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -2294,21 +2271,10 @@ function _performDrop(dragId, srcCtx, dstCtx, dstIndex){
   animateFlip(oldRects);
 }
 
-// True on touch-primary devices (iPhone). On these we use the custom
-// touch-drag layer instead of native HTML5 drag, which has no usable drop
-// indicator on touch.
-var _isTouchDevice = (function(){
-  return ('ontouchstart' in window) ||
-         (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer:coarse)').matches);
-})();
-
 function _wireDrag(){
   document.querySelectorAll('.item-card').forEach(function(card){
     if(card._dndWired) return;
     card._dndWired = true;
-    // On touch devices, skip native HTML5 drag entirely — the custom
-    // touch-drag layer (_wireTouchDrag) handles it with a visible drop bar.
-    if(_isTouchDevice) return;
     card.setAttribute('draggable', 'true');
 
     card.addEventListener('dragstart', function(e){
@@ -2381,209 +2347,6 @@ function _wireDrag(){
       _performDrop(_dnd.id, _dnd.sourceCtx, dstCtx, idx);
     });
   });
-
-  _wireTouchDrag();
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// TOUCH DRAG — long-press to lift a card, drag with a finger-following
-// clone, drop with a visible insertion bar. Runs alongside native HTML5
-// drag (which stays for desktop/mouse). Reuses _computeInsertIndex,
-// _showDndBar, _hideDndBar, _performDrop, _ctxFromCard, _ctxFromTarget.
-// ═══════════════════════════════════════════════════════════════════════
-var _touchDrag = {
-  active:false,        // true once long-press fired and we're dragging
-  pressTimer:null,     // long-press timer handle
-  card:null,           // the source .item-card element
-  clone:null,          // the floating clone following the finger
-  startX:0, startY:0,  // touch start coords
-  offsetX:0, offsetY:0,// finger offset within the card
-  id:null,
-  sourceCtx:null,
-  targetCtx:null,
-  targetIndex:null,
-  autoScrollRAF:null
-};
-var TOUCH_LONGPRESS_MS = 300;
-var TOUCH_MOVE_CANCEL_PX = 12;   // finger movement before long-press fires = scroll, cancel
-
-function _wireTouchDrag(){
-  document.querySelectorAll('.item-card').forEach(function(card){
-    if(card._touchWired) return;
-    card._touchWired = true;
-
-    card.addEventListener('touchstart', function(e){
-      // Ignore multi-touch, or touches that begin on an interactive child
-      if(e.touches.length !== 1) return;
-      if(e.target.closest('button, a, [contenteditable]')) return;
-      // Don't start a drag while a card name is being edited
-      if(_activeName) return;
-      var t = e.touches[0];
-      _touchDrag.card = card;
-      _touchDrag.startX = t.clientX;
-      _touchDrag.startY = t.clientY;
-      _touchDrag.pressTimer = setTimeout(function(){
-        _beginTouchDrag(card, t.clientX, t.clientY);
-      }, TOUCH_LONGPRESS_MS);
-    }, { passive:true });
-
-    card.addEventListener('touchmove', function(e){
-      var t = e.touches[0];
-      if(!_touchDrag.active){
-        // Still in long-press wait — if the finger moved far, it's a scroll
-        var dx = Math.abs(t.clientX - _touchDrag.startX);
-        var dy = Math.abs(t.clientY - _touchDrag.startY);
-        if(dx > TOUCH_MOVE_CANCEL_PX || dy > TOUCH_MOVE_CANCEL_PX){
-          _cancelTouchPress();
-        }
-        return;
-      }
-      // Active drag — prevent the page from scrolling under us
-      e.preventDefault();
-      _moveTouchDrag(t.clientX, t.clientY);
-    }, { passive:false });
-
-    card.addEventListener('touchend', function(e){
-      if(!_touchDrag.active){ _cancelTouchPress(); return; }
-      _endTouchDrag();
-    });
-    card.addEventListener('touchcancel', function(){
-      if(_touchDrag.active) _endTouchDrag(true);
-      else _cancelTouchPress();
-    });
-  });
-}
-
-function _cancelTouchPress(){
-  if(_touchDrag.pressTimer){
-    clearTimeout(_touchDrag.pressTimer);
-    _touchDrag.pressTimer = null;
-  }
-  _touchDrag.card = null;
-}
-
-function _beginTouchDrag(card, x, y){
-  _touchDrag.pressTimer = null;
-  _touchDrag.active = true;
-  _touchDrag.id = card.dataset.id;
-  _touchDrag.sourceCtx = _ctxFromCard(card);
-  _touchDrag.targetCtx = null;
-  _touchDrag.targetIndex = null;
-  // Also populate _dnd so _showDndBar / _performDrop behave identically
-  _dnd.id = _touchDrag.id;
-  _dnd.sourceCtx = _touchDrag.sourceCtx;
-
-  var rect = card.getBoundingClientRect();
-  _touchDrag.offsetX = x - rect.left;
-  _touchDrag.offsetY = y - rect.top;
-
-  // Build the floating clone
-  var clone = card.cloneNode(true);
-  clone.classList.add('touch-drag-clone');
-  clone.classList.remove('touch-drag-source');
-  clone.style.width = rect.width + 'px';
-  clone.style.height = rect.height + 'px';
-  clone.style.left = rect.left + 'px';
-  clone.style.top = rect.top + 'px';
-  document.body.appendChild(clone);
-  _touchDrag.clone = clone;
-
-  card.classList.add('touch-drag-source');
-
-  // Haptic nudge if supported
-  if(navigator.vibrate){ try { navigator.vibrate(15); } catch(_){} }
-
-  _moveTouchDrag(x, y);
-}
-
-function _moveTouchDrag(x, y){
-  var c = _touchDrag.clone;
-  if(c){
-    c.style.left = (x - _touchDrag.offsetX) + 'px';
-    c.style.top  = (y - _touchDrag.offsetY) + 'px';
-  }
-  // Find the drop container under the finger. Hide the clone momentarily so
-  // elementFromPoint sees what's beneath it.
-  if(c) c.style.display = 'none';
-  var under = document.elementFromPoint(x, y);
-  if(c) c.style.display = '';
-  if(!under){ _hideDndBar(); _touchDrag.targetCtx = null; _touchDrag.targetIndex = null; return; }
-
-  var container = under.closest('.list-cards, .v-list-cards');
-  if(!container){ _hideDndBar(); _touchDrag.targetCtx = null; _touchDrag.targetIndex = null; return; }
-
-  var dstCtx = _ctxFromTarget(container);
-  if(!dstCtx){ _hideDndBar(); return; }
-
-  if(dstCtx.context === 'archived'){
-    _hideDndBar();
-    _touchDrag.targetCtx = dstCtx;
-    _touchDrag.targetIndex = null;
-    return;
-  }
-  var idx = _computeInsertIndex(container, x, y, _touchDrag.id);
-  _touchDrag.targetCtx = dstCtx;
-  _touchDrag.targetIndex = idx;
-  _dnd.targetCtx = dstCtx;
-  _dnd.targetIndex = idx;
-  _showDndBar(container, idx);
-
-  _touchAutoScroll(y);
-}
-
-// Auto-scroll the page when the finger nears the top/bottom edge
-function _touchAutoScroll(y){
-  var EDGE = 70, SPEED = 12;
-  var vh = window.innerHeight;
-  var dir = 0;
-  if(y < EDGE) dir = -1;
-  else if(y > vh - EDGE) dir = 1;
-  if(dir === 0){
-    if(_touchDrag.autoScrollRAF){
-      cancelAnimationFrame(_touchDrag.autoScrollRAF);
-      _touchDrag.autoScrollRAF = null;
-    }
-    return;
-  }
-  if(_touchDrag.autoScrollRAF) return; // already running
-  var step = function(){
-    if(!_touchDrag.active){ _touchDrag.autoScrollRAF = null; return; }
-    window.scrollBy(0, dir * SPEED);
-    _touchDrag.autoScrollRAF = requestAnimationFrame(step);
-  };
-  _touchDrag.autoScrollRAF = requestAnimationFrame(step);
-}
-
-function _endTouchDrag(cancelled){
-  if(_touchDrag.autoScrollRAF){
-    cancelAnimationFrame(_touchDrag.autoScrollRAF);
-    _touchDrag.autoScrollRAF = null;
-  }
-  if(_touchDrag.clone){
-    _touchDrag.clone.remove();
-    _touchDrag.clone = null;
-  }
-  if(_touchDrag.card){
-    _touchDrag.card.classList.remove('touch-drag-source');
-  }
-  _hideDndBar();
-
-  if(!cancelled && _touchDrag.id && _touchDrag.targetCtx){
-    var idx = _touchDrag.targetIndex;
-    _performDrop(_touchDrag.id, _touchDrag.sourceCtx, _touchDrag.targetCtx, idx);
-  }
-
-  // Reset
-  _touchDrag.active = false;
-  _touchDrag.card = null;
-  _touchDrag.id = null;
-  _touchDrag.sourceCtx = null;
-  _touchDrag.targetCtx = null;
-  _touchDrag.targetIndex = null;
-  _dnd.id = null;
-  _dnd.sourceCtx = null;
-  _dnd.targetCtx = null;
-  _dnd.targetIndex = null;
 }
 
 
