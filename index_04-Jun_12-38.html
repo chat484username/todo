@@ -353,11 +353,6 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
   display:flex;align-items:center;gap:10px;
   padding-bottom:0;
 }
-/* Lane drag handle: header is grabbable on desktop (touch devices skip this) */
-.v-list-header[draggable="true"]{cursor:grab}
-.v-list-header[draggable="true"]:active{cursor:grabbing}
-/* Visual feedback while a lane is being dragged */
-.v-list.lane-dragging{opacity:0.4}
 .v-list-cards{
   display:flex;flex-direction:column;gap:15px;
   min-height:80px;
@@ -514,7 +509,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:51 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">16:45 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -1229,9 +1224,9 @@ function renderLists(listBuckets){
     var collapsedCls = isSectionCollapsed(sectionKey) ? ' section-collapsed' : '';
     return '<div class="v-list' + collapsedCls + '" data-list="' + L.key + '" data-section-key="' + sectionKey + '">' +
       '<div class="v-list-header">' +
-        '<button class="list-add" draggable="false" style="--list-color:' + color + '" onclick="addItemToList(\'' + L.key + '\')" title="Add to ' + labelEsc + '" aria-label="Add to ' + labelEsc + '">+</button>' +
-        '<span class="list-title v-list-title" draggable="false" data-vlist-key="' + L.key + '" contenteditable="plaintext-only" spellcheck="false">' + labelEsc + '</span>' +
-        '<button class="list-delete-btn" draggable="false" onclick="deleteList(\'' + L.key + '\')" title="Delete this list" aria-label="Delete this list"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>' +
+        '<button class="list-add" style="--list-color:' + color + '" onclick="addItemToList(\'' + L.key + '\')" title="Add to ' + labelEsc + '" aria-label="Add to ' + labelEsc + '">+</button>' +
+        '<span class="list-title v-list-title" data-vlist-key="' + L.key + '" contenteditable="plaintext-only" spellcheck="false">' + labelEsc + '</span>' +
+        '<button class="list-delete-btn" onclick="deleteList(\'' + L.key + '\')" title="Delete this list" aria-label="Delete this list"><svg viewBox="0 0 14 14"><path d="M3 3 L11 11"/><path d="M11 3 L3 11"/></svg></button>' +
         '<span class="section-chevron">' + iconSvg('chevron') + '</span>' +
       '</div>' +
       cardsHtml +
@@ -2388,7 +2383,6 @@ function _wireDrag(){
   });
 
   _wireTouchDrag();
-  _wireLaneDrag();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2590,140 +2584,6 @@ function _endTouchDrag(cancelled){
   _dnd.sourceCtx = null;
   _dnd.targetCtx = null;
   _dnd.targetIndex = null;
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// LANE DRAG — drag a list's header to reorder lanes left/right.
-// Desktop only (skipped on touch — touch devices stack lanes vertically and
-// don't get this gesture). Reuses the .dnd-bar.vertical drop indicator.
-// ═══════════════════════════════════════════════════════════════════════
-var _laneDrag = {
-  key:null,        // the list key being dragged
-  fromIndex:-1,    // its starting index in LISTS
-  targetIndex:-1   // pending insertion index
-};
-
-function _wireLaneDrag(){
-  // Skip on touch — lanes are stacked vertically there and reordering
-  // would clash with the vertical-scroll gesture.
-  if(_isTouchDevice) return;
-
-  document.querySelectorAll('.v-list-header').forEach(function(header){
-    if(header._laneDragWired) return;
-    header._laneDragWired = true;
-    header.setAttribute('draggable', 'true');
-
-    header.addEventListener('dragstart', function(e){
-      // Don't start a lane drag if the user is interacting with an inner
-      // control (the +, the delete x, the editable title) — only the
-      // "empty" header area starts a drag.
-      if(e.target.closest('button, [contenteditable]')){
-        e.preventDefault();
-        return;
-      }
-      var laneEl = header.closest('.v-list');
-      if(!laneEl) return;
-      var key = laneEl.getAttribute('data-list');
-      _laneDrag.key = key;
-      _laneDrag.fromIndex = LISTS.findIndex(function(L){ return L.key === key; });
-      _laneDrag.targetIndex = _laneDrag.fromIndex;
-      try { e.dataTransfer.effectAllowed = 'move'; } catch(_){}
-      try { e.dataTransfer.setData('text/plain', 'lane:' + key); } catch(_){}
-      // Briefly defer so the drag image is captured before we dim the source
-      setTimeout(function(){ laneEl.classList.add('lane-dragging'); }, 0);
-    });
-
-    header.addEventListener('dragend', function(){
-      var laneEl = header.closest('.v-list');
-      if(laneEl) laneEl.classList.remove('lane-dragging');
-      _hideDndBar();
-      _laneDrag.key = null;
-      _laneDrag.fromIndex = -1;
-      _laneDrag.targetIndex = -1;
-    });
-  });
-
-  // Container-level dragover/drop for the lane drop zone
-  var container = document.getElementById('listsContainer');
-  if(container && !container._laneDragWired){
-    container._laneDragWired = true;
-
-    container.addEventListener('dragover', function(e){
-      if(!_laneDrag.key) return;
-      e.preventDefault();
-      try { e.dataTransfer.dropEffect = 'move'; } catch(_){}
-      var idx = _computeLaneInsertIndex(container, e.clientX);
-      _laneDrag.targetIndex = idx;
-      _showLaneBar(container, idx);
-    });
-
-    container.addEventListener('drop', function(e){
-      if(!_laneDrag.key) return;
-      e.preventDefault();
-      var fromIdx = _laneDrag.fromIndex;
-      var toIdx = _laneDrag.targetIndex;
-      _hideDndBar();
-      if(fromIdx < 0 || toIdx < 0){ return; }
-      // Adjust toIdx for the removal of the source
-      var insertAt = toIdx > fromIdx ? toIdx - 1 : toIdx;
-      if(insertAt === fromIdx) return; // no-op
-      var moved = LISTS.splice(fromIdx, 1)[0];
-      LISTS.splice(insertAt, 0, moved);
-      // Persist + re-render
-      saveSectionLabels();
-      renderItems();
-    });
-  }
-}
-
-// Find the index at which a lane would be inserted given a horizontal x.
-// Index is 0..LISTS.length (LISTS.length = drop at the end).
-function _computeLaneInsertIndex(container, clientX){
-  var lanes = Array.from(container.querySelectorAll('.v-list'));
-  for(var i = 0; i < lanes.length; i++){
-    var r = lanes[i].getBoundingClientRect();
-    var mid = r.left + r.width / 2;
-    if(clientX < mid) return i;
-  }
-  return lanes.length;
-}
-
-// Show the vertical dashed bar at the insertion index between lanes.
-function _showLaneBar(container, insertIndex){
-  var bar = _ensureDndBar();
-  bar.className = 'dnd-bar vertical';
-  bar.style.display = 'block';
-  var lanes = Array.from(container.querySelectorAll('.v-list'));
-  var cRect = container.getBoundingClientRect();
-  var x;
-  if(insertIndex <= 0){
-    var first = lanes[0];
-    if(!first){ _hideDndBar(); return; }
-    var fr = first.getBoundingClientRect();
-    x = fr.left - 7;
-  } else if(insertIndex >= lanes.length){
-    var last = lanes[lanes.length - 1];
-    var lr = last.getBoundingClientRect();
-    x = lr.right + 5;
-  } else {
-    var prev = lanes[insertIndex - 1].getBoundingClientRect();
-    var next = lanes[insertIndex].getBoundingClientRect();
-    x = (prev.right + next.left) / 2 - 1;
-  }
-  bar.style.left = x + 'px';
-  bar.style.top = cRect.top + 'px';
-  bar.style.height = cRect.height + 'px';
-  bar.style.width = '0';
-}
-
-// Helper: ensure the _dnd bar exists (mirrors the start of _showDndBar)
-function _ensureDndBar(){
-  if(_dnd.bar) return _dnd.bar;
-  var bar = document.createElement('div');
-  bar.className = 'dnd-bar';
-  document.body.appendChild(bar);
-  _dnd.bar = bar;
-  return bar;
 }
 
 
