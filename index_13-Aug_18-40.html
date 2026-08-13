@@ -514,7 +514,7 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
 
 <div class="container">
   <!-- Page-load timestamp — fixed top-right, just below the header -->
-  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:31 BST</div>
+  <div id="pageTimestamp" style="position:fixed;top:58px;right:20px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(0,0,0,0.3);z-index:50;pointer-events:none;letter-spacing:0.02em">17:51 BST</div>
 
   <!-- ─── SCHEDULES (horizontal, full-width, stacking down) ─── -->
   <!-- Schedule 1 = Inbox (fixed, never deleted). Schedules 2+ rendered dynamically. -->
@@ -553,9 +553,6 @@ header h1{font-family:'DM Sans',sans-serif;font-weight:500;font-size:22px;letter
   <div class="topbar" style="margin-top:24px">
     <a href="deleted-todo.html" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;text-decoration:none">🗑 Deleted items</a>
     <button onclick="diagnoseSave()" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;cursor:pointer">🩺 Test save</button>
-    <button onclick="downloadBackup()" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;cursor:pointer">⬇ Download backup</button>
-    <button onclick="document.getElementById('restoreFile').click()" style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#444;border:1px solid var(--line);padding:8px 16px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;cursor:pointer">⬆ Restore from backup</button>
-    <input type="file" id="restoreFile" accept="application/json,.json" style="display:none" onchange="restoreFromBackup(this.files[0])">
   </div>
   <pre id="diagnoseOut" style="display:none;margin-top:12px;padding:12px;background:#fff;border:1px solid var(--line);border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto"></pre>
 </div>
@@ -626,20 +623,7 @@ function setStatus(msg, ok){
   var el = document.getElementById('syncStatus');
   if(!el) return;
   el.textContent = msg;
-  if(ok === false){
-    // Warnings and errors — bright yellow, bold, and larger so they're not missed
-    el.style.color = '#ffe166';
-    el.style.fontWeight = '600';
-    el.style.fontSize = '12px';
-  } else if(ok === true){
-    el.style.color = '#8f8';
-    el.style.fontWeight = '400';
-    el.style.fontSize = '10px';
-  } else {
-    el.style.color = 'rgba(255,255,255,0.7)';
-    el.style.fontWeight = '400';
-    el.style.fontSize = '10px';
-  }
+  el.style.color = ok === false ? '#f88' : ok === true ? '#8f8' : 'rgba(255,255,255,0.5)';
 }
 
 async function getGist(){
@@ -667,74 +651,19 @@ async function getGist(){
   catch(e){ setStatus('Error reading Gist: ' + e.message, false); return null; }
 }
 
-// ───── Save scheduling ─────
-// saveIndex() now scheduled a debounced save. Guards:
-//   - _indexLoaded: refuses to save until we've successfully loaded from the
-//     gist at least once. Otherwise a failed load + user action would
-//     overwrite the whole gist with an empty {}. Life-critical safeguard.
-//   - _gistUpdatedAtAtLoad: optimistic-locking. Before writing, we re-fetch
-//     the gist and check its updated_at matches what we saw at load. If
-//     something else wrote to the gist (another tab, another device),
-//     we refuse and prompt the user to reload — better to bounce a save
-//     than silently overwrite someone else's edit.
-//   - localStorage mirror: every intended save is also written to the mirror
-//     so a crash/close won't lose work. Never authoritative — on load we
-//     always prefer the gist. Only used for display when the gist is
-//     unreachable.
+// ── Save scheduling ──
+// Public saveIndex() now just schedules a save. Multiple rapid calls collapse
+// into a single network round-trip. On 403/rate-limit, the real save backs off
+// and retries automatically (30s → 1m → 2m → 5m, capped).
 var _saveTimer = null;
 var _saveRetryDelay = 0;       // ms; non-zero while retrying
 var _saveInFlight = false;
 var _savePending = false;
 var SAVE_DEBOUNCE_MS = 1500;
 
-var _indexLoaded = false;             // true once initial gist load parsed successfully
-var _gistUpdatedAtAtLoad = null;      // gist's updated_at when we last synced
-var _saveGuardWarned = false;         // avoid spamming toasts
-
-var MIRROR_INDEX_KEY = 'mirror-itemsIndex';
-var MIRROR_INDEX_META_KEY = 'mirror-itemsIndex-meta';   // {savedAt, gistId, dirty}
-
-var _mirrorFailWarned = false;
-function _mirrorItemsIndex(dirty){
-  try {
-    localStorage.setItem(MIRROR_INDEX_KEY, JSON.stringify(itemsIndex));
-    localStorage.setItem(MIRROR_INDEX_META_KEY, JSON.stringify({
-      savedAt: new Date().toISOString(),
-      gistId: GIST_ID,
-      dirty: !!dirty
-    }));
-  } catch(e){
-    // Quota exceeded / private mode / storage disabled. Surface once so the
-    // user knows their crash-safety net is off.
-    if(!_mirrorFailWarned){
-      _mirrorFailWarned = true;
-      console.error('Local mirror failed:', e);
-      setStatus('Local crash-backup unavailable — save often (' + e.message + ')', false);
-    }
-  }
-}
-
-function _readMirrorMeta(){
-  try {
-    var raw = localStorage.getItem(MIRROR_INDEX_META_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch(e){ return null; }
-}
-
 function saveIndex(){
-  // Guard: refuse to save until we've loaded from gist. Mutations remain in
-  // memory (and are mirrored to localStorage below) but never touch the gist.
-  if(!_indexLoaded){
-    _mirrorItemsIndex(true);  // still mirror locally so nothing's lost on reload
-    if(!_saveGuardWarned){
-      _saveGuardWarned = true;
-      setStatus('Not synced — refresh before making changes', false);
-    }
-    return;
-  }
-  // Also mirror on every scheduled save (crash-safety)
-  _mirrorItemsIndex(true);
-  // Debounce the actual network write
+  // While a retry is in flight, just mark the queue dirty — the retry will
+  // pick up the latest itemsIndex when it fires.
   if(_saveInFlight){ _savePending = true; return; }
   if(_saveTimer) clearTimeout(_saveTimer);
   _saveTimer = setTimeout(_doSaveIndexNow, _saveRetryDelay || SAVE_DEBOUNCE_MS);
@@ -743,58 +672,20 @@ function saveIndex(){
 async function _doSaveIndexNow(){
   _saveTimer = null;
   if(_saveInFlight){ _savePending = true; return; }
-  if(!_indexLoaded){
-    _mirrorItemsIndex(true);
-    return;
-  }
   var token = getToken();
-  if(!token){
-    setStatus('Not signed in — changes are saved locally only. Add a token to sync.', false);
-    _mirrorItemsIndex(true);
-    return;
-  }
+  if(!token) return;
   _saveInFlight = true;
   _savePending = false;
   setStatus('Saving…');
-
+  var body = { files: { 'deals-index.json': { content: JSON.stringify(itemsIndex, null, 2) } } };
   try {
-    // ── Optimistic-lock check ────────────────────────────────────────
-    // Fetch the gist first. If its updated_at differs from what we saw at
-    // load, someone (another tab/device) has written to it. Refuse to save
-    // rather than overwrite their changes.
-    var pre = await fetch('https://api.github.com/gists/' + GIST_ID, {
-      headers: { Authorization: 'token ' + token }
-    });
-    if(!pre.ok){
-      // Treat pre-fetch failures the same as write failures below
-      throw new Error('pre-save fetch: HTTP ' + pre.status);
-    }
-    var preData = await pre.json();
-    var remoteUpdatedAt = preData.updated_at;
-
-    if(_gistUpdatedAtAtLoad && remoteUpdatedAt && remoteUpdatedAt !== _gistUpdatedAtAtLoad){
-      // Remote changed since we loaded. Refuse to write.
-      setStatus('Remote changed since load — reload to sync (your work is saved locally)', false);
-      _mirrorItemsIndex(true);
-      _saveInFlight = false;
-      return;
-    }
-
-    // ── Do the write ────────────────────────────────────────────────
-    var body = { files: { 'deals-index.json': { content: JSON.stringify(itemsIndex, null, 2) } } };
     var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
       method: 'PATCH',
       headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     if(res.ok){
-      // Parse response to grab the new updated_at so subsequent saves compare correctly
-      try {
-        var newGist = await res.json();
-        if(newGist && newGist.updated_at) _gistUpdatedAtAtLoad = newGist.updated_at;
-      } catch(_){}
       _saveRetryDelay = 0;
-      _mirrorItemsIndex(false); // saved cleanly — clear dirty flag
       setStatus('Saved ✓');
       _saveInFlight = false;
       if(_savePending){
@@ -807,21 +698,23 @@ async function _doSaveIndexNow(){
     try { txt = await res.text(); } catch(_){}
     console.error('saveIndex failed', res.status, txt);
     if(res.status === 403 || res.status === 429){
+      // Rate-limited — back off and retry
       _saveRetryDelay = _nextRetryDelay(_saveRetryDelay);
       var secs = Math.round(_saveRetryDelay / 1000);
-      setStatus('Rate-limited by GitHub — retrying in ' + secs + 's (your work is saved locally)', false);
+      setStatus('Rate-limited by GitHub — retrying in ' + secs + 's', false);
       _saveInFlight = false;
       _savePending = true;
       _saveTimer = setTimeout(_doSaveIndexNow, _saveRetryDelay);
     } else {
-      setStatus('Save failed: HTTP ' + res.status + ' — your work is saved locally. Refresh the page to try again.', false);
+      // Hard failure — surface to user, don't auto-retry
+      setStatus('Save failed: HTTP ' + res.status, false);
       _saveInFlight = false;
     }
   } catch(err){
-    console.error('saveIndex error', err);
+    console.error('saveIndex network error', err);
     _saveRetryDelay = _nextRetryDelay(_saveRetryDelay);
     var secs2 = Math.round(_saveRetryDelay / 1000);
-    setStatus('Network error — retrying in ' + secs2 + 's (your work is saved locally)', false);
+    setStatus('Network error — retrying in ' + secs2 + 's', false);
     _saveInFlight = false;
     _savePending = true;
     _saveTimer = setTimeout(_doSaveIndexNow, _saveRetryDelay);
@@ -920,21 +813,15 @@ async function diagnoseSave(){
   // Step 4: try a trivial PATCH (rewrite the index file to its current content)
   try {
     lines.push('--- Test PATCH ---');
-    if(!_indexLoaded){
-      lines.push('SKIPPED — index has not loaded from gist yet.');
-      lines.push('Running a test PATCH now would overwrite the gist with an');
-      lines.push('empty in-memory copy. Refresh the page first, then retry.');
-    } else {
-      var body = { files: { 'deals-index.json': { content: JSON.stringify(itemsIndex, null, 2) } } };
-      var pr = await fetch('https://api.github.com/gists/' + gistId, {
-        method: 'PATCH',
-        headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      lines.push('Status: ' + pr.status + ' ' + pr.statusText);
-      var pt = await pr.text();
-      lines.push('Body: ' + pt.substring(0, 500));
-    }
+    var body = { files: { 'deals-index.json': { content: JSON.stringify(itemsIndex, null, 2) } } };
+    var pr = await fetch('https://api.github.com/gists/' + gistId, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    lines.push('Status: ' + pr.status + ' ' + pr.statusText);
+    var pt = await pr.text();
+    lines.push('Body: ' + pt.substring(0, 500));
   } catch(e){
     lines.push('PATCH failed: ' + e.message);
   }
@@ -942,277 +829,14 @@ async function diagnoseSave(){
   out.textContent = lines.join('\n');
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// BACKUP + RESTORE
-// Export: assemble a complete snapshot of everything (items, notes,
-// schedules, lists) into a single JSON download. Re-fetches the gist so
-// the backup reflects the current server state, not stale in-memory data.
-// Restore: read a backup JSON, validate it, confirm with the user, then
-// overwrite the gist. All destructive prompts show real counts.
-// ═══════════════════════════════════════════════════════════════════════
-var BACKUP_VERSION = 1;
-
-async function downloadBackup(){
-  setStatus('Preparing backup…');
-  var token = getToken();
-  var noteMap = {};
-  var itemsSnapshot = itemsIndex;   // fallback if we can't refetch
-  var schedulesSnapshot = SCHEDULES;
-  var listsSnapshot = LISTS;
-
-  try {
-    if(token && GIST_ID){
-      // Refetch so backup reflects true remote state
-      var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
-        headers: { Authorization: 'token ' + token }
-      });
-      if(!res.ok) throw new Error('Gist fetch: HTTP ' + res.status);
-      var gist = await res.json();
-      var files = gist.files || {};
-
-      // Index
-      if(files['deals-index.json']){
-        var f = files['deals-index.json'];
-        var raw = f.content;
-        if(!raw || f.truncated){
-          raw = await (await fetch(f.raw_url)).text();
-        }
-        if(raw && raw.trim() && raw !== '{}'){
-          itemsSnapshot = JSON.parse(raw);
-        }
-      }
-
-      // Labels
-      if(files['lane-labels.json']){
-        var lf = files['lane-labels.json'];
-        var lraw = lf.content;
-        if(!lraw || lf.truncated){
-          lraw = await (await fetch(lf.raw_url)).text();
-        }
-        if(lraw && lraw.trim()){
-          try {
-            var parsed = JSON.parse(lraw);
-            if(Array.isArray(parsed.schedules)) schedulesSnapshot = parsed.schedules;
-            if(Array.isArray(parsed.lists))     listsSnapshot     = parsed.lists;
-          } catch(_){}
-        }
-      }
-
-      // Per-item note files — one fetch per truncated file. Do them in
-      // parallel with a small concurrency cap to avoid rate-limit hits.
-      var noteFiles = Object.keys(files).filter(function(n){
-        return /^deal-.+\.json$/.test(n);
-      });
-      var CONCURRENCY = 6;
-      var idx = 0;
-      async function worker(){
-        while(idx < noteFiles.length){
-          var name = noteFiles[idx++];
-          var itemId = name.replace(/^deal-/, '').replace(/\.json$/, '');
-          var f2 = files[name];
-          var body = f2.content;
-          try {
-            if(!body || f2.truncated){
-              body = await (await fetch(f2.raw_url)).text();
-            }
-            if(body && body.trim()){
-              try {
-                var parsed = JSON.parse(body);
-                noteMap[itemId] = parsed;
-              } catch(_){
-                // Not JSON — store raw for safety, user can inspect
-                noteMap[itemId] = { _raw: body };
-              }
-            }
-          } catch(_){
-            noteMap[itemId] = { _fetchError: true };
-          }
-        }
-      }
-      var workers = [];
-      for(var w = 0; w < CONCURRENCY; w++) workers.push(worker());
-      await Promise.all(workers);
-    }
-  } catch(e){
-    // If refetch fails, we still export from in-memory state — better than nothing
-    console.warn('Backup refetch failed, exporting from local view:', e);
-    setStatus('Backup used local view — gist fetch failed: ' + e.message, false);
-  }
-
-  var payload = {
-    version: BACKUP_VERSION,
-    exportedAt: new Date().toISOString(),
-    gistId: GIST_ID,
-    schedules: schedulesSnapshot,
-    lists: listsSnapshot,
-    items: itemsSnapshot,
-    notes: noteMap
-  };
-  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  var stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);
-  a.href = url;
-  a.download = 'todo-backup-' + stamp + '.json';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
-
-  var itemCount = Object.keys(itemsSnapshot).length;
-  var noteCount = Object.keys(noteMap).length;
-  setStatus('Backup downloaded — ' + itemCount + ' items, ' + noteCount + ' notes', true);
-}
-
-async function restoreFromBackup(file){
-  if(!file) return;
-  // Reset the file input so re-picking the same file fires the change event
-  var input = document.getElementById('restoreFile');
-  if(input) input.value = '';
-
-  var text;
-  try {
-    text = await file.text();
-  } catch(e){
-    alert('Could not read the file: ' + e.message);
-    return;
-  }
-
-  var payload;
-  try {
-    payload = JSON.parse(text);
-  } catch(e){
-    alert('That file is not valid JSON. Restore aborted, no changes made.');
-    return;
-  }
-
-  // Validate — refuse anything that doesn't look like our backup shape
-  var errs = _validateBackup(payload);
-  if(errs.length){
-    alert('Backup file failed validation, restore aborted, no changes made:\n\n' + errs.join('\n'));
-    return;
-  }
-
-  var token = getToken();
-  if(!token){
-    alert('No GitHub token — cannot restore without one. Add a token first.');
-    return;
-  }
-  if(!_indexLoaded){
-    var force = confirm(
-      'The current gist has not loaded successfully in this session.\n' +
-      'Restoring now would overwrite it with the backup contents without\n' +
-      'confirming what would be replaced.\n\n' +
-      'Continue anyway? (Only do this if you know the current gist is bad.)'
-    );
-    if(!force) return;
-  }
-
-  var backupItems = Object.keys(payload.items || {}).length;
-  var backupNotes = Object.keys(payload.notes || {}).length;
-  var backupLists = (payload.lists || []).length;
-  var backupScheds = (payload.schedules || []).length;
-  var currentItems = Object.keys(itemsIndex).length;
-  var currentLists = LISTS.length;
-  var currentScheds = SCHEDULES.length;
-
-  var msg =
-    'RESTORE will REPLACE the current gist contents.\n\n' +
-    'Current gist (in memory):\n' +
-    '  ' + currentItems + ' items, ' + currentLists + ' lists, ' + currentScheds + ' schedules\n\n' +
-    'Backup file (exported ' + (payload.exportedAt || 'unknown time') + '):\n' +
-    '  ' + backupItems + ' items, ' + backupLists + ' lists, ' + backupScheds + ' schedules\n' +
-    '  ' + backupNotes + ' items with notes\n\n';
-  if(payload.gistId && GIST_ID && payload.gistId !== GIST_ID){
-    msg += '⚠ NOTE: this backup was made from a different gist ID:\n' +
-           '  Backup: ' + payload.gistId + '\n' +
-           '  Current: ' + GIST_ID + '\n\n';
-  }
-  msg +=
-    'This is destructive and cannot be undone from within the app.\n' +
-    'Consider running Download backup first as a safety net.\n\n' +
-    'Proceed?';
-  if(!confirm(msg)) return;
-
-  setStatus('Restoring…');
-  try {
-    var files = {};
-    files['deals-index.json'] = { content: JSON.stringify(payload.items || {}, null, 2) };
-    files['lane-labels.json'] = { content: JSON.stringify({
-      schedules: payload.schedules || SCHEDULES,
-      lists: payload.lists || LISTS
-    }, null, 2) };
-    // Restore notes as individual deal-<id>.json files
-    var notes = payload.notes || {};
-    Object.keys(notes).forEach(function(id){
-      var val = notes[id];
-      if(val && typeof val === 'object'){
-        files['deal-' + id + '.json'] = { content: JSON.stringify(val, null, 2) };
-      }
-    });
-
-    var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
-      method: 'PATCH',
-      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: files })
-    });
-    if(!res.ok){
-      var txt = await res.text();
-      throw new Error('HTTP ' + res.status + ': ' + txt.slice(0, 200));
-    }
-    setStatus('Restore complete — reloading…', true);
-    // Reload the page so all in-memory state is fresh
-    setTimeout(function(){ window.location.reload(); }, 800);
-  } catch(e){
-    setStatus('Restore failed: ' + e.message, false);
-    alert('Restore failed. The gist may have been partially updated.\n\n' + e.message +
-          '\n\nRecommendation: reload the page and check the state, then try again with the same backup file.');
-  }
-}
-
-function _validateBackup(p){
-  var errs = [];
-  if(!p || typeof p !== 'object'){ errs.push('Not an object.'); return errs; }
-  if(p.version == null){ errs.push('Missing "version" field.'); }
-  if(!p.items || typeof p.items !== 'object' || Array.isArray(p.items)){
-    errs.push('Missing or invalid "items" object.');
-  } else {
-    // Every item ID must be a non-empty string; every value must be an object
-    var badId = false, badVal = false;
-    Object.keys(p.items).forEach(function(id){
-      if(typeof id !== 'string' || !id) badId = true;
-      var v = p.items[id];
-      if(!v || typeof v !== 'object' || Array.isArray(v)) badVal = true;
-    });
-    if(badId) errs.push('One or more item IDs are invalid.');
-    if(badVal) errs.push('One or more item entries are not objects.');
-  }
-  if(p.schedules != null && !Array.isArray(p.schedules)){
-    errs.push('"schedules" must be an array (or omitted).');
-  }
-  if(p.lists != null && !Array.isArray(p.lists)){
-    errs.push('"lists" must be an array (or omitted).');
-  }
-  if(p.notes != null && (typeof p.notes !== 'object' || Array.isArray(p.notes))){
-    errs.push('"notes" must be an object (or omitted).');
-  }
-  return errs;
-}
-
 async function loadItems(){
   var token = getToken();
   if(!token){ setStatus('No token', false); return; }
   setStatus('Loading…');
-  // Reset the load-guard while loading — if the load fails, saves stay blocked.
-  _indexLoaded = false;
-  _gistUpdatedAtAtLoad = null;
-  _saveGuardWarned = false;
   try {
     var data = await getGist();
     if(!data) return;
     gistFilesMeta = data.files || {};
-    // Capture the server-side updated_at so we can detect concurrent edits
-    if(data.updated_at) _gistUpdatedAtAtLoad = data.updated_at;
 
     // List labels — load first so any subsequent renderItems() picks them up
     if(gistFilesMeta['lane-labels.json']){
@@ -1282,83 +906,13 @@ async function loadItems(){
     }
     // Migrate every entry to the new model (status mapping, list field default)
     Object.keys(itemsIndex).forEach(function(id){ migrateItemEntry(itemsIndex[id]); });
-
-    // Before flipping _indexLoaded, check if the mirror contained dirty
-    // unsaved work from a previous session that would now be silently
-    // overwritten. If so, offer the user a chance to download it.
-    _checkStaleDirtyMirror(itemsIndex);
-
-    _indexLoaded = true;
-    // Overwrite the local mirror with the freshly-loaded authoritative state
-    _mirrorItemsIndex(false);
     renderItems();
     setStatus('Loaded — ' + Object.keys(itemsIndex).length + ' items', true);
     var inp = document.getElementById('syncToken');
     if(inp) inp.value = '';
   } catch(e){
-    // Load failed. Render whatever we hydrated from the mirror so the user
-    // isn't looking at a blank screen. _indexLoaded stays false → writes
-    // remain blocked and the warning banner will fire on any attempt.
-    if(Object.keys(itemsIndex).length){
-      try { renderItems(); } catch(_){}
-    }
-    setStatus('Load failed — refresh before editing. Your work is safe locally. (' + e.message + ')', false);
+    setStatus('Error: ' + e.message, false);
   }
-}
-
-// If the local mirror is flagged dirty (unsaved offline work) AND its
-// contents differ from what we just loaded from the gist, alert the user
-// and offer to download the mirror as a rescue JSON before it's overwritten.
-function _checkStaleDirtyMirror(loadedIndex){
-  try {
-    var meta = _readMirrorMeta();
-    if(!meta || !meta.dirty) return;
-    // Only warn if the mirror is for the SAME gist we just loaded
-    if(meta.gistId && GIST_ID && meta.gistId !== GIST_ID) return;
-    var raw = localStorage.getItem(MIRROR_INDEX_KEY);
-    if(!raw) return;
-    var mirrorIndex;
-    try { mirrorIndex = JSON.parse(raw); } catch(_){ return; }
-    // Compare serialised forms — cheap and reliable
-    var mirrorStr = JSON.stringify(mirrorIndex);
-    var loadedStr = JSON.stringify(loadedIndex);
-    if(mirrorStr === loadedStr) return;   // no divergence
-
-    // Offer to download the mirror. Once the user dismisses this the
-    // fresh-load will overwrite the mirror (they've been notified).
-    var save = confirm(
-      'Unsaved changes from a previous session were detected in your local\n' +
-      'browser storage. They differ from the gist that just loaded.\n\n' +
-      'Would you like to download the local (unsaved) copy as JSON now,\n' +
-      'so you can inspect it and merge it back manually if needed?\n\n' +
-      'Click OK to download, or Cancel to discard and continue with the\n' +
-      'gist version (which is what you have now).'
-    );
-    if(save){
-      try {
-        var payload = {
-          version: BACKUP_VERSION,
-          exportedAt: new Date().toISOString(),
-          note: 'RESCUE — unsaved local changes from mirror. NOT a full backup (notes not fetched).',
-          gistId: meta.gistId || GIST_ID,
-          savedAt: meta.savedAt,
-          items: mirrorIndex
-        };
-        var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        var stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);
-        a.href = url;
-        a.download = 'todo-unsaved-rescue-' + stamp + '.json';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
-      } catch(e){
-        alert('Rescue download failed: ' + e.message);
-      }
-    }
-  } catch(_){}
 }
 
 // ───── Rendering ─────
@@ -1445,19 +999,6 @@ function migrateItemEntry(d){
   } catch(e){}
 })();
 
-// Hydrate itemsIndex from local mirror for immediate display. This is
-// DISPLAY-ONLY — _indexLoaded stays false, so no user action can write to
-// the gist until the real load succeeds. If the load fails, the user still
-// sees their items and knows their state (via banner) but writes are blocked.
-(function _hydrateItemsIndex(){
-  try {
-    var raw = localStorage.getItem(MIRROR_INDEX_KEY);
-    if(!raw) return;
-    var parsed = JSON.parse(raw);
-    if(parsed && typeof parsed === 'object') itemsIndex = parsed;
-  } catch(e){}
-})();
-
 function applySectionLabels(){
   // Update title text on every schedule + Inbox + archived
   document.querySelectorAll('.list-title[data-list]').forEach(function(el){
@@ -1478,49 +1019,20 @@ function applySectionLabels(){
 async function saveSectionLabels(){
   // Persist both schedules + lists to the labels file
   var payload = { schedules: SCHEDULES, lists: LISTS };
-  // Always mirror the intended labels locally (crash-safety)
   try { localStorage.setItem('mirror-laneLabels', JSON.stringify(payload)); } catch(e){}
-
-  // Same guard as saveIndex: refuse to overwrite the gist if we haven't
-  // completed a load, since we could clobber real data with defaults.
-  if(!_indexLoaded){
-    if(!_saveGuardWarned){
-      _saveGuardWarned = true;
-      setStatus('Not synced — refresh before making changes', false);
-    }
-    return;
-  }
   var token = getToken();
-  if(!token || !GIST_ID){
-    setStatus('Not signed in — labels saved locally only', false);
-    return;
-  }
+  if(!token || !GIST_ID) return;
   try {
     setStatus('Saving labels…');
-    // Optimistic-lock check: bounce if remote changed since load
-    var pre = await fetch('https://api.github.com/gists/' + GIST_ID, {
-      headers: { Authorization: 'token ' + token }
-    });
-    if(!pre.ok) throw new Error('pre-save fetch: HTTP ' + pre.status);
-    var preData = await pre.json();
-    if(_gistUpdatedAtAtLoad && preData.updated_at && preData.updated_at !== _gistUpdatedAtAtLoad){
-      setStatus('Remote changed since load — reload to sync', false);
-      return;
-    }
     var res = await fetch('https://api.github.com/gists/' + GIST_ID, {
       method: 'PATCH',
       headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ files: { 'lane-labels.json': { content: JSON.stringify(payload, null, 2) } } })
     });
     if(!res.ok) throw new Error('HTTP ' + res.status);
-    // Grab the new updated_at so it stays in sync with the lock check
-    try {
-      var newGist = await res.json();
-      if(newGist && newGist.updated_at) _gistUpdatedAtAtLoad = newGist.updated_at;
-    } catch(_){}
     setStatus('Saved ✓', true);
   } catch(e){
-    setStatus('Save failed: ' + e.message + ' (labels saved locally)', false);
+    setStatus('Save failed: ' + e.message, false);
   }
 }
 
@@ -2275,10 +1787,7 @@ async function unarchiveItem(btn){
   await new Promise(function(r){ setTimeout(r, 800); });
   var oldRects = captureRects();
   itemsIndex[id].archived = false;
-  // Ensure the un-archived item lands in a real bucket. Old code used
-  // 'appraise' which no longer exists as a status — items ended up invisible
-  // until a page refresh (migration would then remap them to Inbox).
-  if(!itemsIndex[id].status) itemsIndex[id].status = INBOX_KEY;
+  if(!itemsIndex[id].status) itemsIndex[id].status = 'appraise';
   itemsIndex[id].updated = new Date().toISOString();
   saveIndex(); renderItems();
   animateFlip(oldRects);
@@ -2355,12 +1864,18 @@ function addItemToList(listKey){
   _pushIndexAndItemToGist(id);
 }
 
-// A new-item add used to write an extra per-item stub file. That stub is
-// cosmetic — the index has all essential data, and the detail page creates
-// the real file on first save. Route through saveIndex() so we get the
-// load-guard, mirror, retry, and lock-check for free.
 function _pushIndexAndItemToGist(id){
-  saveIndex();
+  var token = getToken();
+  if(token && GIST_ID){
+    var body = { files: {} };
+    body.files['deal-' + id + '.json'] = { content: JSON.stringify({ _new: true }) };
+    body.files['deals-index.json'] = { content: JSON.stringify(itemsIndex, null, 2) };
+    fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { Authorization: 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).catch(function(){ /* best-effort */ });
+  }
 }
 
 // Add a brand-new list. Numbered with the lowest unused integer.
@@ -2516,17 +2031,15 @@ async function _addItemHandlerIfNeeded(){
     return;
   }
   if(name.length > 200) name = name.slice(0, 200);
-  // Wait for the load-guard to flip. This is the same signal saveIndex uses.
-  // If load never succeeds (network down, bad token) we abort rather than
-  // risk writing to a stale/empty index.
+  // Wait for itemsIndex to populate from Gist before writing
   var token = getToken();
   if(token && GIST_ID){
     var waitedMs = 0;
-    while(!_indexLoaded && waitedMs < 10000){
+    while(Object.keys(itemsIndex).length === 0 && waitedMs < 10000){
       await new Promise(function(r){ setTimeout(r, 200); });
       waitedMs += 200;
     }
-    if(!_indexLoaded){
+    if(Object.keys(itemsIndex).length === 0){
       _rmToast('Could not load existing items — aborting to protect your data', 'error');
       return;
     }
