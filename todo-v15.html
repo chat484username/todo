@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>To Do</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&family=EB+Garamond:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#fafaf8;
+    --ink:#1a1a1a;
+    --ink-2:#444;
+    --ink-3:#888;
+    --line:#e5e5e0;
+    --accent:#1a1a1a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;display:flex;flex-direction:column}
+
+  .topbar{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:16px 24px;border-bottom:1px solid var(--line);
+    font-size:13px;color:var(--ink-3);
+    background:var(--bg);
+  }
+  .topbar a{color:var(--ink-3);text-decoration:none;letter-spacing:0.01em}
+  .topbar a:hover{color:var(--ink)}
+  #syncStatus{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.04em}
+  #syncStatus.saving{color:#b87b00}
+  #syncStatus.saved{color:#3a8a3a}
+  #syncStatus.error{color:#8B0000}
+  #syncStatus.idle{color:var(--ink-3)}
+
+  .container{
+    flex:1;display:flex;flex-direction:column;
+    max-width:760px;width:100%;margin:0 auto;
+    padding:48px 32px 32px 32px;
+  }
+
+  #nameField{
+    font-family:'EB Garamond',Georgia,serif;
+    font-size:42px;line-height:1.15;font-weight:500;
+    color:var(--ink);
+    border:none;outline:none;background:transparent;
+    width:100%;padding:0;margin:0 0 24px 0;
+    resize:none;overflow:hidden;
+  }
+  #nameField::placeholder{color:#c8c8c0;font-style:italic}
+
+  #notesField{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:16px;line-height:1.6;
+    color:var(--ink-2);
+    border:none;outline:none;background:transparent;
+    width:100%;flex:1;min-height:60vh;
+    padding:0;margin:0;
+    resize:none;
+    overflow-y:auto;
+  }
+  #notesField::placeholder{color:#c8c8c0;font-style:italic}
+
+  /* Rich-text field visual styling. contenteditable inherits the same base
+     rules as the textarea it replaces, plus these element-specific ones. */
+  #notesField[contenteditable]{ white-space:pre-wrap; word-wrap:break-word; }
+  #notesField[contenteditable]:empty::before{
+    content: attr(data-placeholder);
+    color:#c8c8c0;font-style:italic;pointer-events:none;
+  }
+  #notesField p{margin:0 0 12px 0}
+  #notesField p:last-child{margin-bottom:0}
+  #notesField h1,#notesField h2,#notesField h3,#notesField h4{
+    font-family:'DM Sans',sans-serif;font-weight:600;color:var(--ink);
+    margin:20px 0 8px 0;line-height:1.25;
+  }
+  #notesField h1{font-size:24px}
+  #notesField h2{font-size:20px}
+  #notesField h3{font-size:17px}
+  #notesField h4{font-size:15px}
+  #notesField ul,#notesField ol{margin:0 0 12px 0;padding-left:24px}
+  #notesField li{margin-bottom:4px}
+  #notesField li>p{margin:0}   /* Google Docs wraps <li> content in <p> */
+  #notesField a{color:#1668c1;text-decoration:underline}
+  #notesField a:hover{color:#0d4f99}
+  #notesField blockquote{
+    margin:12px 0;padding:4px 14px;
+    border-left:3px solid var(--line);color:var(--ink-3);
+  }
+  #notesField code{
+    font-family:'DM Mono',monospace;font-size:14px;
+    background:#f2f0eb;padding:1px 5px;border-radius:3px;
+  }
+  #notesField pre{
+    font-family:'DM Mono',monospace;font-size:14px;
+    background:#f2f0eb;padding:12px 14px;border-radius:4px;
+    overflow-x:auto;white-space:pre;margin:0 0 12px 0;
+  }
+  #notesField pre code{background:transparent;padding:0}
+  #notesField strong,#notesField b{font-weight:600;color:var(--ink)}
+
+  /* Toolbar */
+  .rt-toolbar{
+    display:flex;flex-wrap:wrap;gap:2px;align-items:center;
+    padding:6px 0;margin-bottom:12px;
+    border-bottom:1px solid var(--line);
+    position:sticky;top:0;background:var(--bg);z-index:5;
+  }
+  .rt-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:32px;height:32px;padding:0 8px;
+    background:transparent;border:none;border-radius:4px;
+    cursor:pointer;color:var(--ink-2);
+    font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;
+    line-height:1;
+  }
+  .rt-btn:hover{background:#eeeae0;color:var(--ink)}
+  .rt-btn:active{background:#e0dccf}
+  .rt-btn.on{background:#e5e0d0;color:var(--ink)}
+  .rt-btn svg{width:16px;height:16px}
+  .rt-sep{
+    width:1px;height:20px;background:var(--line);
+    margin:0 6px;flex-shrink:0;
+  }
+
+  .warning{
+    background:#fff4dc;border:1px solid #e8c97a;
+    padding:10px 14px;border-radius:4px;
+    font-size:13px;color:#7a5a00;
+    margin-bottom:24px;
+  }
+  .warning a{color:#7a5a00;text-decoration:underline}
+
+  .error-state{
+    text-align:center;padding:60px 20px;color:var(--ink-3);
+  }
+  .error-state a{color:var(--ink);text-decoration:underline}
+
+  ::selection{background:rgba(0,0,0,0.08)}
+
+  /* hide scrollbars on textareas */
+  textarea::-webkit-scrollbar{width:0;height:0}
+  textarea{scrollbar-width:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" id="backLink">← pipeline</a>
+  <span id="syncStatus" class="idle">—</span>
+</div>
+
+<div class="container" id="container">
+  <div id="tokenWarning" class="warning" style="display:none">
+    No GitHub token configured — changes won't sync.
+    <a href="index.html">Set token on pipeline page →</a>
+  </div>
+
+  <textarea id="nameField" placeholder="Untitled" rows="1" autocomplete="off" spellcheck="false"></textarea>
+
+  <div class="rt-toolbar" role="toolbar" aria-label="Formatting">
+    <button type="button" class="rt-btn" data-cmd="bold" title="Bold (⌘B)"><b>B</b></button>
+    <button type="button" class="rt-btn" data-cmd="italic" title="Italic (⌘I)"><i>I</i></button>
+    <button type="button" class="rt-btn" data-cmd="underline" title="Underline (⌘U)"><u>U</u></button>
+    <button type="button" class="rt-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+    <span class="rt-sep"></span>
+    <button type="button" class="rt-btn" data-cmd="formatBlock" data-arg="h2" title="Heading">H2</button>
+    <button type="button" class="rt-btn" data-cmd="formatBlock" data-arg="h3" title="Sub-heading">H3</button>
+    <button type="button" class="rt-btn" data-cmd="formatBlock" data-arg="p" title="Body">¶</button>
+    <span class="rt-sep"></span>
+    <button type="button" class="rt-btn" data-cmd="insertUnorderedList" title="Bulleted list">•</button>
+    <button type="button" class="rt-btn" data-cmd="insertOrderedList" title="Numbered list">1.</button>
+    <span class="rt-sep"></span>
+    <button type="button" class="rt-btn" data-cmd="createLink" title="Add link">🔗</button>
+    <button type="button" class="rt-btn" data-cmd="unlink" title="Remove link">⊘</button>
+    <span class="rt-sep"></span>
+    <button type="button" class="rt-btn" data-cmd="removeFormat" title="Clear formatting">×</button>
+  </div>
+
+  <div id="notesField" contenteditable="true" spellcheck="true" data-placeholder="Write your notes…"></div>
+</div>
+
+<div class="error-state" id="errorState" style="display:none">
+  <p id="errorMsg">Deal not found.</p>
+  <p><a href="index.html">← back to pipeline</a></p>
+</div>
+
+<script>
+/* ── config ───────────────────────────────────────────────────── */
+var GIST_ID_DEFAULT = 'acb18997fb5494fd10b3696c038a0fd7';
+var SAVE_DEBOUNCE_MS = 800;
+
+/* ── read deal id ─────────────────────────────────────────────── */
+function qsParam(name){
+  var m = new RegExp('[?&]'+name+'=([^&]*)').exec(window.location.search);
+  return m ? decodeURIComponent(m[1]) : '';
+}
+var DEAL_ID = qsParam('deal');
+
+if(!DEAL_ID){
+  document.getElementById('container').style.display = 'none';
+  document.getElementById('errorMsg').textContent = 'No deal specified in URL.';
+  document.getElementById('errorState').style.display = 'block';
+  throw new Error('no deal id');
+}
+
+var DEAL_FILE = 'deal-' + DEAL_ID + '.json';
+var INDEX_FILE = 'deals-index.json';
+
+/* ── auth / gist id ───────────────────────────────────────────── */
+function getToken(){ return localStorage.getItem('todoToken') || ''; }
+function getGistId(){ return localStorage.getItem('todoGistId') || GIST_ID_DEFAULT; }
+
+/* ── DOM refs ─────────────────────────────────────────────────── */
+var nameEl   = document.getElementById('nameField');
+var notesEl  = document.getElementById('notesField');
+var statusEl = document.getElementById('syncStatus');
+var warnEl   = document.getElementById('tokenWarning');
+
+/* ── status helpers ───────────────────────────────────────────── */
+function setStatus(state, text){
+  statusEl.className = state;
+  statusEl.textContent = text;
+}
+
+if(!getToken()){
+  warnEl.style.display = 'block';
+}
+
+/* ── local mirror keys ────────────────────────────────────────── */
+var MIRROR_NOTES = 'mirror-notes-' + DEAL_ID;
+var MIRROR_NAME  = 'mirror-name-'  + DEAL_ID;
+var MIRROR_NOTES_FORMAT = 'mirror-notes-fmt-' + DEAL_ID;  // 'html' or unset (=plain)
+
+/* ── auto-grow name textarea ──────────────────────────────────── */
+function autoGrowName(){
+  nameEl.style.height = 'auto';
+  nameEl.style.height = nameEl.scrollHeight + 'px';
+}
+
+/* ── load from local mirror immediately ───────────────────────── */
+(function loadFromMirror(){
+  var n = localStorage.getItem(MIRROR_NAME);
+  var notes = localStorage.getItem(MIRROR_NOTES);
+  var fmt = localStorage.getItem(MIRROR_NOTES_FORMAT);
+  if(n !== null) nameEl.value = n;
+  if(notes !== null){
+    if(fmt === 'html'){
+      // Trust the mirror — it was written by us in HTML form. Still
+      // sanitise defensively (localStorage could have been tampered with).
+      notesEl.innerHTML = sanitizeHtml(notes);
+    } else {
+      // Legacy mirror (v14 or earlier) — plain text
+      notesEl.innerHTML = plainTextToHtml(notes);
+    }
+  }
+  autoGrowName();
+})();
+
+/* ── load from gist ───────────────────────────────────────────── */
+var initialName = nameEl.value;
+var initialNotesHtml = notesEl.innerHTML;
+var loadedFromGist = false;
+
+async function loadFromGist(){
+  var token = getToken();
+  if(!token){ setStatus('idle','offline'); return; }
+  setStatus('saving','loading…');
+  try{
+    var res = await fetch('https://api.github.com/gists/' + getGistId(), {
+      headers: { Authorization: 'token ' + token }
+    });
+    if(!res.ok) throw new Error('gist fetch failed: ' + res.status);
+    var data = await res.json();
+    var files = data.files || {};
+
+    // Pull name from dealsIndex (canonical for pipeline display)
+    var idxRaw = files[INDEX_FILE] && files[INDEX_FILE].content;
+    var idx = idxRaw ? JSON.parse(idxRaw) : {};
+    var entry = idx[DEAL_ID];
+    if(!entry){
+      document.getElementById('container').style.display = 'none';
+      document.getElementById('errorMsg').textContent = 'Deal "' + DEAL_ID + '" not found.';
+      document.getElementById('errorState').style.display = 'block';
+      setStatus('error','not found');
+      return;
+    }
+    var nameFromGist = entry.name || '';
+
+    // Pull notes from per-deal file
+    var dealRaw = files[DEAL_FILE] && files[DEAL_FILE].content;
+    var notesFromGist = '';    // may be plain text (legacy) or HTML (new)
+    var notesFormat = 'text';  // 'text' or 'html'
+    if(dealRaw){
+      try{
+        var d = JSON.parse(dealRaw);
+        if(typeof d.notesHtml === 'string' && d.notesHtml.length){
+          notesFromGist = d.notesHtml;
+          notesFormat = 'html';
+        } else if(typeof d.notes === 'string'){
+          notesFromGist = d.notes;
+          notesFormat = 'text';
+        }
+      }catch(e){ /* malformed file, treat as empty */ }
+    }
+
+    // Update fields only if user hasn't started editing
+    if(nameEl.value === initialName){
+      nameEl.value = nameFromGist;
+      localStorage.setItem(MIRROR_NAME, nameFromGist);
+      autoGrowName();
+    }
+    if(notesEl.innerHTML === initialNotesHtml){
+      // Convert legacy plain-text to HTML for display; store as-is for now.
+      // First edit will save the HTML back.
+      var displayHtml = notesFormat === 'html'
+        ? sanitizeHtml(notesFromGist)
+        : plainTextToHtml(notesFromGist);
+      notesEl.innerHTML = displayHtml;
+      localStorage.setItem(MIRROR_NOTES, displayHtml);
+      localStorage.setItem(MIRROR_NOTES_FORMAT, 'html');
+    }
+
+    loadedFromGist = true;
+    setStatus('saved','synced');
+  }catch(err){
+    console.error(err);
+    setStatus('error','load failed');
+  }
+}
+
+loadFromGist();
+
+/* ── save (debounced) ─────────────────────────────────────────── */
+var saveTimer = null;
+var pendingSave = false;
+var savingNow = false;
+
+function currentNotesHtml(){ return notesEl.innerHTML; }
+function currentNotesText(){ return notesEl.innerText || ''; }
+
+function scheduleSave(){
+  // Mirror immediately so a refresh never loses work
+  localStorage.setItem(MIRROR_NAME, nameEl.value);
+  localStorage.setItem(MIRROR_NOTES, currentNotesHtml());
+  localStorage.setItem(MIRROR_NOTES_FORMAT, 'html');
+
+  setStatus('saving','editing…');
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(doSave, SAVE_DEBOUNCE_MS);
+}
+
+async function doSave(){
+  if(savingNow){ pendingSave = true; return; }
+  if(!getToken()){
+    setStatus('idle','offline (saved locally)');
+    return;
+  }
+  if(!loadedFromGist){
+    setStatus('error','not synced — refresh');
+    return;
+  }
+  savingNow = true;
+  setStatus('saving','saving…');
+  try{
+    var token = getToken();
+    var gistId = getGistId();
+
+    var res = await fetch('https://api.github.com/gists/' + gistId, {
+      headers: { Authorization: 'token ' + token }
+    });
+    if(!res.ok) throw new Error('pre-save fetch failed: ' + res.status);
+    var data = await res.json();
+    var files = data.files || {};
+
+    var idxRaw = files[INDEX_FILE] && files[INDEX_FILE].content;
+    var idx = idxRaw ? JSON.parse(idxRaw) : {};
+    if(!idx[DEAL_ID]) idx[DEAL_ID] = {};
+
+    var nameNow = nameEl.value;
+    var htmlNow = currentNotesHtml();
+    var textNow = currentNotesText();
+    var nameChanged = idx[DEAL_ID].name !== nameNow;
+    // Consider a note "present" only if it has non-whitespace text
+    var noteFlag = textNow.trim().length > 0;
+    var noteFlagChanged = !!idx[DEAL_ID].note !== noteFlag;
+    idx[DEAL_ID].name = nameNow;
+    if(noteFlag) idx[DEAL_ID].note = true;
+    else delete idx[DEAL_ID].note;
+
+    // Persist both a plain-text fallback (for tools/backups reading .notes)
+    // and the rich HTML. Legacy readers see .notes and get the text; new
+    // readers see .notesHtml and get the formatting.
+    var dealBody = {
+      name: nameNow,
+      notes: textNow,
+      notesHtml: htmlNow,
+      _updated: new Date().toISOString()
+    };
+
+    var patchFiles = {};
+    patchFiles[DEAL_FILE] = { content: JSON.stringify(dealBody, null, 2) };
+    if(nameChanged || noteFlagChanged){
+      patchFiles[INDEX_FILE] = { content: JSON.stringify(idx, null, 2) };
+    }
+
+    var pres = await fetch('https://api.github.com/gists/' + gistId, {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'token ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ files: patchFiles })
+    });
+    if(!pres.ok) throw new Error('PATCH failed: ' + pres.status);
+
+    setStatus('saved','saved');
+  }catch(err){
+    console.error(err);
+    setStatus('error', 'save failed: ' + (err && err.message ? err.message : 'unknown'));
+  }finally{
+    savingNow = false;
+    if(pendingSave){
+      pendingSave = false;
+      saveTimer = setTimeout(doSave, SAVE_DEBOUNCE_MS);
+    }
+  }
+}
+
+/* ── wire up inputs ───────────────────────────────────────────── */
+nameEl.addEventListener('input', function(){
+  autoGrowName();
+  scheduleSave();
+});
+notesEl.addEventListener('input', scheduleSave);
+
+// Stop Enter creating newlines in the name field
+nameEl.addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){ e.preventDefault(); notesEl.focus(); }
+});
+
+// Flush save on page hide
+window.addEventListener('beforeunload', function(){
+  if(saveTimer){
+    clearTimeout(saveTimer);
+    localStorage.setItem(MIRROR_NAME, nameEl.value);
+    localStorage.setItem(MIRROR_NOTES, currentNotesHtml());
+    localStorage.setItem(MIRROR_NOTES_FORMAT, 'html');
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RICH-TEXT SUPPORT — sanitiser, toolbar, paste handling
+   ═══════════════════════════════════════════════════════════════════════
+
+   Design principles:
+   - The notes field stores HTML. Anything HTML that enters it (typed,
+     pasted, loaded from gist) must pass through sanitizeHtml() first.
+   - Sanitiser uses an ALLOWLIST — unknown tags/attributes are stripped.
+     Never trust source-attribute filters (regex, blacklists).
+   - Uses DOMParser which creates an inert document — scripts don't run,
+     images don't load — safe to walk and clean before inserting.
+   - execCommand is deprecated but universally supported and pairs well
+     with pasted Google Docs / Claude artefact HTML. Fine for this use.
+*/
+
+// ── Allowed elements/attributes ─────────────────────────────────────
+var ALLOWED_TAGS = {
+  'P':1, 'BR':1, 'STRONG':1, 'B':1, 'EM':1, 'I':1, 'U':1, 'S':1, 'STRIKE':1,
+  'H1':1, 'H2':1, 'H3':1, 'H4':1, 'H5':1, 'H6':1,
+  'UL':1, 'OL':1, 'LI':1,
+  'A':1, 'BLOCKQUOTE':1, 'CODE':1, 'PRE':1,
+  'SPAN':1, 'DIV':1
+};
+// Tags whose CONTENT we keep but whose tag we discard (unwrap children into parent).
+var UNWRAP_TAGS = {
+  'FONT':1, 'CENTER':1, 'ARTICLE':1, 'SECTION':1, 'HEADER':1, 'FOOTER':1,
+  'MAIN':1, 'ASIDE':1, 'NAV':1, 'FIGURE':1, 'FIGCAPTION':1
+};
+// Tags to strip entirely, content and all.
+var STRIP_TAGS = {
+  'SCRIPT':1, 'STYLE':1, 'IFRAME':1, 'OBJECT':1, 'EMBED':1, 'FORM':1,
+  'INPUT':1, 'SELECT':1, 'TEXTAREA':1, 'BUTTON':1, 'LINK':1, 'META':1,
+  'BASE':1, 'IMG':1, 'PICTURE':1, 'SOURCE':1, 'VIDEO':1, 'AUDIO':1,
+  'CANVAS':1, 'SVG':1, 'MATH':1, 'TITLE':1, 'HEAD':1
+};
+
+function _isSafeHref(href){
+  if(typeof href !== 'string') return false;
+  var s = href.trim().toLowerCase();
+  if(s.indexOf('javascript:') === 0) return false;
+  if(s.indexOf('data:') === 0) return false;
+  if(s.indexOf('vbscript:') === 0) return false;
+  // Allow http, https, mailto, tel, plus relative and fragment
+  if(/^https?:/.test(s)) return true;
+  if(/^mailto:/.test(s)) return true;
+  if(/^tel:/.test(s)) return true;
+  if(/^#/.test(s)) return true;
+  if(/^\//.test(s)) return true;
+  // Reject anything else with a scheme
+  if(/^[a-z][a-z0-9+.\-]*:/.test(s)) return false;
+  return true;
+}
+
+function _cleanNode(node){
+  // Comments removed
+  if(node.nodeType === 8){
+    node.remove();
+    return;
+  }
+  // Text nodes are safe as-is
+  if(node.nodeType === 3) return;
+  if(node.nodeType !== 1) return;
+
+  var tag = node.tagName;
+
+  if(STRIP_TAGS[tag]){
+    node.remove();
+    return;
+  }
+
+  // Recurse into children FIRST (snapshot list; live NodeList mutates as we edit)
+  var kids = Array.prototype.slice.call(node.childNodes);
+  for(var i = 0; i < kids.length; i++) _cleanNode(kids[i]);
+
+  if(UNWRAP_TAGS[tag] || !ALLOWED_TAGS[tag]){
+    // Unwrap: move children into parent then remove the tag
+    var parent = node.parentNode;
+    if(parent){
+      while(node.firstChild) parent.insertBefore(node.firstChild, node);
+      parent.removeChild(node);
+    }
+    return;
+  }
+
+  // Attribute allowlist. Snapshot list to avoid mutation-during-iteration.
+  var attrs = Array.prototype.slice.call(node.attributes);
+  for(var a = 0; a < attrs.length; a++){
+    var name = attrs[a].name;
+    var val  = attrs[a].value;
+    if(tag === 'A' && name === 'href'){
+      if(!_isSafeHref(val)){
+        node.removeAttribute(name);
+      }
+      // else keep
+    } else if(tag === 'A' && (name === 'target' || name === 'rel')){
+      // Keep target/rel on links (we'll enforce below)
+    } else {
+      node.removeAttribute(name);
+    }
+  }
+
+  // Ensure all links open safely in a new tab
+  if(tag === 'A' && node.getAttribute('href')){
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noopener noreferrer');
+  }
+}
+
+// Preprocessing: normalise Google-Docs quirks BEFORE the allowlist strip.
+// Doc's paste HTML uses <b style="font-weight:normal"> as a wrapper — the
+// <b> semantics would incorrectly bold everything once we drop styles.
+// Detect that specific pattern and rewrite to <span>.
+function _preprocessGoogleQuirks(root){
+  var tags = ['B', 'STRONG', 'I', 'EM'];
+  tags.forEach(function(tagName){
+    var els = root.querySelectorAll(tagName);
+    for(var i = 0; i < els.length; i++){
+      var el = els[i];
+      var style = (el.getAttribute('style') || '').toLowerCase();
+      var isBold = tagName === 'B' || tagName === 'STRONG';
+      if(isBold && /font-weight\s*:\s*(normal|400|300|200|100)/.test(style)){
+        _renameElement(el, 'span');
+      } else if(!isBold && /font-style\s*:\s*normal/.test(style)){
+        _renameElement(el, 'span');
+      }
+    }
+  });
+}
+
+function _renameElement(el, newTag){
+  var replacement = document.createElement(newTag);
+  while(el.firstChild) replacement.appendChild(el.firstChild);
+  // Don't preserve attributes — they'd get stripped anyway
+  el.parentNode.replaceChild(replacement, el);
+  return replacement;
+}
+
+// Public sanitiser. Accepts an HTML string, returns a cleaned HTML string.
+function sanitizeHtml(html){
+  if(typeof html !== 'string' || !html) return '';
+  var parser = new DOMParser();
+  var doc = parser.parseFromString('<div id="__rt_root">' + html + '</div>', 'text/html');
+  var root = doc.getElementById('__rt_root');
+  if(!root) return '';
+
+  _preprocessGoogleQuirks(root);
+
+  // Snapshot then clean
+  var kids = Array.prototype.slice.call(root.childNodes);
+  for(var i = 0; i < kids.length; i++) _cleanNode(kids[i]);
+
+  // Post-clean tidying: collapse empty elements Google Docs likes to insert
+  _collapseEmpty(root);
+  return root.innerHTML;
+}
+
+function _collapseEmpty(root){
+  var el = root.querySelectorAll('*');
+  for(var i = 0; i < el.length; i++){
+    var node = el[i];
+    if(node.tagName === 'BR') continue;
+    if(node.tagName === 'HR') continue;
+    if(node.childNodes.length === 0 && !node.hasAttribute('href')){
+      // Empty span/div/p from Google Docs — safe to remove
+      if(node.tagName === 'SPAN' || node.tagName === 'DIV' || node.tagName === 'P'){
+        node.remove();
+      }
+    }
+  }
+}
+
+// Convert plain text to safe HTML (paragraph + <br> for line breaks)
+function plainTextToHtml(text){
+  if(typeof text !== 'string' || !text.length) return '';
+  var escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  // Double newline = paragraph break; single newline = <br>
+  var paras = escaped.split(/\n\n+/).map(function(p){
+    return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+  });
+  return paras.join('');
+}
+
+// ── Paste handler ───────────────────────────────────────────────────
+notesEl.addEventListener('paste', function(e){
+  e.preventDefault();
+  var cd = e.clipboardData || window.clipboardData;
+  if(!cd) return;
+  var html = cd.getData('text/html');
+  var text = cd.getData('text/plain');
+
+  var toInsert;
+  if(html && html.trim().length){
+    toInsert = sanitizeHtml(html);
+  } else if(text && text.length){
+    toInsert = plainTextToHtml(text);
+  } else {
+    return;
+  }
+  if(!toInsert) return;
+
+  // execCommand('insertHTML') is deprecated but universally supported and
+  // preserves the caret position + undo stack. If it ever stops working
+  // we'd fall back to Range/Selection APIs.
+  try {
+    document.execCommand('insertHTML', false, toInsert);
+  } catch(_){
+    // Fallback: use Selection API
+    var sel = window.getSelection();
+    if(!sel || !sel.rangeCount) return;
+    var range = sel.getRangeAt(0);
+    range.deleteContents();
+    var tmp = document.createElement('div');
+    tmp.innerHTML = toInsert;
+    var frag = document.createDocumentFragment();
+    while(tmp.firstChild) frag.appendChild(tmp.firstChild);
+    range.insertNode(frag);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  scheduleSave();
+});
+
+// ── Toolbar ─────────────────────────────────────────────────────────
+document.querySelectorAll('.rt-toolbar .rt-btn').forEach(function(btn){
+  // Prevent the toolbar buttons from stealing focus from the editor —
+  // otherwise the selection collapses and formatting has no target.
+  btn.addEventListener('mousedown', function(e){ e.preventDefault(); });
+  btn.addEventListener('click', function(){
+    var cmd = btn.getAttribute('data-cmd');
+    var arg = btn.getAttribute('data-arg') || null;
+
+    // Ensure the editor has focus so execCommand acts on the selection
+    if(document.activeElement !== notesEl) notesEl.focus();
+
+    if(cmd === 'createLink'){
+      var url = prompt('Link URL:', 'https://');
+      if(!url) return;
+      if(!_isSafeHref(url)){
+        alert('That URL was rejected as unsafe.');
+        return;
+      }
+      document.execCommand('createLink', false, url);
+      // Immediately sanitise to add target=_blank etc.
+      _sanitiseInPlace();
+    } else if(cmd === 'formatBlock'){
+      // Some browsers want the tag angle-bracketed, some don't
+      try { document.execCommand('formatBlock', false, arg); }
+      catch(_){ document.execCommand('formatBlock', false, '<' + arg + '>'); }
+    } else {
+      document.execCommand(cmd, false, arg);
+    }
+
+    updateToolbarState();
+    scheduleSave();
+  });
+});
+
+// Reflect the current selection's active formatting on the toolbar
+function updateToolbarState(){
+  document.querySelectorAll('.rt-toolbar .rt-btn').forEach(function(btn){
+    var cmd = btn.getAttribute('data-cmd');
+    if(!cmd || cmd === 'createLink' || cmd === 'unlink' || cmd === 'removeFormat' || cmd === 'formatBlock') return;
+    try {
+      if(document.queryCommandState(cmd)) btn.classList.add('on');
+      else btn.classList.remove('on');
+    } catch(_){}
+  });
+}
+document.addEventListener('selectionchange', function(){
+  if(document.activeElement === notesEl) updateToolbarState();
+});
+notesEl.addEventListener('keyup', updateToolbarState);
+notesEl.addEventListener('mouseup', updateToolbarState);
+
+// Sanitise the current field in place (after createLink, etc.)
+function _sanitiseInPlace(){
+  var cleaned = sanitizeHtml(notesEl.innerHTML);
+  if(cleaned !== notesEl.innerHTML){
+    // This blows away the caret position — only call after operations that
+    // aren't followed by immediate typing.
+    notesEl.innerHTML = cleaned;
+  }
+}
+
+// Keyboard shortcuts (Cmd/Ctrl+B/I/U) are handled by contenteditable
+// natively via execCommand. But we hook them to also update toolbar state.
+notesEl.addEventListener('keydown', function(e){
+  var mod = e.metaKey || e.ctrlKey;
+  if(!mod) return;
+  var k = e.key.toLowerCase();
+  if(k === 'b' || k === 'i' || k === 'u'){
+    // Let the browser handle the command, then update toolbar
+    setTimeout(updateToolbarState, 0);
+  }
+});
+</script>
+</body>
+</html>
